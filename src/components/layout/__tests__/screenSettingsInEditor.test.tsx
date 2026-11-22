@@ -8,7 +8,7 @@
  * name where each one is set.
  */
 import React, { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { SCREEN_SETTING_KEYS, type ScreenSettingKey } from '@/lib/displays/screenSettings';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
 import type { IdleBackground } from '@/lib/idleBackground';
@@ -59,14 +59,11 @@ const CONTROLS: Record<ScreenSettingKey, { on: Place; label: RegExp } | { none: 
   'prism:screen-safe-zones': { none: 'set by hand; no control anywhere' },
 };
 
-function Day({ open }: { open: 'resting' | 'night' }) {
+/** Through the day for a screen: its resting and night rows are always in sight (#1281). */
+function Day() {
   const [value, setValue] = useState<IdleBackground>({ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
   const [half, setHalf] = useState<IdleHalf>('day');
   const [tab, setTab] = useState<EditTab>('dashboard');
-  React.useEffect(() => {
-    if (open === 'resting') fireEvent.click(document.querySelector<HTMLElement>('[data-day-stretch="resting"]')!);
-    else fireEvent.click(document.querySelector<HTMLElement>('[data-day-milestone="night-start"]')!);
-  }, [open]);
   return (
     <ThroughTheDaySheet
       idleBackground={value} onIdleBackgroundChange={setValue}
@@ -80,8 +77,8 @@ function Day({ open }: { open: 'resting' | 'night' }) {
 const PLACES: Record<Place, () => React.ReactElement> = {
   'Look': () => <LookSheet orientation="landscape" onMeasure={() => {}} />,
   'Screensaver motion': () => <ScreensaverSettingsPanel open onClose={() => {}} />,
-  'Through the day, resting': () => <Day open="resting" />,
-  'Through the day, night': () => <Day open="night" />,
+  'Through the day, resting': () => <Day />,
+  'Through the day, night': () => <Day />,
   'More, notices': () => (
     <MoreSheet builtIn={false} editingScreensaver={false} hasIdleLayout={false} idleTab={false} exportFeedback=""
       onExport={() => {}} onImportOpen={() => {}} onShareOpen={() => {}} onReset={() => {}} />

@@ -2,8 +2,9 @@
  * @jest-environment jsdom
  *
  * The Through the day sheet (#1152) as plain rows (#1281). For a screen: the
- * timeline it follows (#1266), the dashboard it shows and the dashboards it
- * switches to at set times, a row each. Then the dashboard's own resting and
+ * dashboard it shows and the dashboards it switches to at bus time or at set
+ * times (#1282), a row each, kept on the editor page until Done. A device
+ * nobody named is offered a name (#1267). Then the dashboard's own resting and
  * night: plain choices in a row, Photos and the night sky among them, saved
  * with the dashboard. Rest after and How dark are the screen's own, shown
  * only when the editor is for a screen. See it shows the canvas in use,
@@ -11,12 +12,12 @@
  */
 import React, { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { simplest, ThroughTheDaySheet } from '../ThroughTheDaySheet';
+import { busWindowsInWords, simplest, ThroughTheDaySheet } from '../ThroughTheDaySheet';
 import { idleSaveProblem } from '../IdleBackgroundBar';
 import type { IdleBackground } from '@/lib/idleBackground';
 import type { EditTab, IdleHalf } from '@/components/dashboard/useDashboardLayout';
 import { DEFAULT_NIGHT } from '@/lib/throughTheDay';
-import type { Timeline } from '@/lib/timeline';
+import type { ScreenPlan } from '@/lib/screenSwitches';
 
 jest.mock('@/components/providers/TimeFormatProvider', () => ({
   // The household's clock is the screen's, as on a real screen.
@@ -26,23 +27,9 @@ jest.mock('@/components/screensaver/useIdleBackground', () => ({
   useSkyLocation: () => ({ lat: 45, lon: -100 }),
 }));
 jest.mock('@/components/screensaver/ScreensaverQuickSettings', () => ({ ScreensaverSettingsPanel: () => null }));
-// The timelines store: a change is kept by the harness, as the server would.
-const mockStore = {
-  patches: [] as Array<{ id: string; patch: Record<string, unknown> }>,
-  created: [] as Array<Record<string, unknown>>,
-  deleted: [] as string[],
-  apply: (_id: string, _patch: Record<string, unknown>) => {},
-  add: (_t: Timeline) => {},
-};
-jest.mock('@/lib/hooks/useTimelines', () => ({
-  patchTimeline: async (id: string, patch: Record<string, unknown>) => { mockStore.patches.push({ id, patch }); mockStore.apply(id, patch); return true; },
-  createTimeline: async (body: Record<string, unknown>) => {
-    mockStore.created.push(body);
-    const t = { id: `new-${mockStore.created.length}`, name: String(body.name), position: 9, dashboardId: null, placements: [], idleBackground: { source: 'dashboard' }, screens: 0 };
-    mockStore.add(t as Timeline);
-    return t;
-  },
-  deleteTimeline: async (id: string) => { mockStore.deleted.push(id); return true; },
+jest.mock('@/lib/displays/displaySettingsSync', () => ({
+  resetSyncBase: () => {},
+  syncScreenSettings: async () => ({ applied: [], planChanged: false }),
 }));
 
 const HOME = '11111111-1111-4111-8111-111111111111';
@@ -51,23 +38,18 @@ const DASHBOARDS = [
   { id: HOME, name: 'Home', slug: 'home', isDefault: true },
   { id: BUS, name: 'Bus', slug: 'bus', isDefault: false },
 ];
-const MAIN: Timeline = { id: 'main', name: 'Main', position: 0, dashboardId: null, placements: [], idleBackground: { source: 'dashboard' }, screens: 2 };
+const PLAIN: ScreenPlan = { dashboardId: null, switches: [] };
 
-const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; timelineId?: string } = {};
+const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; plan?: ScreenPlan | null } = {};
 
-function Harness({ initial, dashboards, timelines, screenId = 'kitchen', forScreen = true, current = HOME }: {
-  initial: IdleBackground; dashboards?: typeof DASHBOARDS; timelines?: Timeline[]; screenId?: string | null; forScreen?: boolean; current?: string;
+function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forScreen = true, current = HOME, deviceNamed = true }: {
+  initial: IdleBackground; dashboards?: typeof DASHBOARDS; plan?: ScreenPlan | null; screenId?: string | null; forScreen?: boolean; current?: string; deviceNamed?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [half, setHalf] = useState<IdleHalf>('day');
   const [tab, setTab] = useState<EditTab>('dashboard');
-  const [lines, setLines] = useState<Timeline[]>(timelines ?? []);
-  const [lineId, setLineId] = useState<string | undefined>(timelines?.[0]?.id);
-  React.useEffect(() => {
-    mockStore.apply = (id, patch) => setLines((all) => all.map((t) => (t.id === id ? { ...t, ...patch } as Timeline : t)));
-    mockStore.add = (t) => setLines((all) => [...all, t]);
-  }, []);
-  React.useEffect(() => { seen.value = value; seen.half = half; seen.tab = tab; seen.timelineId = lineId; });
+  const [screenPlan, setScreenPlan] = useState<ScreenPlan | null>(plan);
+  React.useEffect(() => { seen.value = value; seen.half = half; seen.tab = tab; seen.plan = screenPlan; });
   return (
     <ThroughTheDaySheet
       idleBackground={value} onIdleBackgroundChange={setValue}
@@ -77,21 +59,23 @@ function Harness({ initial, dashboards, timelines, screenId = 'kitchen', forScre
       allDashboards={(dashboards ?? DASHBOARDS) as never}
       currentDashboardId={current}
       onSwitchDashboard={switched}
-      timelines={timelines ? lines : undefined}
-      timelineId={timelines ? lineId : undefined}
-      onTimelineChange={setLineId}
+      screenPlan={screenPlan}
+      onScreenPlanChange={setScreenPlan}
       screenId={screenId}
       forScreen={forScreen}
+      deviceNamed={deviceNamed}
+      onDeviceNamed={named}
     />
   );
 }
+const named = jest.fn();
 const switched = jest.fn();
 
-afterEach(() => { localStorage.clear(); mockStore.patches = []; mockStore.created = []; mockStore.deleted = []; switched.mockReset(); });
+afterEach(() => { localStorage.clear(); switched.mockReset(); named.mockReset(); });
 
-/** The placements the last change kept. */
-const keptPlacements = () => [...mockStore.patches].reverse().find((p) => 'placements' in p.patch)?.patch.placements as Timeline['placements'];
-const rows = () => Array.from(document.querySelectorAll<HTMLElement>('[data-placement-row]'));
+/** The switches the editor page holds now. */
+const kept = () => seen.plan!.switches;
+const rows = () => Array.from(document.querySelectorAll<HTMLElement>('[data-switch-row]'));
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 const pick = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const seeIt = (name: string) => fireEvent.click(screen.getByRole('radiogroup', { name: 'See it' }).querySelector<HTMLElement>(`[data-see="${name}"]`)!);
@@ -110,9 +94,9 @@ describe('ThroughTheDaySheet', () => {
         .toEqual(['In use', 'Resting', 'Night']);
       // See it first, in reach without scrolling past the rows.
       expect(document.querySelector('[data-day-sheet]')!.firstElementChild!.hasAttribute('data-see-it')).toBe(true);
-      // The dashboard's rows, then the screen's own.
+      // What the screen shows, the dashboard's rows, then the screen's own.
       expect(Array.from(document.querySelectorAll('[data-row-name]')).map((n) => n.textContent))
-        .toEqual(['Resting', 'At night', 'Night is', 'Rest after', 'How dark']);
+        .toEqual(['Shows', 'Resting', 'At night', 'Night is', 'Rest after', 'How dark']);
     });
 
     it('See it shows the canvas in use, resting or at night', () => {
@@ -199,127 +183,153 @@ describe('ThroughTheDaySheet', () => {
     });
   });
 
-  describe('switches at set times (#1266, #1281)', () => {
+  describe('a screen\'s dashboard and switches (#1282)', () => {
     beforeEach(() => {
       // Only the date is faked: a new switch starts at this quarter hour.
       jest.useFakeTimers({ now: new Date(2026, 10, 23, 7, 5), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick'] });
+      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [
+        { scheduledTime: '07:45', activeDays: [1, 2, 3, 4, 5] },
+        { scheduledTime: '15:30', activeDays: [1, 2, 3, 4, 5] },
+      ] }) })) as never;
     });
     afterEach(() => jest.useRealTimers());
 
     it('+ Switch at set times adds a row on every day from this quarter hour, and its days and hours change in it', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
+      render(<Harness initial={{ source: 'dashboard' }} />);
       press('Switch at set times');
-      expect(keptPlacements()).toEqual([{ days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '08:00', dashboardId: BUS }]);
+      expect(kept()).toEqual([{ when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '08:00', dashboardId: BUS }]);
       expect(rows()).toHaveLength(1);
       // Weekdays: Saturday and Sunday off.
       const days = rows()[0]!.querySelector<HTMLElement>('[aria-label="Switch days"]')!;
       fireEvent.click(days.querySelector<HTMLElement>('[aria-label="Saturday"]')!);
       fireEvent.click(days.querySelector<HTMLElement>('[aria-label="Sunday"]')!);
-      expect(keptPlacements()[0]!.days).toEqual([1, 2, 3, 4, 5]);
+      expect(kept()[0]).toMatchObject({ days: [1, 2, 3, 4, 5] });
       fireEvent.change(screen.getByLabelText('Switch ends'), { target: { value: '08:30' } });
-      expect(keptPlacements()[0]!.to).toBe('08:30');
+      expect(kept()[0]).toMatchObject({ to: '08:30' });
       fireEvent.change(screen.getByLabelText('Switches to'), { target: { value: HOME } });
-      expect(keptPlacements()[0]!.dashboardId).toBe(HOME);
+      expect(kept()[0]!.dashboardId).toBe(HOME);
 
-      fireEvent.click(document.querySelector<HTMLElement>('[data-placement-remove]')!);
-      expect(keptPlacements()).toEqual([]);
+      fireEvent.click(document.querySelector<HTMLElement>('[data-switch-remove]')!);
+      expect(kept()).toEqual([]);
       expect(rows()).toHaveLength(0);
     });
 
-    it('a switch keeps at least one day', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [{ days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }]} />);
+    it('+ Switch at bus time adds one, says when from the bus routes, and is offered once', async () => {
+      render(<Harness initial={{ source: 'dashboard' }} />);
+      await act(async () => { press('Switch at bus time'); });
+      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS }]);
+      expect(rows()[0]!.querySelector('[data-row-name]')!.textContent).toBe('At bus time');
+      expect(document.querySelector('[data-bus-windows]')!.textContent).toBe('Mon–Fri 07:15 to 08:00, 15:00 to 15:45');
+      expect((screen.getByRole('button', { name: 'Switch at bus time' }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('at bus time with no route set up, it says it never switches', async () => {
+      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [] }) })) as never;
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
+      await act(async () => {});
+      expect(document.querySelector('[data-bus-windows]')!.textContent).toMatch(/^No bus route is set up yet/);
+    });
+
+    it('a set-times switch keeps at least one day', () => {
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }} />);
       expect((rows()[0]!.querySelector<HTMLButtonElement>('[aria-label="Monday"]')!).disabled).toBe(true);
     });
 
     it('moves a switch up the order that decides an overlap', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [
-        { days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '09:00', dashboardId: HOME },
-        { days: [0, 1, 2, 3, 4, 5, 6], from: '08:00', to: '10:00', dashboardId: BUS },
-      ] }]} />);
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [
+        { when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '09:00', dashboardId: HOME },
+        { when: 'bus', dashboardId: BUS },
+      ] }} />);
       expect(screen.getByText('If two overlap, the higher one wins.')).toBeTruthy();
-      // The first has nothing above it.
-      expect(rows()[0]!.querySelector('[data-placement-up]')).toBeNull();
-      fireEvent.click(rows()[1]!.querySelector<HTMLElement>('[data-placement-up]')!);
-      expect(keptPlacements().map((p) => p.dashboardId)).toEqual([BUS, HOME]);
+      expect(rows()[0]!.querySelector('[data-switch-up]')).toBeNull();
+      fireEvent.click(rows()[1]!.querySelector<HTMLElement>('[data-switch-up]')!);
+      expect(kept().map((sw) => sw.when)).toEqual(['bus', 'times']);
     });
 
     it('Shows is the dashboard the screen shows, and a switch\'s Open opens its dashboard', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [{ days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }]} />);
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
+      // None set: the default.
       expect((screen.getByLabelText('Dashboard this screen shows') as HTMLSelectElement).value).toBe(HOME);
       fireEvent.click(rows()[0]!.querySelector<HTMLElement>(`[data-dashboard-open="${BUS}"]`)!);
       expect(switched).toHaveBeenCalledWith('bus');
       pick('Dashboard this screen shows', BUS);
-      expect(mockStore.patches.at(-1)).toEqual({ id: 'main', patch: { dashboardId: BUS } });
+      expect(seen.plan!.dashboardId).toBe(BUS);
     });
 
-    it('a dashboard edited on its own has no screen, so nothing to follow or switch', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} screenId={null} forScreen={false} />);
-      expect(document.querySelector('[data-timeline-bar]')).toBeNull();
-      expect(document.querySelector('[data-placement-add]')).toBeNull();
+    it('nothing is sent until Done: every change stays on the editor page', () => {
+      const sent = jest.fn(async () => ({ ok: true, json: async () => ({}) }));
+      global.fetch = sent as never;
+      render(<Harness initial={{ source: 'dashboard' }} />);
+      press('Switch at set times');
+      pick('Dashboard this screen shows', BUS);
+      expect(sent).not.toHaveBeenCalled();
+      expect(seen.plan).toMatchObject({ dashboardId: BUS });
+    });
+
+    it('a dashboard edited on its own has no screen, so nothing to show or switch', () => {
+      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} />);
+      expect(document.querySelector('[data-screen-plan]')).toBeNull();
+      expect(document.querySelector('[data-switch-add]')).toBeNull();
       expect(screen.queryByLabelText('Dashboard this screen shows')).toBeNull();
+      // No timeline either: those are gone (#1282).
+      expect(document.querySelector('[data-timeline-bar]')).toBeNull();
     });
   });
 
-  describe('the timeline (#1266)', () => {
-    const OTHER: Timeline = { ...MAIN, id: 'other', name: 'Quiet', position: 1, screens: 0 };
-
-    it('says who uses it before a change that reaches several screens', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN, OTHER]} />);
-      expect(screen.getByText('This screen follows')).toBeTruthy();
-      expect(document.querySelector('[data-timeline-used]')!.textContent).toBe('Used by 2 screens, and every device not given another.');
-      fireEvent.change(screen.getByLabelText('Timeline'), { target: { value: 'other' } });
-      expect(seen.timelineId).toBe('other');
-      expect(document.querySelector('[data-timeline-used]')!.textContent).toBe('No screen uses it yet.');
+  describe('naming the device in use (#1267)', () => {
+    let posted: unknown[] = [];
+    beforeEach(() => {
+      posted = [];
+      global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          posted.push(JSON.parse(String(init.body)));
+          return { ok: true, json: async () => ({ display: { id: 'den', name: 'Den' } }) };
+        }
+        if (url === '/api/displays') return { ok: true, json: async () => ({ displays: [{ id: 'hall', name: 'Hall' }] }) };
+        return { ok: true, json: async () => ({}) };
+      }) as never;
     });
 
-    /** Picks one of the timeline's own actions from the menu beside its dropdown. */
-    const fromMenu = (item: string) => { press('Timeline actions'); press(item); };
-
-    it('keeps its own actions in a menu beside the dropdown, closed until asked for', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN, OTHER]} />);
-      const items = () => ['Rename', 'Duplicate', 'New timeline', 'Delete'].map((name) => screen.queryByRole('button', { name }));
-      expect(items().every((b) => b === null)).toBe(true);
-      press('Timeline actions');
-      expect(screen.getByRole('button', { name: 'Timeline actions' }).getAttribute('aria-expanded')).toBe('true');
-      expect(items().every((b) => b !== null)).toBe(true);
-      // Escape closes it, and so does a press anywhere else.
-      fireEvent.keyDown(document, { key: 'Escape' });
-      expect(items().every((b) => b === null)).toBe(true);
-      press('Timeline actions');
-      fireEvent.pointerDown(document.body);
-      expect(items().every((b) => b === null)).toBe(true);
+    it('a device with no name is named here, and then opens as that screen', async () => {
+      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} deviceNamed={false} />);
+      expect(screen.getByText(/^This device has no name, so it shows Home\./)).toBeTruthy();
+      await act(async () => { press('Name this device'); });
+      // A screen named before can be picked instead, after a browser reset.
+      expect(screen.getByRole('option', { name: 'Hall' })).toBeTruthy();
+      fireEvent.change(screen.getByLabelText('Name for this screen'), { target: { value: 'Den' } });
+      await act(async () => { press('Name it'); });
+      expect(posted).toEqual([{ name: 'Den' }]);
+      expect(named).toHaveBeenCalledWith('den');
     });
 
-    it('duplicates the timeline and moves to the copy', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      fromMenu('Duplicate');
-      expect((screen.getByLabelText('Name for the new timeline') as HTMLInputElement).value).toBe('Main copy');
-      await act(async () => { press('Duplicate'); });
-      expect(mockStore.created).toEqual([{ copyOf: 'main', name: 'Main copy' }]);
-      expect(seen.timelineId).toBe('new-1');
+    it('becomes a screen named before, taking its name', async () => {
+      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} deviceNamed={false} />);
+      await act(async () => { press('Name this device'); });
+      fireEvent.change(screen.getByLabelText('Existing screen'), { target: { value: 'hall' } });
+      await act(async () => { press('Use its name and settings'); });
+      expect(posted).toEqual([{ id: 'hall' }]);
+      // And opens as that screen, which loads its settings afresh.
+      expect(named).toHaveBeenCalledWith('den');
     });
 
-    it('renames it', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      fromMenu('Rename');
-      fireEvent.change(screen.getByLabelText('New name for this timeline'), { target: { value: 'School days' } });
-      await act(async () => { press('Rename'); });
-      expect(mockStore.patches.at(-1)).toEqual({ id: 'main', patch: { name: 'School days' } });
-    });
-
-    it('the last timeline cannot be deleted; another can, and its screens go to the first', async () => {
-      const { unmount } = render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      press('Timeline actions');
-      expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
+    it('a device with a name, or a screen being edited, is not offered one', () => {
+      const { unmount } = render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} />);
+      expect(screen.queryByRole('button', { name: 'Name this device' })).toBeNull();
       unmount();
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...OTHER, screens: 1 }, MAIN].reverse()} />);
-      fireEvent.change(screen.getByLabelText('Timeline'), { target: { value: 'other' } });
-      fromMenu('Delete');
-      expect(screen.getByText('The screen on it follows Main instead.')).toBeTruthy();
-      await act(async () => { press('Delete'); });
-      expect(mockStore.deleted).toEqual(['other']);
-      expect(seen.timelineId).toBe('main');
+      render(<Harness initial={{ source: 'dashboard' }} deviceNamed={false} />);
+      expect(screen.queryByRole('button', { name: 'Name this device' })).toBeNull();
     });
+  });
+});
+
+describe('busWindowsInWords', () => {
+  it('groups the windows by their days, in time order, once each', () => {
+    expect(busWindowsInWords([
+      { scheduledTime: '15:30', activeDays: [1, 2, 3, 4, 5] },
+      { scheduledTime: '07:45', activeDays: [1, 2, 3, 4, 5] },
+      { scheduledTime: '07:45', activeDays: [1, 2, 3, 4, 5] },
+      { scheduledTime: '09:00', activeDays: [6] },
+    ], (t) => t)).toBe('Mon–Fri 07:15 to 08:00, 15:00 to 15:45; Sat 08:30 to 09:15');
   });
 });
 

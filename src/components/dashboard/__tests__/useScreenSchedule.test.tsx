@@ -2,11 +2,12 @@
  * @jest-environment jsdom
  */
 /**
- * A screen following its timeline while it stays on (#692, #1266): which
- * dashboard it shows on opening, when someone picks another by hand, when the
- * layout is being edited, when the timeline is changed from another device,
- * and where a device nobody named follows it. The change waiting for an untouched screen, and the morph,
- * are measured in the browser (e2e/display-registry.spec.ts).
+ * A named screen following its own dashboard and switches while it stays on
+ * (#692, #1282): which dashboard it shows on opening, at set times and at bus
+ * time, when someone picks another by hand, and when the layout is being
+ * edited. A device nobody named shows the default and switches nothing. The
+ * change waiting for an untouched screen, and the morph, are measured in the
+ * browser (e2e/display-registry.spec.ts).
  */
 import * as React from 'react';
 import { act, renderHook } from '@testing-library/react';
@@ -22,15 +23,8 @@ jest.mock('@/lib/hooks/useVisibilityPolling', () => ({
   useVisibilityPolling: (callback: () => void) => { check = callback; },
 }));
 
-// The timeline this screen follows; a test may change it, as another device would.
-let mockTimeline: import('@/lib/timeline').Timeline;
-let mockLoaded = true;
-jest.mock('@/lib/hooks/useTimelines', () => ({
-  useDeviceTimeline: () => ({ timeline: mockLoaded ? mockTimeline : null, timelines: mockLoaded ? [mockTimeline] : [], loaded: mockLoaded }),
-}));
-// The editor's frame, when a test puts the page in one.
-let mockHost: object | null = null;
-jest.mock('@/lib/displays/remoteEdit', () => ({ remoteEditHost: () => mockHost }));
+/** The bus routes the status endpoint answers with. */
+let routes: Array<{ scheduledTime: string; activeDays: number[] }> = [];
 
 const HOME = '11111111-1111-4111-8111-111111111111';
 const MORNING = '22222222-2222-4222-8222-222222222222';
@@ -54,16 +48,17 @@ beforeEach(() => {
     ({ useScreenSchedule } = require('../useScreenSchedule'));
   });
   jest.useFakeTimers();
-  mockLoaded = true;
-  mockHost = null;
   window.history.replaceState(null, '', '/');
   localStorage.clear();
-  localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', timelineId: null, settings: {}, settingsUpdatedAt: null }));
-  mockTimeline = {
-    id: 'main', name: 'Main', position: 0, dashboardId: null, idleBackground: { source: 'dashboard' },
-    placements: [{ days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING }],
-  };
+  plan({ dashboardId: null, switches: [{ when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING }] });
+  routes = [];
+  global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes }) })) as never;
 });
+
+/** This browser is a named screen with this dashboard and these switches. */
+function plan(p: { dashboardId: string | null; switches: unknown[] }) {
+  localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', ...p, settings: {}, settingsUpdatedAt: null }));
+}
 afterEach(() => jest.useRealTimers());
 
 function open(routeSlug: string | undefined, now: string, editing = { current: false }) {
@@ -96,7 +91,7 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBeUndefined();
   });
 
-  it('a placement switches a screen on Today too, at its start (#1152)', () => {
+  it('a switch changes a screen on Today too, at its start (#1152)', () => {
     const today = [layout(HOME, null, { view: 'today' } as Partial<Layout>), ...LAYOUTS.slice(1)];
     jest.setSystemTime(at('06:59'));
     const { result } = renderHook(() => useScreenSchedule({ routeSlug: undefined, layouts: today, loading: false, editing: { current: false } }));
@@ -155,13 +150,11 @@ describe('useScreenSchedule', () => {
   describe('a device nobody named', () => {
     beforeEach(() => localStorage.removeItem('prism:display-sync-base'));
 
-    it('follows the first timeline on the home page, placements too', () => {
+    it('shows the default on the home page and switches nothing', () => {
       const { result } = open(undefined, '07:10');
-      expect(result.current.slug).toBe('morning');
-      tick('08:00');
       expect(result.current.slug).toBeUndefined();
-      tick('07:00');
-      expect(result.current.slug).toBe('morning');
+      tick('07:30');
+      expect(result.current.slug).toBeUndefined();
     });
 
     it('keeps a dashboard opened at its own address', () => {
@@ -170,48 +163,40 @@ describe('useScreenSchedule', () => {
       tick('07:30');
       expect(result.current.slug).toBe('evening');
     });
-
-    it('opens on what the server found, and keeps it once the timeline is in', () => {
-      mockLoaded = false;
-      jest.setSystemTime(at('07:10'));
-      const { result, rerender } = renderHook(() => useScreenSchedule({
-        routeSlug: undefined, startSlug: 'morning', layouts: LAYOUTS, loading: false, editing: { current: false },
-      }));
-      expect(result.current.slug).toBe('morning');
-      mockLoaded = true;
-      rerender();
-      expect(result.current.slug).toBe('morning');
-    });
-
-    it('does not follow it in the editor, framed or opened to edit', () => {
-      window.history.replaceState(null, '', '/?edit=1');
-      expect(open(undefined, '07:10').result.current.slug).toBeUndefined();
-      window.history.replaceState(null, '', '/');
-      mockHost = { displayId: null };
-      expect(open(undefined, '07:10').result.current.slug).toBeUndefined();
-    });
   });
 
-  it('follows its timeline\'s dashboard for the rest of the day', () => {
-    mockTimeline.dashboardId = EVENING;
+  it('shows its own dashboard outside every switch', () => {
+    plan({ dashboardId: EVENING, switches: [{ when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING }] });
     const { result } = open(undefined, '12:00');
     expect(result.current.slug).toBe('evening');
     tick('07:00');
     expect(result.current.slug).toBe('morning');
   });
 
-  it('a change to its timeline made elsewhere shows without a reload', () => {
-    const { result, rerender } = open(undefined, '12:00');
+  it('at bus time it shows the bus dashboard, morning and afternoon, and its own outside it', async () => {
+    plan({ dashboardId: null, switches: [{ when: 'bus', dashboardId: MORNING }] });
+    // Due at the stop at 7:45 and 15:30 on weekdays (the household zone here is UTC).
+    routes = [{ scheduledTime: '07:45', activeDays: [1, 2, 3, 4, 5] }, { scheduledTime: '15:30', activeDays: [1, 2, 3, 4, 5] }];
+    const { result } = open(undefined, '07:00');
+    await act(async () => {});
+    expect(global.fetch).toHaveBeenCalledWith('/api/bus-tracking/status');
+    tick('07:14');
     expect(result.current.slug).toBeUndefined();
-    // Another device sets the rest of the day to Evening; the list comes in again.
-    mockTimeline = { ...mockTimeline, dashboardId: EVENING };
-    rerender({ slug: undefined });
-    tick('12:01');
-    expect(result.current.slug).toBe('evening');
-    // And places Morning over noon.
-    mockTimeline = { ...mockTimeline, placements: [{ days: [1], from: '12:00', to: '13:00', dashboardId: MORNING }] };
-    rerender({ slug: undefined });
-    tick('12:02');
+    tick('07:15');
     expect(result.current.slug).toBe('morning');
+    tick('08:00');
+    expect(result.current.slug).toBe('morning');
+    tick('08:01');
+    expect(result.current.slug).toBeUndefined();
+    tick('15:00');
+    expect(result.current.slug).toBe('morning');
+    tick('15:46');
+    expect(result.current.slug).toBeUndefined();
+  });
+
+  it('reads no bus times when it has no bus switch', async () => {
+    open(undefined, '07:10');
+    await act(async () => {});
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

@@ -188,7 +188,7 @@ test.describe('canvas editor (#1265)', () => {
       await page.locator('[data-editor-open="look"]').click();
       await page.locator('[data-editor-sheet="look"]').getByLabel('Performance').selectOption(choice);
       await page.locator('[data-editor-done]').click();
-      // Back showing dashboards (its timeline may move it on from this one).
+      // Back showing dashboards (a switch of its own may move it on from this one).
       await page.waitForURL((u) => u.pathname === '/' || u.pathname.startsWith('/d/'), { timeout: 60_000 });
       await expect(page.locator('[data-remote-frame]')).toHaveCount(0);
       await expect.poll(() => page.evaluate(() => localStorage.getItem('prism-perf-mode')), { timeout: 30_000 }).toBe(choice);

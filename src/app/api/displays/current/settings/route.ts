@@ -1,7 +1,8 @@
 /**
  * The settings of the screen this browser is (#690).
  *
- * POST — save this screen's own changes, and get back the settings as stored.
+ * POST — save this screen's own changes, and get back the settings as stored,
+ *        with the dashboard it shows and its switches (#1282).
  *        Body: { changes: { [storageKey]: string | null }, baseDisplayId?: string }
  *
  * The signed display cookie is the credential: a screen reads and writes only
@@ -21,6 +22,7 @@ import { cookies } from 'next/headers';
 import { currentDisplay, setDisplayCookies } from '@/lib/auth/displayIdentity';
 import { applySettingChanges } from '@/lib/displays/displaySettingsStore';
 import { cleanSettingChanges } from '@/lib/displays/screenSettings';
+import { parseSwitches } from '@/lib/screenSwitches';
 import { logError } from '@/lib/utils/logError';
 
 /** Mirrors the session cookies: secure only when the request arrived over TLS. */
@@ -31,10 +33,12 @@ function requestIsSecure(request: NextRequest): boolean {
   );
 }
 
-function shape(row: { id: string; timelineId: string | null }, settings: unknown, updatedAt: Date | null) {
+function shape(row: { id: string; dashboardId: string | null; switches: unknown }, settings: unknown, updatedAt: Date | null) {
   return {
     displayId: row.id,
-    timelineId: row.timelineId,
+    // What it shows (#1282), so a change made from another device is noticed.
+    dashboardId: row.dashboardId,
+    switches: parseSwitches(row.switches),
     settings: settings ?? {},
     settingsUpdatedAt: updatedAt?.toISOString() ?? null,
   };

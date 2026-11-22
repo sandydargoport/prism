@@ -4,14 +4,15 @@
  * Naming the device in use as a screen (#1267), in the editor where the rest
  * of a screen is set up, rather than in Settings, which is now only the list.
  *
- * A device nobody named follows the household's first timeline. Named, it is
- * a screen: it follows a timeline of its own choosing, and it can be edited
- * from any other device. It can also become a screen named before (after a
- * browser reset, say), taking that screen's name and settings.
+ * A device nobody named shows the default dashboard. Named, it is a screen:
+ * it shows a dashboard of its own choosing and can switch to others at bus
+ * time or set times (#1282), and it can be edited from any other device. It
+ * can also become a screen named before (after a browser reset, say), taking
+ * that screen's name and settings.
  */
 import * as React from 'react';
 import { useState } from 'react';
-import { reloadForRemoteChange, resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
+import { resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 import { cn } from '@/lib/utils';
 
 const NAME_MAX = 60;
@@ -25,9 +26,9 @@ async function problemFrom(res: Response): Promise<string> {
   return data?.error ?? 'That did not work. Try again.';
 }
 
-export function NameThisDevice({ follows, onNamed, chip, field }: {
-  /** The timeline this device follows while it has no name. */
-  follows: string;
+export function NameThisDevice({ shows, onNamed, chip, field }: {
+  /** The dashboard this device shows while it has no name: the default. */
+  shows: string;
   /** Named, or now a screen named before: its id. */
   onNamed: (displayId: string) => void;
   /** The sheet's own control styles, so this reads as part of it. */
@@ -81,10 +82,10 @@ export function NameThisDevice({ follows, onNamed, chip, field }: {
         if (trusted?.ok) document.cookie = `${TRUSTED_MARK}; path=/; max-age=157680000`;
       }
       // A new screen takes what this device has as its settings, sent now; a
-      // screen named before brings its own, so the page reloads to show them.
+      // screen named before brings its own. Either way it then opens as that
+      // screen (#1282), which loads them afresh.
       resetSyncBase();
-      const { applied } = await syncScreenSettings();
-      if ('id' in body && applied.length > 0) { reloadForRemoteChange(); return; }
+      await syncScreenSettings();
       setOpen(false);
       onNamed(display.id);
     } finally {
@@ -95,7 +96,7 @@ export function NameThisDevice({ follows, onNamed, chip, field }: {
   if (!open) {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2" data-name-device>
-        <span className="text-caption text-muted-foreground">This device has no name, so it follows {follows}.</span>
+        <span className="text-caption text-muted-foreground">This device has no name, so it shows {shows}. Named, it can show another and switch at bus time.</span>
         <button type="button" className={chip(false)} onClick={() => void start()} data-name-device-open>
           Name this device
         </button>

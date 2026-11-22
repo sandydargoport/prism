@@ -1,33 +1,37 @@
 import { redirect } from 'next/navigation';
+import { eq } from 'drizzle-orm';
 import { DashboardClient } from './DashboardClient';
 import { db } from '@/lib/db/client';
+import { busRoutes } from '@/lib/db/schema';
 import { currentDisplay } from '@/lib/auth/displayIdentity';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { timelineDashboardAt } from '@/lib/timeline';
-import { timelineOf } from '@/lib/services/timelines';
+import { parseSwitches, screenDashboardAt } from '@/lib/screenSwitches';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
- * The dashboard the home page opens on (#1266): what this screen's timeline
- * shows right now, or the first timeline's on a device nobody named. Its slug,
- * or null when that is the default.
+ * The dashboard a named screen shows right now (#1282): a switch's while one
+ * is in force, at bus time or at set times, otherwise its own. Its slug, or
+ * null when that is the default. A device nobody named shows the default.
  */
-async function timelineDashboardSlug(): Promise<{ named: boolean; slug: string | null }> {
-  let named = false;
+async function screenDashboardSlug(): Promise<string | null> {
   try {
     const screen = await currentDisplay();
-    named = screen !== null;
-    const timeline = await timelineOf(screen);
-    if (!timeline) return { named, slug: null };
-    const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } });
-    const id = timelineDashboardAt(
-      timeline, Date.now(), await getHouseholdTimezone(),
+    if (!screen) return null;
+    const switches = parseSwitches(screen.switches);
+    const [all, routes] = await Promise.all([
+      db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } }),
+      switches.some((s) => s.when === 'bus')
+        ? db.select({ scheduledTime: busRoutes.scheduledTime, activeDays: busRoutes.activeDays }).from(busRoutes).where(eq(busRoutes.enabled, true))
+        : Promise.resolve([]),
+    ]);
+    const id = screenDashboardAt(
+      { dashboardId: screen.dashboardId, switches }, Date.now(), await getHouseholdTimezone(), routes,
       (d) => all.some((l) => l.id === d),
     );
     const layout = all.find((l) => l.id === id);
-    return { named, slug: layout && !layout.isDefault ? layout.slug : null };
+    return layout && !layout.isDefault ? layout.slug : null;
   } catch {
-    return { named, slug: null };
+    return null;
   }
 }
 
@@ -50,12 +54,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // screen must not redirect it.
   const { screen, edit } = await searchParams;
   // Opened to edit a dashboard, the page shows that one.
-  const now = screen || edit ? { named: false, slug: null } : await timelineDashboardSlug();
-  // A named screen follows its timeline at any address, so it can go to the
-  // dashboard's own. A device nobody named follows it only here, so it stays
-  // at this address and opens on that dashboard in place.
-  if (now.named && now.slug) redirect(`/d/${now.slug}`);
-  const startSlug = now.named ? undefined : now.slug ?? undefined;
+  const slug = screen || edit ? null : await screenDashboardSlug();
+  // A named screen follows its plan at any address, so it goes to the
+  // dashboard's own.
+  if (slug) redirect(`/d/${slug}`);
 
   let fontScale = 100;
   try {
@@ -86,7 +88,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             : undefined
         }
       >
-        <DashboardClient startSlug={startSlug} />
+        <DashboardClient />
       </div>
     </main>
   );

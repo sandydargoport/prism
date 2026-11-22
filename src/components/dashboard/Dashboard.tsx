@@ -38,7 +38,9 @@ import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWi
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
-import { deviceScreenId, pickTimeline, useDeviceTimeline } from '@/lib/hooks/useTimelines';
+import type { ScreenPlan } from '@/lib/screenSwitches';
+import { loadBase } from '@/lib/displays/displaySettingsSync';
+import { screenEditLink } from '@/lib/displays/editPlace';
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
 import { isBuiltInView } from '@/lib/newLook';
@@ -50,7 +52,7 @@ import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary'
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
-import { remoteEditHost } from '@/lib/displays/remoteEdit';
+import { remoteEditHost, setHostPlan } from '@/lib/displays/remoteEdit';
 import { useScreenSchedule } from './useScreenSchedule';
 import { useRemoveBirthday } from './useRemoveBirthday';
 import { useIdleSwitchCheck } from '@/components/layout/useIdleSwitchCheck';
@@ -58,7 +60,6 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
-import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useNightNow } from '@/components/screensaver/useIdleBackground';
 import { dimLevel, useIdleDimSetting } from '@/components/screensaver/idleDim';
@@ -90,15 +91,12 @@ export interface DashboardProps {
   weatherLocation?: string;
   className?: string;
   slug?: string;
-  /** On the home page, the dashboard the timeline shows (see useScreenSchedule). */
-  startSlug?: string;
 }
 
 export function Dashboard({
   weatherLocation,
   className,
   slug,
-  startSlug,
 }: DashboardProps) {
   const router = useRouter();
 
@@ -144,33 +142,37 @@ export function Dashboard({
     deleteChore: () => {},
   });
 
-  // The screen's timeline picks which dashboard this page shows (#692, #1266).
+  // A named screen's dashboard and switches pick which dashboard this page shows (#692, #1282).
   const editingRef = useRef(false);
   const schedule = useScreenSchedule({
     routeSlug: slug,
-    startSlug,
     layouts: data.layouts.allLayouts,
     loading: data.layouts.loading,
     editing: editingRef,
   });
   const layout = useDashboardLayout(data.layouts, schedule.slug);
-  // The timeline the screen being edited follows (#1266), which says which
-  // dashboard shows when. While editing, the one the editor is looking at,
-  // which starts as this page's own.
-  const { timeline: deviceTimeline, timelines } = useDeviceTimeline({ poll: true });
-  const [editedTimelineId, setEditedTimelineId] = useState<string | null>(null);
-  const editedTimeline = (editedTimelineId ? timelines.find((t) => t.id === editedTimelineId) : undefined) ?? deviceTimeline;
-  useResetOn(layout.isEditing, () => setEditedTimelineId(null));
-  const screenId = deviceScreenId();
-  /** The editor looks at another timeline; for a named screen, the screen follows it. */
-  const chooseTimeline = useCallback((id: string) => {
-    setEditedTimelineId(id);
-    if (screenId) void pickTimeline(screenId, id);
-  }, [screenId]);
+  // In a screen's editor (#1282): the dashboard it shows and its switches,
+  // held on the editor page, which sends them to the screen on Done.
+  const editHost = remoteEditHost();
+  const screenId = editHost?.displayId ?? null;
+  const [screenPlan, setScreenPlan] = useState<ScreenPlan | null>(
+    () => (editHost?.displayId ? { dashboardId: editHost.dashboardId, switches: editHost.switches } : null),
+  );
+  const changeScreenPlan = useCallback((plan: ScreenPlan) => {
+    setScreenPlan(plan);
+    setHostPlan(plan);
+  }, []);
+  // Whether the device in use has a name; one that has none can be named in
+  // Through the day, and then opens its own screen's editor.
+  const [deviceNamed] = useState(() => !!loadBase()?.displayId);
+  const activeLayoutId = layout.activeLayout?.id;
+  const openNamedScreen = useCallback((displayId: string) => {
+    (window.top ?? window).location.assign(screenEditLink(displayId, activeLayoutId));
+  }, [activeLayoutId]);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
   // In the frame of a phone editing this screen (#1153): say which dashboard
   // is on show, and when editing ends.
-  const remote = remoteEditHost();
+  const remote = editHost;
   const activeId = layout.activeLayout?.id;
   const activeIsDefault = layout.activeLayout?.isDefault ?? false;
   useEffect(() => {
@@ -566,10 +568,11 @@ export function Dashboard({
               idleHalf={layout.idleHalf}
               onIdleHalfChange={layout.setIdleHalf}
               idleCheck={idleCheck}
-              timelines={timelines}
-              timelineId={editedTimeline?.id}
-              onTimelineChange={chooseTimeline}
+              screenPlan={screenPlan}
+              onScreenPlanChange={changeScreenPlan}
               screenId={screenId}
+              deviceNamed={deviceNamed}
+              onDeviceNamed={openNamedScreen}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
               enabledSizes={enabledSizes}

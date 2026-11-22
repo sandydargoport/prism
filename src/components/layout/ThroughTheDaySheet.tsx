@@ -3,9 +3,10 @@
 /**
  * The editing panel's Through the day sheet (#1152), as plain rows (#1281).
  *
- * For a screen: the timeline it follows (#1266), the dashboard it shows, and
- * the dashboards it switches to at set times, each a row with its days and
- * hours. A timeline keeps each change as soon as it is made.
+ * In a screen's editor: the dashboard the screen shows, and the dashboards it
+ * switches to for a while (#1282), at bus time or at set times, each a row.
+ * They belong to the screen, and Done sends them to it with its settings. On
+ * a device nobody named, the sheet offers to name it instead (#1267).
  *
  * Then the dashboard's own day: what it shows while resting, when night is
  * and what it shows then. It belongs to the dashboard, so every screen
@@ -19,31 +20,27 @@
  * line up and wrap within their own column.
  */
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, MoreHorizontal, Plus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowUp, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
 import { useSkyLocation } from '@/components/screensaver/useIdleBackground';
 import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
-import { createTimeline, deleteTimeline, patchTimeline } from '@/lib/hooks/useTimelines';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, type ScreenState } from '@/lib/throughTheDay';
 import {
-  copyName, EVERY_DAY, firstTimeline, MAX_PLACEMENTS, TIMELINE_NAME_MAX_LENGTH,
-  type Placement, type Timeline,
-} from '@/lib/timeline';
+  BUS_AFTER_MINUTES, BUS_BEFORE_MINUTES, daysShort, EVERY_DAY, MAX_SWITCHES,
+  type ScreenPlan, type ScreenSwitch,
+} from '@/lib/screenSwitches';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
 import { OffsetInput } from './IdleBackgroundBar';
+import { NameThisDevice } from './NameThisDevice';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { cn } from '@/lib/utils';
-
-export { daysInWords } from '@/lib/timeline';
 
 const RESTING: { value: IdleSource; label: string }[] = [
   { value: 'dashboard', label: 'This dashboard' },
@@ -83,8 +80,6 @@ const dayChip = (on: boolean) => cn(
   // Both with a border, so on and off share a row in equal widths.
   on ? 'border border-foreground bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
 );
-/** One of a timeline's own actions, in the menu beside its dropdown. */
-const menuItem = 'flex min-h-[44px] w-full items-center rounded-lg px-3 text-left text-body transition-colors hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent pointer-fine:min-h-8 pointer-fine:px-2.5';
 const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
 /** The column of row names: wide enough for "At set times" at the desk's 14px. */
 const NAME_COLUMN = 'grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-body';
@@ -111,15 +106,6 @@ export function simplest(pair: { day: IdleSource; night: IdleSource; switch: Idl
   return pair;
 }
 
-/** Who follows a timeline, in words, so a change that reaches several screens is known before it is made. */
-function usedByText(t: Timeline, isFirst: boolean): string {
-  const n = t.screens ?? 0;
-  const screens = n === 0 ? '' : `${n} screen${n === 1 ? '' : 's'}`;
-  if (isFirst) return n === 0 ? 'Used by every device not given another timeline.' : `Used by ${screens}, and every device not given another.`;
-  if (n === 0) return 'No screen uses it yet.';
-  return n === 1 ? 'Used by 1 screen.' : `Used by ${screens}. A change here changes all of them.`;
-}
-
 /**
  * A row: its name in a column of its own, so the choices of every row start at
  * one edge, and wrap within their own column, never under the name.
@@ -133,13 +119,50 @@ function Row({ name, children, ...rest }: { name: string; children: React.ReactN
   );
 }
 
-/** Naming a timeline: a new one, a copy of this one, or this one renamed. */
-type Naming = { mode: 'new' | 'duplicate' | 'rename'; value: string };
+/** The bus routes' windows in words, "Mon–Fri 7:15 am to 8:00 am", once read; null before. */
+function useBusWindows(wanted: boolean, clock: (hhmm: string) => string): string | null {
+  const [routes, setRoutes] = useState<Array<{ scheduledTime: string; activeDays: number[] }> | null>(null);
+  useEffect(() => {
+    if (!wanted || routes) return;
+    let live = true;
+    void (async () => {
+      const res = await fetch('/api/bus-tracking/status').catch(() => null);
+      const data = res?.ok ? await res.json().catch(() => null) : null;
+      if (!live) return;
+      setRoutes(((data?.routes ?? []) as Array<{ scheduledTime?: string; activeDays?: number[] }>)
+        .flatMap((r) => (typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays) ? [{ scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : [])));
+    })();
+    return () => { live = false; };
+  }, [wanted, routes]);
+  if (!routes) return null;
+  if (routes.length === 0) return 'No bus route is set up yet, so this never switches. Add one in Settings > Bus.';
+  return busWindowsInWords(routes, clock);
+}
+
+/**
+ * The windows bus routes switch a screen for, grouped by their days and in
+ * time order: "Mon–Fri 7:15 am to 8:00 am, 3:00 pm to 3:45 pm".
+ */
+export function busWindowsInWords(routes: Array<{ scheduledTime: string; activeDays: number[] }>, clock: (hhmm: string) => string): string {
+  const minute = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const byDays = new Map<string, number[]>();
+  for (const r of routes) {
+    const days = daysShort(r.activeDays);
+    const due = minute(r.scheduledTime);
+    const at = byDays.get(days) ?? [];
+    if (!at.includes(due)) at.push(due);
+    byDays.set(days, at);
+  }
+  return [...byDays.entries()]
+    .map(([days, dues]) => `${days} ${dues.sort((a, b) => a - b)
+      .map((due) => `${clock(hhmm(due - BUS_BEFORE_MINUTES))} to ${clock(hhmm(due + BUS_AFTER_MINUTES))}`).join(', ')}`)
+    .join('; ');
+}
 
 export function ThroughTheDaySheet({
   idleBackground, onIdleBackgroundChange, idleHalf, onIdleHalfChange, editTab, onEditTabChange, idleCheck,
   allDashboards = [], currentDashboardId, onSwitchDashboard,
-  timelines = [], timelineId, onTimelineChange, screenId = null, forScreen = true,
+  screenPlan = null, onScreenPlanChange, screenId = null, forScreen = true, deviceNamed = true, onDeviceNamed,
 }: {
   idleBackground?: IdleBackground;
   onIdleBackgroundChange?: (bg: IdleBackground) => void;
@@ -151,26 +174,27 @@ export function ThroughTheDaySheet({
   allDashboards?: DashboardInfo[];
   currentDashboardId?: string;
   onSwitchDashboard?: (slug: string) => void;
-  /** The household's timelines, and the one this sheet edits. */
-  timelines?: Timeline[];
-  timelineId?: string;
-  onTimelineChange?: (id: string) => void;
-  /** The named screen being edited, which follows the timeline picked here; null hides the timeline. */
+  /** In a screen's editor, the dashboard it shows and its switches; null hides them. */
+  screenPlan?: ScreenPlan | null;
+  onScreenPlanChange?: (plan: ScreenPlan) => void;
+  /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
   /** The editor is for a screen (this one, or one edited from here), so its own settings show. */
   forScreen?: boolean;
+  /** The device in use has a name; one that has none is offered one here. */
+  deviceNamed?: boolean;
+  /** The device in use was just named, as this screen. */
+  onDeviceNamed?: (displayId: string) => void;
 }) {
   const { timeFormat } = useTimeFormat();
   const [moreOpen, setMoreOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
   const { timeout, setTimeout } = useScreensaverTimeout();
   const { level: dim, setLevel: setDim } = useIdleDimSetting();
-  const { confirm, dialogProps } = useConfirmDialog();
 
   // Which dashboard shows when is the screen's, so only a screen's editor has it.
-  const timeline = screenId ? timelines.find((t) => t.id === timelineId) ?? null : null;
-  const first = firstTimeline(timelines);
-  const placements = timeline?.placements ?? [];
+  const plan = screenId ? screenPlan : null;
+  const switches = plan?.switches ?? [];
 
   const pair = asDayAndNight(idleBackground ?? { source: 'photos' });
   const rule = pair.switch;
@@ -189,7 +213,7 @@ export function ThroughTheDaySheet({
   const exists = (id: string) => allDashboards.some((d) => d.id === id);
   const dashboardName = (id: string | undefined) => allDashboards.find((d) => d.id === id)?.name ?? 'this dashboard';
   const defaultId = allDashboards.find((d) => d.isDefault)?.id ?? currentDashboardId ?? '';
-  const restOfDayId = timeline?.dashboardId && exists(timeline.dashboardId) ? timeline.dashboardId : defaultId;
+  const shownId = plan?.dashboardId && exists(plan.dashboardId) ? plan.dashboardId : defaultId;
   /** Open another dashboard in the editor, when it is not the one open. */
   const openButton = (id: string) => {
     const target = allDashboards.find((d) => d.id === id);
@@ -201,120 +225,82 @@ export function ThroughTheDaySheet({
     );
   };
 
-  // A timeline keeps its placements as they change.
-  const savePlacements = (next: Placement[]) => { if (timeline) void patchTimeline(timeline.id, { placements: next }); };
-  const editPlacement = (i: number, patch: Partial<Placement>) => savePlacements(placements.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-  /** Moves a placement up the order that decides which wins an overlap. */
+  // The screen's switches, kept on the editor page until Done.
+  const saveSwitches = (next: ScreenSwitch[]) => { if (plan) onScreenPlanChange?.({ ...plan, switches: next }); };
+  const editSwitch = (i: number, patch: Partial<ScreenSwitch>) =>
+    saveSwitches(switches.map((sw, j) => (j === i ? { ...sw, ...patch } as ScreenSwitch : sw)));
+  /** Moves a switch up the order that decides which wins an overlap. */
   const moveUp = (i: number) => {
-    const next = [...placements];
-    const [p] = next.splice(i, 1);
-    next.splice(i - 1, 0, p!);
-    savePlacements(next);
+    const next = [...switches];
+    const [sw] = next.splice(i, 1);
+    next.splice(i - 1, 0, sw!);
+    saveSwitches(next);
   };
-  const addPlacement = () => {
+  /** A dashboard to switch to: the first that is not the one the screen shows. */
+  const another = allDashboards.find((d) => d.id !== shownId) ?? allDashboards[0];
+  const full = switches.length >= MAX_SWITCHES || !another;
+  const hasBus = switches.some((sw) => sw.when === 'bus');
+  const addTimes = () => {
     const now = new Date();
     const from = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-    const target = allDashboards.find((d) => d.id !== restOfDayId) ?? allDashboards[0];
-    if (!target || !timeline) return;
-    savePlacements([...placements, { days: [...EVERY_DAY], from: hhmm(from), to: hhmm(from + 60), dashboardId: target.id }]);
+    if (another) saveSwitches([...switches, { when: 'times', days: [...EVERY_DAY], from: hhmm(from), to: hhmm(from + 60), dashboardId: another.id }]);
   };
+  const addBus = () => { if (another) saveSwitches([...switches, { when: 'bus', dashboardId: another.id }]); };
+  const busWindows = useBusWindows(hasBus, (t) => formatTimeOfDay(t, timeFormat));
 
-  // Timelines themselves: new, duplicate, rename, delete, from a menu beside
-  // the dropdown, as rarer than anything else here. It closes on a choice,
-  // on Escape (back to its button) and on a press anywhere else.
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!menuOpen) return;
-    const doc = menuRef.current?.ownerDocument ?? document;
-    const away = (e: Event) => { if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false); };
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      setMenuOpen(false);
-      menuRef.current?.querySelector<HTMLElement>('[data-timeline-menu]')?.focus();
-    };
-    doc.addEventListener('pointerdown', away);
-    doc.addEventListener('keydown', key);
-    return () => { doc.removeEventListener('pointerdown', away); doc.removeEventListener('keydown', key); };
-  }, [menuOpen]);
-  const choose = (then: () => void) => () => { setMenuOpen(false); then(); };
-  const [naming, setNaming] = useState<Naming | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
-  const finishNaming = async () => {
-    if (!naming || !timeline) return;
-    const name = naming.value.trim();
-    if (!name) return;
-    setProblem(null);
-    if (naming.mode === 'rename') {
-      if (!(await patchTimeline(timeline.id, { name }))) { setProblem('That name was not kept. Try again.'); return; }
-    } else {
-      const created = await createTimeline(naming.mode === 'duplicate' ? { copyOf: timeline.id, name } : { name });
-      if (!created) { setProblem('The timeline was not added. Try again.'); return; }
-      onTimelineChange?.(created.id);
-    }
-    setNaming(null);
-  };
-  const removeTimeline = async () => {
-    if (!timeline || timelines.length < 2) return;
-    const goesTo = timeline.id === first?.id ? timelines.find((t) => t.id !== timeline.id) : first;
-    const n = timeline.screens ?? 0;
-    const ok = await confirm(
-      `Delete ${timeline.name}?`,
-      n > 0
-        ? `${n === 1 ? 'The screen on it follows' : `The ${n} screens on it follow`} ${goesTo?.name ?? 'the first timeline'} instead.`
-        : 'No screen uses it.',
-      { confirmLabel: 'Delete' },
-    );
-    if (!ok) return;
-    if (!(await deleteTimeline(timeline.id))) { setProblem('The timeline was not deleted. Try again.'); return; }
-    if (goesTo) onTimelineChange?.(goesTo.id);
-  };
-
-  const placementRow = (p: Placement, i: number) => (
-    <div key={i} className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3 pointer-fine:gap-1.5 pointer-fine:p-2" data-placement-row={i}>
-      <Row name="At set times">
-        <select className={cn(field, 'min-w-0 max-w-full')} value={p.dashboardId} aria-label="Switches to" onChange={(e) => editPlacement(i, { dashboardId: e.target.value })}>
+  const switchRow = (sw: ScreenSwitch, i: number) => (
+    <div key={i} className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3 pointer-fine:gap-1.5 pointer-fine:p-2" data-switch-row={i} data-switch={sw.when}>
+      <Row name={sw.when === 'bus' ? 'At bus time' : 'At set times'}>
+        <select className={cn(field, 'min-w-0 max-w-full')} value={sw.dashboardId} aria-label="Switches to" onChange={(e) => editSwitch(i, { dashboardId: e.target.value })}>
           {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
       </Row>
-      {/* The card's whole width, so from and to stay on one line in a narrow panel. */}
-      <span className="flex flex-wrap items-center gap-2 text-body">
-        From
-        <input type="time" className={field} value={p.from} aria-label="Switch starts"
-          onChange={(e) => e.target.value && editPlacement(i, { from: e.target.value })} />
-        to
-        <input type="time" className={field} value={p.to} aria-label="Switch ends"
-          onChange={(e) => e.target.value && editPlacement(i, { to: e.target.value })} />
-      </span>
-      <div className="flex flex-wrap items-center gap-1 pointer-fine:flex-nowrap" role="group" aria-label="Switch days">
-        {WEEK_ORDER.map((d) => {
-          const on = p.days.includes(d);
-          return (
-            <button
-              key={d}
-              type="button"
-              aria-label={DAY_FULL[d]}
-              aria-pressed={on}
-              // A switch keeps at least one day; Remove takes it away.
-              disabled={on && p.days.length === 1}
-              onClick={() => editPlacement(i, { days: on ? p.days.filter((x) => x !== d) : [...p.days, d].sort() })}
-              className={dayChip(on)}
-              data-day-chip={d}
-            >
-              {DAY_NAMES[d]}
-            </button>
-          );
-        })}
-      </div>
+      {sw.when === 'bus' ? (
+        <p className={note} data-bus-windows>
+          {busWindows ?? `From ${BUS_BEFORE_MINUTES} minutes before each bus route's time at the stop to ${BUS_AFTER_MINUTES} minutes after, on its days.`}
+        </p>
+      ) : (
+        <>
+          {/* The card's whole width, so from and to stay on one line in a narrow panel. */}
+          <span className="flex flex-wrap items-center gap-2 text-body">
+            From
+            <input type="time" className={field} value={sw.from} aria-label="Switch starts"
+              onChange={(e) => e.target.value && editSwitch(i, { from: e.target.value })} />
+            to
+            <input type="time" className={field} value={sw.to} aria-label="Switch ends"
+              onChange={(e) => e.target.value && editSwitch(i, { to: e.target.value })} />
+          </span>
+          <div className="flex flex-wrap items-center gap-1 pointer-fine:flex-nowrap" role="group" aria-label="Switch days">
+            {WEEK_ORDER.map((d) => {
+              const on = sw.days.includes(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-label={DAY_FULL[d]}
+                  aria-pressed={on}
+                  // A switch keeps at least one day; Remove takes it away.
+                  disabled={on && sw.days.length === 1}
+                  onClick={() => editSwitch(i, { days: on ? sw.days.filter((x) => x !== d) : [...sw.days, d].sort() })}
+                  className={dayChip(on)}
+                  data-day-chip={d}
+                >
+                  {DAY_NAMES[d]}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        {openButton(p.dashboardId)}
+        {openButton(sw.dashboardId)}
         {i > 0 && (
-          <button type="button" className={iconButton} onClick={() => moveUp(i)} aria-label="Move up: wins an overlap" data-placement-up>
+          <button type="button" className={iconButton} onClick={() => moveUp(i)} aria-label="Move up: wins an overlap" data-switch-up>
             <ArrowUp className="h-4 w-4" aria-hidden />
           </button>
         )}
-        <button type="button" className={cn(chip(false), 'ml-auto')} data-placement-remove
-          onClick={() => savePlacements(placements.filter((_, j) => j !== i))}>
+        <button type="button" className={cn(chip(false), 'ml-auto')} data-switch-remove
+          onClick={() => saveSwitches(switches.filter((_, j) => j !== i))}>
           <X className="mr-1 h-4 w-4" aria-hidden />Remove
         </button>
       </div>
@@ -336,87 +322,32 @@ export function ThroughTheDaySheet({
         ))}
       </div>
 
-      {timeline && (
-        // Which timeline, with its own actions in a menu beside it, and who
-        // follows it; then what it shows, as rows.
-        <section className="flex flex-col gap-3 border-b border-border pb-5 pointer-fine:gap-2 pointer-fine:pb-4" aria-label="Which dashboard shows" data-timeline-bar>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex flex-wrap items-center gap-2 text-body">
-              This screen follows
-              <select className={field} value={timeline.id} aria-label="Timeline" data-timeline-select
-                onChange={(e) => { setNaming(null); onTimelineChange?.(e.target.value); }}>
-                {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </label>
-            <div ref={menuRef} className="relative">
-              <button
-                type="button"
-                aria-label="Timeline actions"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((v) => !v)}
-                className={cn(
-                  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-fine:h-8 pointer-fine:w-8',
-                  (menuOpen || naming) && 'bg-muted text-foreground',
-                )}
-                data-timeline-menu
-              >
-                <MoreHorizontal className="h-5 w-5 pointer-fine:h-4 pointer-fine:w-4" aria-hidden />
-              </button>
-              {menuOpen && (
-                <div className="absolute left-0 top-full z-40 mt-1 flex min-w-[11rem] flex-col rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg" data-timeline-actions>
-                  <button type="button" className={menuItem} data-timeline-rename
-                    onClick={choose(() => setNaming({ mode: 'rename', value: timeline.name }))}>
-                    Rename
-                  </button>
-                  <button type="button" className={menuItem} data-timeline-duplicate
-                    onClick={choose(() => setNaming({ mode: 'duplicate', value: copyName(timeline.name, timelines.map((t) => t.name)) }))}>
-                    Duplicate
-                  </button>
-                  <button type="button" className={menuItem} data-timeline-new
-                    onClick={choose(() => setNaming({ mode: 'new', value: '' }))}>
-                    New timeline
-                  </button>
-                  <div className="my-1 h-px bg-border" aria-hidden />
-                  <button type="button" className={cn(menuItem, 'text-destructive')} data-timeline-delete
-                    disabled={timelines.length < 2} title={timelines.length < 2 ? 'The last timeline cannot be deleted' : undefined}
-                    onClick={choose(() => void removeTimeline())}>
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <p className={note} data-timeline-used>{usedByText(timeline, timeline.id === first?.id)}</p>
-          {naming && (
-            <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void finishNaming(); }} data-timeline-naming>
-              <input className={cn(field, 'min-w-0 flex-1')} value={naming.value} maxLength={TIMELINE_NAME_MAX_LENGTH} autoFocus
-                aria-label={naming.mode === 'rename' ? 'New name for this timeline' : 'Name for the new timeline'}
-                placeholder={naming.mode === 'new' ? 'Weekends at Grandma’s' : undefined}
-                onChange={(e) => setNaming({ ...naming, value: e.target.value })} />
-              <button type="submit" className={chip(true)} disabled={!naming.value.trim()}>
-                {naming.mode === 'rename' ? 'Rename' : naming.mode === 'duplicate' ? 'Duplicate' : 'Add'}
-              </button>
-              <button type="button" className={chip(false)} onClick={() => setNaming(null)}>Cancel</button>
-            </form>
-          )}
-          {problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}
-
+      {plan && (
+        // What the screen shows, and when it switches to another, as rows.
+        <section className="flex flex-col gap-3 border-b border-border pb-5 pointer-fine:gap-2 pointer-fine:pb-4" aria-label="What this screen shows" data-screen-plan>
           <Row name="Shows">
-            <select className={cn(field, 'min-w-0 max-w-full')} value={restOfDayId} aria-label="Dashboard this screen shows" data-rest-of-day
-              onChange={(e) => void patchTimeline(timeline.id, { dashboardId: e.target.value })}>
+            <select className={cn(field, 'min-w-0 max-w-full')} value={shownId} aria-label="Dashboard this screen shows" data-screen-dashboard
+              onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value })}>
               {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
-            {openButton(restOfDayId)}
+            {openButton(shownId)}
           </Row>
-          {placements.map(placementRow)}
-          {placements.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
+          {switches.map(switchRow)}
+          {switches.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={chip(false)} onClick={addPlacement}
-              disabled={placements.length >= MAX_PLACEMENTS || allDashboards.length === 0} data-placement-add>
+            <button type="button" className={chip(false)} onClick={addBus} disabled={full || hasBus} data-switch-add="bus">
+              <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at bus time
+            </button>
+            <button type="button" className={chip(false)} onClick={addTimes} disabled={full} data-switch-add="times">
               <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at set times
             </button>
           </div>
-          <p className={note}>Saved as you go. Screens on this timeline change within a minute. Times are in the household time zone.</p>
+          <p className={note}>Done saves these to this screen. Times are in the household time zone.</p>
+        </section>
+      )}
+      {!screenId && !deviceNamed && onDeviceNamed && (
+        <section className="border-b border-border pb-5 pointer-fine:pb-4" aria-label="Name this device">
+          <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} />
         </section>
       )}
 
@@ -526,7 +457,6 @@ export function ThroughTheDaySheet({
         )}
       </section>
       <ScreensaverSettingsPanel open={motionOpen} onClose={() => setMotionOpen(false)} />
-      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

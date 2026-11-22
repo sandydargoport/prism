@@ -24,6 +24,7 @@
  * The phone page sends the settings to the screen on Done.
  */
 import { isScreenSettingKey, type ScreenSettings } from './screenSettings';
+import type { ScreenSwitch } from '@/lib/screenSwitches';
 
 export const REMOTE_EDIT_GLOBAL = '__prismRemoteEdit';
 
@@ -38,10 +39,11 @@ export type RemoteEditHost = {
    */
   displayId: string | null;
   /**
-   * The timeline the screen follows (#1266); null is the household's first.
-   * Changed in place when the editor picks another for it.
+   * The dashboard the screen shows and its switches (#1282), changed in place
+   * as the editor changes them, and sent to the screen on Done.
    */
-  timelineId: string | null;
+  dashboardId: string | null;
+  switches: ScreenSwitch[];
   /** The screen's settings, changed in place as the frame writes them. */
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
@@ -71,6 +73,14 @@ export function remoteEditHost(): RemoteEditHost | null {
   return cached;
 }
 
+/** In the frame: the screen now shows this and switches so (#1282); the editor page sends it on Done. */
+export function setHostPlan(plan: { dashboardId: string | null; switches: ScreenSwitch[] }): void {
+  const host = remoteEditHost();
+  if (!host) return;
+  host.dashboardId = plan.dashboardId;
+  host.switches = plan.switches;
+}
+
 /** For tests: forget what was found. */
 export function resetRemoteEditHost(): void {
   cached = undefined;
@@ -84,7 +94,8 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
   const memory = new Map<string, string | null>();
   const base = () => JSON.stringify({
     displayId: host.displayId,
-    timelineId: host.timelineId,
+    dashboardId: host.dashboardId,
+    switches: host.switches,
     settings: host.settings,
     settingsUpdatedAt: host.settingsUpdatedAt,
   });

@@ -17,7 +17,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import type { IdleBackground } from '../idleBackground';
-import type { Placement } from '../timeline';
+import type { ScreenSwitch } from '../screenSwitches';
 
 
 export const users = pgTable('users', {
@@ -1018,25 +1018,9 @@ export const apiTokens = pgTable('api_tokens', {
   createdByIdx: index('api_tokens_created_by_idx').on(table.createdBy),
 }));
 
-/**
- * A named plan for a screen's day (#1266): which dashboard shows when. See
- * src/lib/timeline.ts. How the screen rests and what it does at night went
- * back to the dashboard (#1281); `idle_background` here is unread. There
- * is always at least one; the first (lowest position) is the one every screen
- * that picked no other follows, devices nobody named included.
- */
-export const timelines = pgTable('timelines', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: varchar('name', { length: 60 }).notNull(),
-  position: integer('position').default(0).notNull(),
-  // The dashboard for the rest of the day; null is the household default.
-  dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
-  // Dashboards placed on some days at some hours, in the order that wins an overlap.
-  placements: jsonb('placements').$type<Placement[]>().default([]).notNull(),
-  idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+// The `timelines` table (#1266) is left in the database, unread, for one
+// release so a rollback finds it: a screen's dashboard and switches replaced
+// it (#1282, migration 0056).
 
 /**
  * A screen a parent has named (#690). The browser holds a signed cookie with
@@ -1052,10 +1036,13 @@ export const displays = pgTable('displays', {
   settings: jsonb('settings').$type<Record<string, string>>().default({}).notNull(),
   // When `settings` last changed, so the screen knows to pick up a remote edit.
   settingsUpdatedAt: timestamp('settings_updated_at'),
-  // The timeline it follows (#1266); null, or a deleted one, is the
-  // household's first. Which dashboard it shows comes from there; the
-  // database still holds the old `dashboard_id`, unread.
-  timelineId: uuid('timeline_id').references(() => timelines.id, { onDelete: 'set null' }),
+  // The dashboard it shows (#1282); null is the household default. Every
+  // screen showing a dashboard rests and sleeps the way it says (#1281).
+  dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
+  // Dashboards it switches to for a while: at bus time, or at set times. See
+  // src/lib/screenSwitches.ts. The first that matches wins. The database
+  // still holds `timeline_id` (#1266), unread, so a rollback finds it.
+  switches: jsonb('switches').$type<ScreenSwitch[]>().default([]).notNull(),
   // The size the screen last reported, in CSS pixels, so a phone editing it
   // shows its dashboard at the same size and shape (#1153).
   screenWidth: integer('screen_width'),

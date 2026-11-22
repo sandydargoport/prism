@@ -14,13 +14,12 @@ import { screenSummary } from '@/lib/displays/screenSummary';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
-import { pickTimeline, useTimelines } from '@/lib/hooks/useTimelines';
-import { timelineDashboardAt, timelineFor } from '@/lib/timeline';
+import { screenEditLink } from '@/lib/displays/editPlace';
+import { switchInWords, type ScreenSwitch } from '@/lib/screenSwitches';
 
 /**
  * Settings > Screens (#690, #1153, #1267): the list of screens, each with
- * whether it is on, the timeline it follows (#1266) and Edit, which opens its
+ * whether it is on, the dashboard it shows (#1282) and Edit, which opens its
  * editor: on the screen itself, or from any other device over a live picture
  * of it. Everything about a screen is set in its editor, naming the device in
  * use included (Through the day); here a screen is only renamed or removed.
@@ -31,8 +30,9 @@ type DisplayEntry = {
   name: string;
   lastSeenAt: string | null;
   online: boolean;
-  /** The timeline it follows; null is the household's first. */
-  timelineId: string | null;
+  /** The dashboard it shows, null is the default, and its switches (#1282). */
+  dashboardId: string | null;
+  switches: ScreenSwitch[];
   settings: ScreenSettings;
   editing?: boolean;
 };
@@ -59,10 +59,9 @@ export function DisplaysSection() {
   const [fetchedAt, setFetchedAt] = useState(0);
 
   const { layouts } = useLayouts();
-  const { timelines } = useTimelines();
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
-  const { timeFormat, householdTimezone } = useTimeFormat();
+  const { timeFormat } = useTimeFormat();
   const [editName, setEditName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,27 +98,23 @@ export function DisplaysSection() {
     }
   };
 
-  /** Where Edit goes: what this screen shows now, in place, or the canvas editor for another. */
-  const editHref = (d: DisplayEntry): string => {
-    if (d.id !== currentId) return `/screens/${d.id}`;
-    const timeline = timelineFor(timelines, d.timelineId);
-    // As of when the list was read, as "last seen" is.
-    const nowId = timeline ? timelineDashboardAt(timeline, fetchedAt, householdTimezone, (id) => layouts.some((l) => l.id === id)) : null;
-    const home = layouts.find((l) => l.id === nowId);
-    return editLink(home && !home.isDefault && home.slug ? `/d/${home.slug}` : '/');
-  };
+  /** Where Edit goes: the screen's own editor, this screen's included (#1280). */
+  const editHref = (d: DisplayEntry): string => screenEditLink(d.id);
 
-  /** A screen follows another timeline, from its row. */
-  const chooseTimeline = async (d: DisplayEntry, timelineId: string) => {
-    setBusy(true);
-    setError(null);
-    try {
-      if (!(await pickTimeline(d.id, timelineId))) setError('That did not work. Try again.');
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  };
+  const defaultId = layouts.find((l) => l.isDefault)?.id ?? '';
+  const nameOf = (id: string | null) => layouts.find((l) => l.id === (id ?? defaultId))?.name ?? 'the default';
+  /** What a screen shows and when it switches, for its line: "Kitchen, School run at bus time". */
+  const shows = (d: DisplayEntry): string => [
+    `Shows ${nameOf(d.dashboardId)}`,
+    ...(d.switches ?? []).map((s) => switchInWords(s, nameOf(s.dashboardId), (t) => formatTimeOfDay(t, timeFormat))),
+  ].join(', ');
+
+  /** A screen shows another dashboard, from its row (#1282). */
+  const chooseDashboard = (d: DisplayEntry, dashboardId: string) => run(() => fetch(`/api/displays/${d.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dashboardId }),
+  }));
 
   const rename = async (id: string) => {
     const ok = await run(() => fetch(`/api/displays/${id}`, {
@@ -143,9 +138,9 @@ export function DisplaysSection() {
       <div>
         <h2 className="text-2xl font-bold">Screens</h2>
         <p className="text-muted-foreground">
-          Every named screen in the house, whether it is on, and the timeline it follows. Edit
-          opens a screen&apos;s editor over a live picture of it. A device nobody named follows
-          the first timeline; to name one, open the editor on it and go to Through the day.
+          Every named screen in the house, whether it is on, and the dashboard it shows. Edit
+          opens a screen&apos;s editor over a live picture of it. A device nobody named shows
+          the default dashboard; to name one, open the editor on it and go to Through the day.
         </p>
         {loaded && !current && (
           <p className="mt-2 text-sm text-muted-foreground" data-unnamed-here>
@@ -169,10 +164,9 @@ export function DisplaysSection() {
         <CardHeader>
           <CardTitle>All screens</CardTitle>
           <CardDescription>
-            A screen shows as online while it is switched on. Each follows a timeline: which
-            dashboard shows when, how it rests and its night. Screens that should behave alike
-            follow the same one. Edit changes it and the screen&apos;s notices; a screen that is
-            on shows the change in a few seconds.
+            A screen shows as online while it is switched on. Each shows a dashboard, and can
+            switch to another at bus time or at set times. Edit changes them and everything else
+            about the screen; a screen that is on shows the change in a few seconds.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -215,19 +209,19 @@ export function DisplaysSection() {
                         {d.editing && ' · being edited'}
                       </div>
                       <div className="text-sm text-muted-foreground" data-screen-summary>
-                        {screenSummary(d.settings ?? {}, timelineFor(timelines, d.timelineId), (t) => formatTimeOfDay(t, timeFormat))}.
+                        {screenSummary(d.settings ?? {}, shows(d))}.
                       </div>
                     </div>
-                    {timelines.length > 0 && (
+                    {layouts.length > 0 && (
                       <select
-                        aria-label={`Timeline for ${d.name}`}
+                        aria-label={`Dashboard for ${d.name}`}
                         className="min-h-9 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                        value={timelineFor(timelines, d.timelineId)?.id ?? ''}
+                        value={d.dashboardId && layouts.some((l) => l.id === d.dashboardId) ? d.dashboardId : defaultId}
                         disabled={busy}
-                        onChange={(e) => void chooseTimeline(d, e.target.value)}
-                        data-screen-timeline
+                        onChange={(e) => void chooseDashboard(d, e.target.value)}
+                        data-screen-dashboard
                       >
-                        {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        {layouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                       </select>
                     )}
                     <Button size="sm" asChild data-screen-edit>

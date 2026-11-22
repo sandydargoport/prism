@@ -671,6 +671,49 @@ fi
 log "Scenario N: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario O: 0056 a screen's dashboard and switches (#1282). Each screen
+# takes its timeline's dashboard and placements, as set-times switches; one on
+# no timeline takes the first's. Runs once: a replay leaves later changes.
+# ----------------------------------------------------------------------------
+log "=== Scenario O: 0056 a screen's dashboard and switches ==="
+
+psql_exec "
+ALTER TABLE displays DROP COLUMN IF EXISTS switches;
+DELETE FROM timelines;
+INSERT INTO layouts (id, name, widgets) VALUES
+  ('00000000-0000-0000-0000-00000000c0a1', 'O kitchen', '[]'::jsonb),
+  ('00000000-0000-0000-0000-00000000c0a2', 'O bus', '[]'::jsonb),
+  ('00000000-0000-0000-0000-00000000c0a3', 'O hall', '[]'::jsonb);
+INSERT INTO timelines (id, name, position, dashboard_id, placements) VALUES
+  ('00000000-0000-0000-0000-00000000c0b1', 'O main', 0, '00000000-0000-0000-0000-00000000c0a1',
+   '[{\"days\": [1, 2, 3, 4, 5], \"from\": \"07:15\", \"to\": \"08:00\", \"dashboardId\": \"00000000-0000-0000-0000-00000000c0a2\"}]'::jsonb),
+  ('00000000-0000-0000-0000-00000000c0b2', 'O quiet', 1, '00000000-0000-0000-0000-00000000c0a3', '[]'::jsonb);
+INSERT INTO displays (name, timeline_id) VALUES ('O one', NULL), ('O two', '00000000-0000-0000-0000-00000000c0b2');
+DELETE FROM public.__prism_migrations WHERE name = '0056_screen_switches';
+"
+run_migrate
+GOT=$(q "SELECT string_agg(name || '=' || coalesce(dashboard_id::text, 'default') || ':' || switches::text, ' | ' ORDER BY name) FROM displays WHERE name IN ('O one', 'O two')")
+WANT='O one=00000000-0000-0000-0000-00000000c0a1:[{"to": "08:00", "days": [1, 2, 3, 4, 5], "from": "07:15", "when": "times", "dashboardId": "00000000-0000-0000-0000-00000000c0a2"}] | O two=00000000-0000-0000-0000-00000000c0a3:[]'
+if [ "$GOT" != "$WANT" ]; then
+  echo "ERROR: 0056 gave the screens '$GOT'" >&2
+  echo "       want '$WANT'" >&2
+  exit 1
+fi
+
+log "Change a screen's switches, then replay 0056..."
+psql_exec "
+UPDATE displays SET switches = '[]'::jsonb, dashboard_id = NULL WHERE name = 'O one';
+DELETE FROM public.__prism_migrations WHERE name = '0056_screen_switches';
+"
+run_migrate
+if [ "$(q "SELECT coalesce(dashboard_id::text, 'default') || ':' || switches::text FROM displays WHERE name = 'O one'")" != "default:[]" ]; then
+  echo "ERROR: replaying 0056 wrote over a screen's dashboard or switches changed since" >&2
+  exit 1
+fi
+
+log "Scenario O: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"
