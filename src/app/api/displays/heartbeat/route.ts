@@ -14,6 +14,11 @@
  * and shape (#1153). Stored with the once-a-minute write, or at once when it
  * changed.
  *
+ * Also optional: { perfLevel: 'full' | 'reduced' | 'minimal', reducedMotion:
+ * boolean }, how the screen runs (#1289). Either below Full or asking for
+ * less motion turns its fireworks into a fade; Settings > Screens says so.
+ * Stored the same way.
+ *
  * RESPONSE: { display: { id, name, settingsUpdatedAt, editing } | null }. The
  * screen compares settingsUpdatedAt with what it last synced to notice an
  * edit made from another device; `editing` is true while another device is
@@ -25,6 +30,7 @@ import { and, eq, isNull, lt, ne, or } from 'drizzle-orm';
 import { cleanScreenSide, currentDisplayId, isBeingEdited, setDisplayCookies } from '@/lib/auth/displayIdentity';
 import { db } from '@/lib/db/client';
 import { displays } from '@/lib/db/schema';
+import { isLevel } from '@/lib/perfLevel';
 import { logError } from '@/lib/utils/logError';
 
 const WRITE_EVERY_MS = 60 * 1000;
@@ -45,19 +51,27 @@ export async function POST(request: NextRequest) {
   const width = cleanScreenSide(body?.width);
   const height = cleanScreenSide(body?.height);
   const size = width && height ? { screenWidth: width, screenHeight: height } : null;
+  const perfLevel = isLevel(body?.perfLevel) ? body.perfLevel : null;
+  const reducedMotion = typeof body?.reducedMotion === 'boolean' ? body.reducedMotion : null;
 
   try {
     const now = new Date();
     const stale = or(isNull(displays.lastSeenAt), lt(displays.lastSeenAt, new Date(now.getTime() - WRITE_EVERY_MS)));
+    // Written at once when any of these changed, otherwise with the minute's write.
+    const changed = [
+      ...(size ? [isNull(displays.screenWidth), ne(displays.screenWidth, size.screenWidth), ne(displays.screenHeight, size.screenHeight)] : []),
+      ...(perfLevel ? [isNull(displays.perfLevel), ne(displays.perfLevel, perfLevel)] : []),
+      ...(reducedMotion !== null ? [isNull(displays.reducedMotion), ne(displays.reducedMotion, reducedMotion)] : []),
+    ];
     await db
       .update(displays)
-      .set({ lastSeenAt: now, ...(size ?? {}) })
-      .where(and(
-        eq(displays.id, id),
-        size
-          ? or(stale, isNull(displays.screenWidth), ne(displays.screenWidth, size.screenWidth), ne(displays.screenHeight, size.screenHeight))
-          : stale,
-      ));
+      .set({
+        lastSeenAt: now,
+        ...(size ?? {}),
+        ...(perfLevel ? { perfLevel } : {}),
+        ...(reducedMotion !== null ? { reducedMotion } : {}),
+      })
+      .where(and(eq(displays.id, id), or(stale, ...changed)));
     const [row] = await db.select().from(displays).where(eq(displays.id, id));
     if (!row) {
       setDisplayCookies(await cookies(), null, requestIsSecure(request));

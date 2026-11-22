@@ -7,6 +7,7 @@
  * so it is not one thing for a screen whose dashboard changes through the
  * day, and is left out.
  */
+import type { PerfLevel } from '@/lib/perfLevel';
 import type { ScreenSettings } from './screenSettings';
 
 /** The screensaver timeout a screen uses when it never chose one, in seconds. */
@@ -29,4 +30,22 @@ export function screenSummary(
   const timeout = raw !== undefined && Number.isFinite(Number(raw)) ? Number(raw) : DEFAULT_TIMEOUT_S;
   const line = [shows, restsAfter(timeout)].filter(Boolean).join(', ');
   return line.charAt(0).toUpperCase() + line.slice(1);
+}
+
+/**
+ * A second line, only when a screen runs with less than it could (#1289): its
+ * browser asks for reduced motion, or it runs below Full performance. Either
+ * turns fireworks into a plain fade, which otherwise has no visible reason.
+ * Null when neither applies or it has not said yet.
+ */
+export function screenRunsNote(
+  perfLevel: PerfLevel | null | undefined,
+  reducedMotion: boolean | null | undefined,
+): string | null {
+  const why = [
+    reducedMotion ? 'its browser asks for less motion' : null,
+    perfLevel === 'reduced' || perfLevel === 'minimal' ? `it runs at ${perfLevel} performance` : null,
+  ].filter(Boolean).join(' and ');
+  if (!why) return null;
+  return `${why.charAt(0).toUpperCase()}${why.slice(1)}, so fireworks play as a fade.`;
 }

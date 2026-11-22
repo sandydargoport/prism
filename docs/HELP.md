@@ -133,6 +133,8 @@ Each screen runs at one of three levels, set in *Settings → Appearance → Per
 
 **Auto** is the default. It starts at Full and times the fade each time the screen goes idle or wakes. After three choppy fades in a row it steps down one level and stays there. Picking a level by hand overrides it. A lightning-bolt badge in the dashboard header shows while a screen runs below Full. A kiosk can set the level in its address with `?perf=auto`, `full`, `reduced` or `minimal`.
 
+A screen's browser can also ask for less motion, from an operating system setting such as "Reduce motion" or "Remove animations". Fireworks then plays as a plain fade at any level. *Settings → Screens* says under a screen's row when its browser asks for less motion or it runs below Full.
+
 ---
 
 ## Settings reference

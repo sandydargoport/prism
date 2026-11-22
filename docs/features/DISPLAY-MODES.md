@@ -50,7 +50,7 @@ By default the screensaver shows every widget in its layout all the time. It can
 - **Fill and drain**: a waterline crosses the widget, with a surface that keeps moving and bubbles rising through it. One widget drains while another fills, and the two match exactly, so the water leaving one is the water arriving in the other. Only one pair moves at a time, and the two widgets are picked from opposite sides of the board so it looks like water passing between them and not one column doing something odd.
 - **Fireworks**: the widget breaks apart into its own pixels. Prism samples it pixel by pixel and turns each sample into a fragment with that pixel's colour, so at the moment of the burst the fragments are the widget. It winds up first: the card puts down its background, the widget swells and pulls back in, and then it bursts. The fragments speed up as they scatter and cool to embers.
 
-Fireworks is the only effect with a real cost. It switches to a plain fade automatically on hardware that reports itself as low-end, and whenever the display asks for reduced motion.
+Fireworks is the only effect with a real cost. It switches to a plain fade automatically on hardware that reports itself as low-end, and whenever the display asks for reduced motion. *Settings → Screens* says under a screen's row when either applies.
 
 #### Drift
 

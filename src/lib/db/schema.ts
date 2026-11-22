@@ -1047,6 +1047,11 @@ export const displays = pgTable('displays', {
   // shows its dashboard at the same size and shape (#1153).
   screenWidth: integer('screen_width'),
   screenHeight: integer('screen_height'),
+  // How it runs, as it last reported (#1289): the performance level in force
+  // ('full' | 'reduced' | 'minimal') and whether its browser asks for reduced
+  // motion. Either below Full or asking for less turns fireworks into a fade.
+  perfLevel: varchar('perf_level', { length: 8 }),
+  reducedMotion: boolean('reduced_motion'),
   // Set and kept fresh while another device edits this screen (#1153).
   editingAt: timestamp('editing_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

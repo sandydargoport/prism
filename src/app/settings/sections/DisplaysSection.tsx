@@ -10,7 +10,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { useLayouts } from '@/lib/hooks/useLayouts';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
-import { screenSummary } from '@/lib/displays/screenSummary';
+import { screenRunsNote, screenSummary } from '@/lib/displays/screenSummary';
+import type { PerfLevel } from '@/lib/perfLevel';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
@@ -34,6 +35,9 @@ type DisplayEntry = {
   dashboardId: string | null;
   switches: ScreenSwitch[];
   settings: ScreenSettings;
+  /** How it runs, as it last reported (#1289). */
+  perfLevel?: PerfLevel | null;
+  reducedMotion?: boolean | null;
   editing?: boolean;
 };
 
@@ -211,6 +215,11 @@ export function DisplaysSection() {
                       <div className="text-sm text-muted-foreground" data-screen-summary>
                         {screenSummary(d.settings ?? {}, shows(d))}.
                       </div>
+                      {screenRunsNote(d.perfLevel, d.reducedMotion) && (
+                        <div className="text-sm text-muted-foreground" data-screen-runs-note>
+                          {screenRunsNote(d.perfLevel, d.reducedMotion)}
+                        </div>
+                      )}
                     </div>
                     {layouts.length > 0 && (
                       <select

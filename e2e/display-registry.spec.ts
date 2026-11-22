@@ -94,6 +94,53 @@ async function readStorage(page: Page, key: string): Promise<string | null> {
   }
 }
 
+test.describe('A screen says how it runs (#1289)', () => {
+  test('a screen whose browser asks for less motion says so on its Settings row, and stops once it does not', async ({ browser }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(180_000);
+    const NAME = `Porch ${Date.now().toString(36)}`;
+    const probe = await browser.newPage();
+    const parent = await getFirstParent(probe);
+    await probe.close();
+
+    // The screen's browser asks for reduced motion, as an OS setting would.
+    const wallContext = await browser.newContext({ reducedMotion: 'reduce' });
+    const phoneContext = await browser.newContext();
+    const wall = await wallContext.newPage();
+    await verifySettingsPinViaAPI(wall, parent.name);
+    const named = await wall.request.post('/api/displays', { data: { name: NAME } });
+    expect(named.ok()).toBe(true);
+    const id: string = (await named.json()).display?.id ?? (await (await wall.request.get('/api/displays')).json()).currentId;
+    const reported = async () => (await (await wall.request.get('/api/displays')).json())
+      .displays.find((d: { id: string }) => d.id === id) as { perfLevel: string | null; reducedMotion: boolean | null };
+    try {
+      // Full picked by hand, as on a wall; in Auto, asking for less motion
+      // would also lower the level (#1084).
+      expect((await wall.request.patch(`/api/displays/${id}`, { data: { settings: { 'prism-perf-mode': 'full' } } })).ok()).toBe(true);
+      await wall.goto('/');
+      await expect.poll(async () => (await reported())?.reducedMotion, { timeout: 90_000 }).toBe(true);
+      expect((await reported()).perfLevel).toBe('full');
+
+      const phone = await openDisplays(phoneContext, parent.name);
+      const row = phone.getByTestId('display-row').filter({ hasText: NAME });
+      await expect(row.locator('[data-screen-runs-note]'))
+        .toHaveText('Its browser asks for less motion, so fireworks play as a fade.');
+
+      // The setting turned off: the next beat says so at once, and the line goes.
+      await wall.emulateMedia({ reducedMotion: 'no-preference' });
+      await wall.reload();
+      await expect.poll(async () => (await reported())?.reducedMotion, { timeout: 90_000 }).toBe(false);
+      await phone.reload();
+      await expect(row.locator('[data-screen-summary]')).toBeVisible({ timeout: 60_000 });
+      await expect(row.locator('[data-screen-runs-note]')).toHaveCount(0);
+    } finally {
+      await wall.request.delete(`/api/displays/${id}`);
+      await wallContext.close();
+      await phoneContext.close();
+    }
+  });
+});
+
 test.describe('Display settings follow the screen', () => {
   test('edited from a phone, changed on the screen, and back after a browser reset', async ({ browser }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');

@@ -10,6 +10,7 @@ import {
   syncScreenSettings,
 } from '@/lib/displays/displaySettingsSync';
 import { isNamedScreen as isNamed } from '@/lib/displays/namedScreen';
+import { PERF_CLASS, PERF_MINIMAL_CLASS, type PerfLevel } from '@/lib/perfLevel';
 
 /**
  * Keeps a named screen in touch with the server (#690): a heartbeat for
@@ -56,6 +57,18 @@ async function sync(): Promise<void> {
   }
 }
 
+/**
+ * How this screen runs, for Settings > Screens (#1289): the performance level
+ * in force, read from the classes it sets on <html>, and whether the browser
+ * asks for reduced motion. Either below Full or asking for less turns
+ * fireworks into a fade (Screensaver).
+ */
+function howItRuns(): { perfLevel: PerfLevel; reducedMotion: boolean } {
+  const html = document.documentElement.classList;
+  const perfLevel: PerfLevel = html.contains(PERF_MINIMAL_CLASS) ? 'minimal' : html.contains(PERF_CLASS) ? 'reduced' : 'full';
+  return { perfLevel, reducedMotion: !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches };
+}
+
 /** One beat; says whether another device is editing this screen, or null when unknown. */
 async function beat(): Promise<boolean | null> {
   if (!isNamed()) return null;
@@ -63,7 +76,7 @@ async function beat(): Promise<boolean | null> {
     const res = await fetch('/api/displays/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ width: window.innerWidth, height: window.innerHeight }),
+      body: JSON.stringify({ width: window.innerWidth, height: window.innerHeight, ...howItRuns() }),
     });
     if (!res.ok) return null;
     const { display } = await res.json();

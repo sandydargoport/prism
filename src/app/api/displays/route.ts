@@ -60,6 +60,9 @@ export async function GET() {
         // Its size, for showing it at its own shape on a phone (#1153).
         width: d.screenWidth ?? null,
         height: d.screenHeight ?? null,
+        // How it runs, as it last reported (#1289); null until it does.
+        perfLevel: d.perfLevel ?? null,
+        reducedMotion: d.reducedMotion ?? null,
         editing: isBeingEdited(d.editingAt ?? null, now),
       })),
       currentId: mine?.id ?? null,

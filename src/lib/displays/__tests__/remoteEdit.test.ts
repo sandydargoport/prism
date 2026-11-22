@@ -5,7 +5,7 @@
  * reaches the phone's own storage.
  */
 import { changedSettings, remoteStorage, type RemoteEditHost } from '../remoteEdit';
-import { screenSummary } from '../screenSummary';
+import { screenRunsNote, screenSummary } from '../screenSummary';
 
 function host(settings: Record<string, string>): RemoteEditHost {
   return {
@@ -66,5 +66,18 @@ describe('screenSummary', () => {
 
   it('leaves night out: each dashboard has its own (#1281)', () => {
     expect(screenSummary({}, 'Shows Kitchen')).not.toMatch(/night/);
+  });
+});
+
+describe('screenRunsNote (#1289)', () => {
+  it('says why fireworks play as a fade', () => {
+    expect(screenRunsNote('full', true)).toBe('Its browser asks for less motion, so fireworks play as a fade.');
+    expect(screenRunsNote('reduced', false)).toBe('It runs at reduced performance, so fireworks play as a fade.');
+    expect(screenRunsNote('minimal', true)).toBe('Its browser asks for less motion and it runs at minimal performance, so fireworks play as a fade.');
+  });
+
+  it('says nothing for a screen at Full that asks for nothing, or that has not reported', () => {
+    expect(screenRunsNote('full', false)).toBeNull();
+    expect(screenRunsNote(null, null)).toBeNull();
   });
 });

@@ -328,6 +328,15 @@ describe('POST /api/displays/heartbeat', () => {
     expect(mockUpdateSet).toHaveBeenLastCalledWith({ lastSeenAt: expect.any(Date) });
   });
 
+  it('stores how the screen runs, and ignores what is not a level or a yes/no (#1289)', async () => {
+    mockJar.set(DISPLAY_COOKIE, issueDisplayToken(KITCHEN));
+    mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: null }]);
+    await HEARTBEAT(json('/api/displays/heartbeat', 'POST', { perfLevel: 'reduced', reducedMotion: true }));
+    expect(mockUpdateSet).toHaveBeenLastCalledWith({ lastSeenAt: expect.any(Date), perfLevel: 'reduced', reducedMotion: true });
+    await HEARTBEAT(json('/api/displays/heartbeat', 'POST', { perfLevel: 'turbo', reducedMotion: 'yes' }));
+    expect(mockUpdateSet).toHaveBeenLastCalledWith({ lastSeenAt: expect.any(Date) });
+  });
+
   it('says the screen is being edited while a recent mark stands, and not once it is old (#1153)', async () => {
     mockJar.set(DISPLAY_COOKIE, issueDisplayToken(KITCHEN));
     mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: null, editingAt: new Date() }]);

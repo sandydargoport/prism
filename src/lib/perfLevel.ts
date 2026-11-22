@@ -32,7 +32,7 @@ export const PERF_MINIMAL_CLASS = 'perf-minimal';
 
 export const PERF_LEVELS: readonly PerfLevel[] = ['full', 'reduced', 'minimal'];
 
-function isLevel(raw: string | null): raw is PerfLevel {
+export function isLevel(raw: unknown): raw is PerfLevel {
   return raw === 'full' || raw === 'reduced' || raw === 'minimal';
 }
 
