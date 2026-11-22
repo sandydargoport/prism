@@ -15,7 +15,9 @@ jest.mock('@/components/providers', () => ({
 }));
 jest.mock('@/components/ui/use-toast', () => ({ toast: jest.fn() }));
 
-const KEY = 'prism-birthday-nudge-put-off';
+const KEY = 'prism-nudge-put-off';
+/** Where a put-off was kept before, as the birthday's id and its day. */
+const OLD_KEY = 'prism-birthday-nudge-put-off';
 // Monday 9 am in Chicago; the birthday is on Friday.
 const NOW = new Date('2026-11-23T15:00:00Z');
 const ID = 'birthday-grandpa-joe';
@@ -26,6 +28,8 @@ const grandpa = (nextBirthday = DAY): BirthdayLike =>
 const show = (b = grandpa()) => render(<QuietLines chores={[]} lists={[]} birthdays={[b]} now={NOW} />);
 const nudge = () => document.querySelector('[data-today-nudge]');
 const kept = () => localStorage.getItem(KEY) ?? '';
+/** Everything this screen has in storage, under any key. */
+const everything = () => Object.keys(localStorage).map((k) => `${k}=${localStorage.getItem(k)}`).join('\n');
 
 beforeEach(() => localStorage.clear());
 
@@ -37,8 +41,8 @@ describe('putting off the birthday nudge', () => {
     expect(nudge()).toBeNull();
 
     expect(JSON.parse(kept())).toHaveLength(1);
-    expect(kept()).not.toContain(ID);
-    expect(kept()).not.toContain('11-27');
+    expect(everything()).not.toContain(ID);
+    expect(everything()).not.toContain('11-27');
 
     first.unmount();
     const again = show();
@@ -52,11 +56,12 @@ describe('putting off the birthday nudge', () => {
   });
 
   it('a put-off kept as the birthday and its day still holds, and is encoded when read', () => {
-    localStorage.setItem(KEY, JSON.stringify([`${ID}:${DAY}`]));
+    localStorage.setItem(OLD_KEY, JSON.stringify([`${ID}:${DAY}`]));
     show();
     expect(nudge()).toBeNull();
+    expect(localStorage.getItem(OLD_KEY)).toBeNull();
     expect(JSON.parse(kept())).toHaveLength(1);
-    expect(kept()).not.toContain(ID);
-    expect(kept()).not.toContain('11-27');
+    expect(everything()).not.toContain(ID);
+    expect(everything()).not.toContain('11-27');
   });
 });
