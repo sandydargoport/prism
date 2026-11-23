@@ -27,11 +27,16 @@ export function resetSceneryOnCache(): void {
  * chose otherwise. Set by setup on new installs; absent on existing ones.
  */
 export function useSceneryOn(): boolean {
-  const [on, setOn] = useState(false);
+  return useSceneryState().on;
+}
+
+/** The same, and whether the household's answer has come in yet. */
+export function useSceneryState(): { on: boolean; loaded: boolean } {
+  const [state, setState] = useState({ on: false, loaded: false });
   useEffect(() => {
     let active = true;
-    readSceneryOn().then((v) => { if (active) setOn(v); });
+    readSceneryOn().then((on) => { if (active) setState({ on, loaded: true }); });
     return () => { active = false; };
   }, []);
-  return on;
+  return state;
 }

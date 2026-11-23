@@ -68,6 +68,20 @@ export interface AppShellProps {
   cardTools?: boolean;
 }
 
+/** The page dock's height, 68px, with its 1rem gap and the safe area (#923). */
+export const PAGE_DOCK_ROOM = 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))';
+
+/**
+ * The same room in pixels, for what lays itself out in pixels: the dashboard
+ * keeps it clear when its dock stays on screen (#1232). Read once from the
+ * root font size; a wall has no safe area at its foot.
+ */
+export function usePageDockRoomPx(): number {
+  const [rem] = React.useState(() =>
+    typeof document === 'undefined' ? 14 : parseFloat(getComputedStyle(document.documentElement).fontSize) || 14);
+  return 68 + 1.5 * rem;
+}
+
 /**
  * APP SHELL COMPONENT
  * The main application layout component.
@@ -107,7 +121,7 @@ export function AppShell({
   const isMobile = useIsMobile();
   // Every phone page: no drag past the ends, none at all on a page that fits.
   useNoRubberBand(isMobile);
-  const { uiHidden } = useAutoHideUI();
+  const { uiHidden, wallDockTucked } = useAutoHideUI();
   useInactivityRedirect();
   const [measureHideNav, setMeasureHideNav] = React.useState(false);
 
@@ -128,8 +142,10 @@ export function AppShell({
 
   // One navigation everywhere (#924): the wall's dock on a dashboard on a
   // larger screen, in either orientation; the dock on screen everywhere else,
-  // phones included. The rail and the portrait bar are gone.
-  const wallDock = dock === 'wall' && !isMobile;
+  // phones included. The rail and the portrait bar are gone. With this
+  // screen's Auto-hide navigation off, a dashboard keeps the dock on screen
+  // too, as every other page does (#1232).
+  const wallDock = dock === 'wall' && !isMobile && wallDockTucked;
   const pageDockShown = !hideNav && !wallDock && !measureHideNav;
   const showMobileNav = isMobile;
 
@@ -138,7 +154,7 @@ export function AppShell({
       className={cn('relative min-h-[var(--app-vh,var(--screen-h,100dvh))]', !showWallpaper && 'bg-background')}
       // The dock's height (68px, its 1rem gap and the safe area), for the page
       // to reserve and for anything else fixed at the foot to sit above (#923).
-      style={pageDockShown ? ({ '--nav-bottom': 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties) : undefined}
+      style={pageDockShown ? ({ '--nav-bottom': PAGE_DOCK_ROOM } as React.CSSProperties) : undefined}
     >
       {/* WALLPAPER BACKGROUND (only on dashboard/screensaver) */}
       {showWallpaper && <WallpaperBackground />}

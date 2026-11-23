@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useStoredString, writeStored } from './useStoredValue';
-import { useSceneryOn } from './useSceneryOn';
+import { useSceneryState } from './useSceneryOn';
 
 const STORAGE_KEY = 'prism:auto-hide-ui';
 const HIDE_DELAY = 10_000; // 10 seconds
@@ -26,8 +26,10 @@ export function useAutoHideUI() {
   // household: on a new install with the scenery look (#808) the rail and
   // bar hide, so the wall is the photo and the cards.
   const stored = useStoredString(STORAGE_KEY);
-  const householdDefault = useSceneryOn();
+  const { on: householdDefault, loaded } = useSceneryState();
   const enabled = autoHideEnabledFor(stored, householdDefault);
+  // Known once the screen has its own choice or the household's has come in.
+  const known = stored === 'true' || stored === 'false' || loaded;
   const [hidden, setHidden] = useState(false);
   const pathname = usePathname();
   // Only auto-hide on dashboard routes (/ and /d/[slug])
@@ -86,5 +88,13 @@ export function useAutoHideUI() {
   // `hidden` can be left true by a timer that fired before the feature was
   // turned off (in another tab, say); gating on `enabled` here means it never
   // hides the UI then.
-  return { autoHideEnabled: enabled, setAutoHideEnabled: setEnabled, uiHidden: enabled && isDashboard && hidden };
+  return {
+    autoHideEnabled: enabled,
+    setAutoHideEnabled: setEnabled,
+    uiHidden: enabled && isDashboard && hidden,
+    // The wall's dock tucks behind its Menu tab while auto-hide is on, and
+    // until the choice is known, so a screen that hides never shows it at
+    // load. Off, it stays on screen as on every other page (#1232).
+    wallDockTucked: enabled || !known,
+  };
 }
