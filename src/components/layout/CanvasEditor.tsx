@@ -150,7 +150,7 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
   useEffect(() => {
     let live = true;
     void (async () => {
-      const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit this screen.");
+      const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit this screen.", { parentsOnly: true });
       if (live) setAllowed(user?.role === 'parent');
     })();
     return () => { live = false; };

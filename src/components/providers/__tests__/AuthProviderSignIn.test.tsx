@@ -15,15 +15,20 @@ jest.mock('@/components/ui/use-toast', () => ({ toast: (...a: unknown[]) => toas
 jest.mock('@/lib/hooks/useVisibilityPolling', () => ({ useVisibilityPolling: () => {} }));
 // The real PIN box needs the family list; a stand-in shows what it was opened with.
 jest.mock('@/components/auth', () => ({
-  QuickPinModal: ({ open, title, description }: { open: boolean; title: string; description: string }) =>
-    open ? <div role="dialog">{title} / {description}</div> : null,
+  QuickPinModal: ({ open, title, description, parentsOnly }: { open: boolean; title: string; description: string; parentsOnly?: boolean }) =>
+    open ? <div role="dialog" data-parents-only={parentsOnly ? 'yes' : 'no'}>{title} / {description}</div> : null,
 }));
 
 import { AuthProvider, useAuth, BACKGROUND_WRITE_HEADER } from '../AuthProvider';
 
 function Probe() {
   const { requireAuth } = useAuth();
-  return <button onClick={() => { void requireAuth('Sign in to edit', 'Parents only'); }}>edit</button>;
+  return (
+    <>
+      <button onClick={() => { void requireAuth('Sign in to edit', 'Parents only', { parentsOnly: true }); }}>edit</button>
+      <button onClick={() => { void requireAuth("Who's adding an item?"); }}>add</button>
+    </>
+  );
 }
 
 // jsdom has no Response; the provider only reads ok, status and json().
@@ -95,5 +100,15 @@ describe('AuthProvider sign-in prompts', () => {
     await act(async () => { await Promise.resolve(); });
     expect(screen.getByRole('dialog').textContent).toContain('Sign in to edit');
     expect(toast).not.toHaveBeenCalled();
+  });
+
+  it('a parent-only prompt opens the PIN box listing parents alone; other prompts list everyone (#1330)', async () => {
+    await mount();
+    fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole('dialog').dataset.parentsOnly).toBe('yes');
+    fireEvent.click(screen.getByRole('button', { name: 'add' }));
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole('dialog').dataset.parentsOnly).toBe('no');
   });
 });

@@ -186,14 +186,14 @@ export function useTasksViewData() {
   };
 
   const editTask = async (task: Task) => {
-    const user = await requireAuth("Who's editing this task?");
+    const user = await requireAuth("Who's editing this task?", undefined, { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') { toast({ title: 'Only parents can edit tasks', variant: 'warning' }); return; }
     setEditingTask(task);
   };
 
   const deleteTask = async (taskId: string) => {
-    const user = await requireAuth("Who's deleting this task?");
+    const user = await requireAuth("Who's deleting this task?", undefined, { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') { toast({ title: 'Only parents can delete tasks', variant: 'warning' }); return; }
     if (!await confirm('Delete this task?', 'Are you sure you want to delete this task?')) return;

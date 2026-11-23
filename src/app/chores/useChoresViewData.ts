@@ -200,7 +200,7 @@ export function useChoresViewData() {
   const toggleEnabled = async (choreId: string) => {
     const chore = chores.find((c) => c.id === choreId);
     if (!chore) return;
-    const user = await requireAuth("Who's updating this chore?");
+    const user = await requireAuth("Who's updating this chore?", undefined, { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') { toast({ title: 'Only parents can enable or disable chores', variant: 'warning' }); return; }
     try {
@@ -217,7 +217,7 @@ export function useChoresViewData() {
   };
 
   const deleteChore = async (choreId: string) => {
-    const user = await requireAuth("Who's deleting this chore?");
+    const user = await requireAuth("Who's deleting this chore?", undefined, { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') { toast({ title: 'Only parents can delete chores', variant: 'warning' }); return; }
     if (!await confirm('Delete this chore?', 'Are you sure you want to delete this chore?')) return;
@@ -231,7 +231,7 @@ export function useChoresViewData() {
   };
 
   const editChore = async (chore: Chore) => {
-    const user = await requireAuth("Who's editing this chore?");
+    const user = await requireAuth("Who's editing this chore?", undefined, { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') { toast({ title: 'Only parents can edit chores', variant: 'warning' }); return; }
     setEditingChore(chore);
@@ -239,7 +239,7 @@ export function useChoresViewData() {
 
   const inlineAddChore = async (title: string, assignedToId?: string): Promise<boolean> => {
     if (!title.trim()) return false;
-    const user = await requireAuth('Add Chore', 'Please log in to add a chore');
+    const user = await requireAuth('Add Chore', 'Please log in to add a chore', { parentsOnly: true });
     if (!user) return false;
     if (user.role !== 'parent') {
       toast({ title: 'Only parents can add chores', variant: 'warning' });
@@ -270,7 +270,7 @@ export function useChoresViewData() {
   };
 
   const undoCompletion = async (completionId: string, choreId: string) => {
-    const user = await requireAuth();
+    const user = await requireAuth(undefined, undefined, { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') {
       toast({ title: 'Only parents can undo completions', variant: 'warning' });

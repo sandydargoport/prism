@@ -246,7 +246,7 @@ export function ShoppingView() {
                   label: 'Edit List',
                   icon: Settings,
                   onClick: async () => {
-                    const user = await requireAuth("Who's editing this list?");
+                    const user = await requireAuth("Who's editing this list?", undefined, { parentsOnly: true });
                     if (user && user.role === 'parent') { setEditingList(activeList); setShowListModal(true); }
                     else if (user) toast({ title: 'Only parents can edit list settings', variant: 'warning' });
                   },

@@ -20,7 +20,7 @@ type ConfirmFn = (
 export function useRemoveBirthday(confirm: ConfirmFn) {
   const { requireAuth } = useAuth();
   return useCallback(async (birthday: Birthday) => {
-    const user = await requireAuth('Remove a birthday', "Enter a parent's PIN to remove it.");
+    const user = await requireAuth('Remove a birthday', "Enter a parent's PIN to remove it.", { parentsOnly: true });
     if (!user) return;
     if (user.role !== 'parent') {
       toast({ title: 'Only a parent can remove a birthday', variant: 'warning' });
