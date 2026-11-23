@@ -63,7 +63,7 @@ Each completion stores the points it earned (the `pointsAwarded` column on `chor
 
 Each child has running totals over four periods:
 
-- **This week**: Sunday to Saturday, or Monday to Sunday, following *Settings → General → Week Starts On*.
+- **This week**: Sunday to Saturday, or Monday to Sunday, following *Settings > General > Week Starts On*.
 - **This month**: the calendar month.
 - **This year**: the calendar year.
 - **All time**: since chore tracking began.
@@ -185,7 +185,7 @@ When a child earns points, they fill goals one at a time in priority order, and 
 
 So if Emma has 50 points and her Weekly Allowance (50 pts, priority 1) is not full, every point goes there first. Once the allowance is full, the rest carries on down the list to Ice Cream Trip, Movie Night and so on.
 
-To change which goal fills first, change the priority order with the ▲▼ arrows next to each goal on the Goals page (*Goals page → priority arrows ▲▼*).
+To change which goal fills first, change the priority order with the ▲▼ arrows next to each goal on the Goals page (*Goals page > priority arrows ▲▼*).
 
 ### Cache invalidation
 
@@ -214,4 +214,4 @@ There is one row per goal for the whole family, but each child's progress is tra
 
 #### Celebration animation didn't fire
 
-Check the device's reduced-motion setting (`prefers-reduced-motion`, under System Settings → Accessibility) and Prism's performance level (*Settings → Appearance → Performance*). Reduced motion on the device, or a Reduced or Minimal level in Prism, stops the animation, but the goal is still recorded as reached.
+Check the device's reduced-motion setting (`prefers-reduced-motion`, under System Settings > Accessibility) and Prism's performance level for that screen (in its editor, **More > Edit layout > Look > This screen > Performance**). Reduced motion on the device, or a Reduced or Minimal level in Prism, stops the animation, but the goal is still recorded as reached.

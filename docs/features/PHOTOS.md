@@ -16,7 +16,7 @@ Photos come from two kinds of source.
 
 Photos you upload through Prism live in `data/photos/` on the host, or wherever you mapped the volume. This suits family photos you have already picked out.
 
-Upload from *Photos → Add photos*. You can drag and drop or use the file picker, and add several files at once. Prism takes JPEG, PNG, WebP and HEIC (HEIC is converted to JPEG).
+Upload from *Photos > Add photos*. You can drag and drop or use the file picker, and add several files at once. Prism takes JPEG, PNG, WebP and HEIC (HEIC is converted to JPEG).
 
 Each upload goes through the sharp image library, which:
 
@@ -29,13 +29,13 @@ Prism keeps only the resized file and throws the original away after processing.
 
 #### OneDrive sync
 
-Connect Microsoft in *Settings → Integrations → Microsoft*. Then go to *Settings → Photos → OneDrive*:
+Connect Microsoft in *Settings > Integrations > Microsoft*. Then go to *Settings > Photos > OneDrive*:
 
 - **Folder picker**: browse your OneDrive and choose the folder to sync from. Nothing is picked by default, so you can't sync your whole drive by accident.
 
 The sync downloads new files into `data/photos/onedrive/` and keeps their EXIF metadata. It runs on its own about every 30 minutes, so a photo you drop into the folder shows on the dashboard within half an hour. Use the manual sync button in settings if you want it straight away.
 
-The sync doesn't filter by orientation or resolution: every photo in the folder comes across. The orientation allow-lists and the low-resolution warning are display settings under *Settings → Photos*. [Filtering](#filtering) covers the Below HD filter.
+The sync doesn't filter by orientation or resolution: every photo in the folder comes across. The orientation allow-lists and the low-resolution warning are display settings under *Settings > Photos*. [Filtering](#filtering) covers the Below HD filter.
 
 You can add more than one OneDrive source, for example one folder for the family slideshow and another only for wallpaper.
 
@@ -59,7 +59,7 @@ OneDrive backs up your whole camera roll to one big folder and has no way to map
 If the same photos sit in more than one source (local uploads and a OneDrive folder, say, or two OneDrive folders that overlap), Prism shows each photo once. When it finds the same shot in several sources:
 
 - It matches photos by capture time and dimensions. A cropped edit keeps the original timestamp but has new dimensions, so the edit and the original both show, and only true duplicates are hidden.
-- The copy from your preferred source is the one shown. Order your sources in *Settings → Photos* with the ▲▼ controls; the top of the list is preferred. A new order applies at once, with no re-sync.
+- The copy from your preferred source is the one shown. Order your sources in *Settings > Photos* with the ▲▼ controls; the top of the list is preferred. A new order applies at once, with no re-sync.
 
 For example, put "OneDrive: originals" above "OneDrive: web-optimized" and any photo in both folders comes from the originals folder, with the smaller copy hidden.
 
@@ -75,7 +75,7 @@ A photo can have any mix of these, or none. The usage tags also work as gallery 
 
 ### Pinned photos
 
-Pinning replaces the slideshow with one fixed photo. You set pins on the Pinned Photos card in *Settings → Photos*; the lightbox has no pin option.
+Pinning replaces the slideshow with one fixed photo. You set pins on the Pinned Photos card in *Settings > Photos*; the lightbox has no pin option.
 
 - **Pinned wallpaper**: the dashboard shows this one photo behind the widgets and stops cycling.
 - **Pinned screensaver**: the same for the screensaver.
@@ -84,7 +84,7 @@ Use it when you want one particular family portrait behind the dashboard all the
 
 A pin belongs to one device. Prism stores it in that browser's local storage, so each display can pin its own wallpaper and screensaver, or none. You can pin a wallpaper and still let the screensaver cycle through the rest.
 
-To change or clear a pin, go back to the same Pinned Photos card in *Settings → Photos*.
+To change or clear a pin, go back to the same Pinned Photos card in *Settings > Photos*.
 
 ## Use it
 
@@ -140,6 +140,27 @@ Each of these has its own settings:
 
 The browser fetches photos ahead of time and rotates them itself, so a new photo doesn't need a trip to the server.
 
+### Crossfade and slow zoom
+
+The wallpaper and the screensaver share one way of showing photos. The next photo is loaded and decoded first, then fades in over the current one for 2.2 seconds, so the picture never dips to black. While a photo is on screen it zooms slowly in or out, the next one the other way, anchored on its subject. Each photo is also cropped so its subject sits where no widget or Glance text covers it.
+
+Prism finds each photo's subject on the wall itself, a few photos every few minutes, and no photo leaves your install to do it.
+
+The zoom is off when the device asks for reduced motion, below the **Full** performance level, for a pinned photo, and when rotation is set to never. A screen that keeps dropping frames as its photo changes steps down a performance level, which also turns the zoom off.
+
+### When and where a photo was taken
+
+The wallpaper and the screensaver can say when the photo on screen was taken, in a bottom corner: "March", "March last year", "March 2019" or "On this day, 2021". The line moves clear of anything small already in that corner, and hides when neither bottom corner has room. It doesn't show on a phone.
+
+Two switches set it, in the **Background Wallpaper** card under *Settings > Appearance > Background and away*:
+
+- **Show when photos were taken**: on by default.
+- **Show where photos were taken**: off by default. Turned on, the line also names the town, for photos that have a location. To find it, Prism sends the photo's rough location (rounded to about a kilometre) to OpenStreetMap, once per photo.
+
+### On this day
+
+**On this day**, in the same card (off by default), mixes photos taken on today's date in earlier years into the rotation, every other turn. It goes by each screen's own date.
+
 ### Travel Map photo linking
 
 Photos with GPS data link themselves to travel pins nearby, using the Haversine formula for distance on a globe (by default within 50 km of each pin). A pin's detail panel shows a strip of the matching photos, and tapping one opens the lightbox.
@@ -158,7 +179,7 @@ Keep location data on your phone photos (on iOS, leave "Preserve location" on wh
 
 #### Static dashboard wallpaper
 
-Upload a family portrait from Photos → Add. On the Pinned Photos card in *Settings → Photos*, pin it as the wallpaper, and the dashboard uses it as the background. Set the widget translucency to taste.
+Upload a family portrait from Photos > Add. On the Pinned Photos card in *Settings > Photos*, pin it as the wallpaper, and the dashboard uses it as the background. Set the widget translucency to taste.
 
 #### Babysitter mode background
 
@@ -174,11 +195,11 @@ iOS removes GPS data when you share a photo, unless you change it. Turn on "Pres
 
 #### GPS backfill
 
-For photos that synced before you set up GPS linking, *Settings → Photos → Backfill GPS* reads the EXIF data again from the files already on the host and saves the coordinates to the database. It works on the local copies and downloads nothing.
+For photos that synced before you set up GPS linking, *Settings > Photos > Backfill GPS* reads the EXIF data again from the files already on the host and saves the coordinates to the database. It works on the local copies and downloads nothing.
 
 ### Performance level interaction
 
-At the **Minimal** performance level (*Settings → Appearance → Performance*, chosen there or set by Auto):
+At the **Minimal** performance level (set per screen in its editor under **More > Edit layout > Look > This screen > Performance**, or chosen by Auto):
 
 - The Photo widget shows one fixed photo, the first one matching its filter, and stops cycling.
 - A pinned dashboard wallpaper still shows, since a fixed image costs nothing per frame.
@@ -198,13 +219,13 @@ If you delete the volume, the next sync downloads everything again. The database
 - Photo files live on your Prism host. They aren't kept by Anthropic, Microsoft (once synced), Cloudflare or anyone else.
 - The PWA (the app you install from the browser) caches small photo thumbnails so it can show them offline.
 - The OneDrive sync only goes from OneDrive to Prism. Prism never writes photos to OneDrive, never changes files there and never deletes anything there.
-- If you disconnect Microsoft in *Settings → Integrations*, the sync stops. Files already synced stay in your `data/photos/` directory and in the database, and you can delete them if you like.
+- If you disconnect Microsoft in *Settings > Integrations*, the sync stops. Files already synced stay in your `data/photos/` directory and in the database, and you can delete them if you like.
 
 ### Troubleshooting
 
 #### Photos not showing up after OneDrive sync
 
-1. Open *Settings → Photos → OneDrive* and check the folder picker points at the right folder.
+1. Open *Settings > Photos > OneDrive* and check the folder picker points at the right folder.
 2. Tap **Sync now**.
 3. Look for errors in the sync log on the Photos settings page.
 4. Every photo in the folder syncs, whatever its size. If one is missing, check it really is in that folder.

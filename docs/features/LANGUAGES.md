@@ -2,7 +2,7 @@
 
 Show Prism in English or German.
 
-Pick one under **Settings → Appearance → Language**. The choice applies to everyone using that install.
+Pick one under **Settings > Appearance > Language**. The choice applies to everyone using that install.
 
 Anything that isn't translated yet shows in English, so a language that is only partly translated still works.
 
@@ -43,7 +43,7 @@ Each widget is translated together with its page, so both use the same wording.
 
 Dates and numbers already follow the language you pick. A German dashboard shows `24. Dez.` where an English one shows `Dec 24`. That includes the order of the parts as well as their names, so a German calendar header reads `4. September 2026` and an English one reads `September 4, 2026`. A translation file can't express day-first order, so Prism builds date labels from the language instead of from a fixed pattern in the code.
 
-The choice between 12-hour and 24-hour time is a separate setting under **Settings → General**. It is kept apart from the language on purpose, so you can run an English interface with a 24-hour clock or the other way round. Choosing Deutsch doesn't change the clock for you.
+The choice between 12-hour and 24-hour time is a separate setting under **Settings > General**. It is kept apart from the language on purpose, so you can run an English interface with a 24-hour clock or the other way round. Choosing Deutsch doesn't change the clock for you.
 
 ## Adding or correcting a translation
 

@@ -17,19 +17,19 @@ You can change anything the wizard set later, in Settings. The steps below show 
 
 ## 1. Add or edit family members
 
-**Settings → Family Members → Add Member.**
+**Settings > Family Members > Add Member.**
 
 Each member has a name, a role (parent or child) and an avatar. Parents can approve chores, exit Away Mode and reset goals. Children see fewer options.
 
 ## 2. Set PINs
 
-**Settings → Family Members** (or **Settings → Security**).
+**Settings > Family Members** (or **Settings > Security**).
 
 Each member has their own PIN of 4 or 6 digits, chosen first in the wizard's Family step and changed here later. The PIN pad submits as soon as the last digit is in, which keeps sign-in quick on a shared screen. There is no shared family PIN and no default child PIN. Give everyone a real PIN before you make Prism reachable from outside your home.
 
 ## 3. Connect integrations
 
-**Settings → Integrations.**
+**Settings > Integrations.**
 
 You can share and assign events without any of these. From the start, Prism gives every member a personal calendar and adds a shared **Family** calendar, so events get a colour and an owner with nothing else to set up. Accounts you connect add to that.
 
@@ -55,7 +55,7 @@ Each display (for example `/d/kitchen` or `/d/bedroom`) has its own layout and s
 
 On phones, tablets and desktop Chromium, the **Install** prompt adds Prism to the home screen. It then opens without the browser's address bar and buttons, and data it has already loaded stays readable when the connection drops.
 
-In Safari on iOS, use **Share → Add to Home Screen**.
+In Safari on iOS, use **Share > Add to Home Screen**.
 
 ---
 

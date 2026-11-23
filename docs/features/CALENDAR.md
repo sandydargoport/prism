@@ -8,6 +8,8 @@ Meals, chores and to-dos show up next to the events. Google calendars sync both 
 
 ## Set it up
 
+Calendar settings live in **Manage calendars**, on the Calendar page itself: open the **View** menu (the gear beside the view dropdown) and tap **Manage calendars** at its foot. Each mention of Manage calendars below means this window.
+
 ### Setting up calendar sources
 
 #### Personal & Family calendars (no integration needed)
@@ -16,15 +18,15 @@ You can start using the calendar without connecting anything. A fresh install gi
 
 #### Google Calendar (OAuth, bidirectional)
 
-*Settings → Integrations → Google → Connect.*
+*Settings > Integrations > Google > Connect.*
 
-OAuth (Google's sign-in and permission flow) gives Prism read and write access to your Google calendars. You can create, edit, drag and delete events in Prism, and the change reaches Google Calendar within seconds. Every calendar in the Google account (personal, family-shared, work and so on) is listed in the **Manage** overlay on the Calendar page, where you pick which ones to show.
+OAuth (Google's sign-in and permission flow) gives Prism read and write access to your Google calendars. You can create, edit, drag and delete events in Prism, and the change reaches Google Calendar within seconds. Every calendar in the Google account (personal, family-shared, work and so on) is listed in **Manage calendars**, where you pick which ones to show.
 
-This connection covers Calendar only. Google Tasks sync is set per list inside the Google provider card on the same *Settings → Integrations* page.
+This connection covers Calendar only. Google Tasks sync is set per list inside the Google provider card on the same *Settings > Integrations* page.
 
 #### Google Calendar without a public URL (OAuth Playground)
 
-*Settings → Integrations → Google → **Connect without a public URL (advanced)**.*
+*Settings > Integrations > Google > **Connect without a public URL (advanced)**.*
 
 The normal **Connect** button needs a public HTTPS address, because Google will not register a private or LAN redirect URI such as `http://homeassistant.local:8123/…` or `http://192.168.x.x:3000/…`. If you try, you see *"must end with a public top-level domain."* When Prism only runs on your LAN (Home Assistant add-on, bare Docker) and you don't want to put it behind a public URL, you can still get full read and write access. You make a refresh token yourself in Google's OAuth Playground and paste it into Prism. The sign-in happens on Google's own domain and never passes through a third party.
 
@@ -32,12 +34,12 @@ Do every step signed into one Google account, the one whose calendars you want, 
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), **create a project**, then enable the **Google Calendar API**.
 2. Configure the **OAuth consent screen**: pick User type **External** and fill in the app name and your support and developer email.
-3. **Publish the app to Production.** Don't skip this one. In *Testing* mode Google expires refresh tokens after 7 days, and publishing removes that limit. You own the project, so you can click through the one-time "Google hasn't verified this app" notice (**Advanced → proceed**). Your own use of the Calendar scope needs no formal verification.
+3. **Publish the app to Production.** Don't skip this one. In *Testing* mode Google expires refresh tokens after 7 days, and publishing removes that limit. You own the project, so you can click through the one-time "Google hasn't verified this app" notice (**Advanced > proceed**). Your own use of the Calendar scope needs no formal verification.
 4. Create an **OAuth Client ID** of type **Web application**. Under **Authorized redirect URIs**, add exactly `https://developers.google.com/oauthplayground`. Copy the **Client ID** and **Client Secret**. Google shows the secret only once.
 5. Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground), click the gear icon, tick **"Use your own OAuth credentials"** and paste in the Client ID and Secret.
-6. In *Step 1*, enter the scope `https://www.googleapis.com/auth/calendar`, click **Authorize APIs**, sign in, then **Advanced → proceed → Allow**.
+6. In *Step 1*, enter the scope `https://www.googleapis.com/auth/calendar`, click **Authorize APIs**, sign in, then **Advanced > proceed > Allow**.
 7. In *Step 2*, click **Exchange authorization code for tokens** and copy the **Refresh token** (it starts with `1//`).
-8. In Prism, open **Settings → Integrations → Google → "Connect without a public URL (advanced)"** and paste the Client ID, Client Secret and Refresh token. Prism checks them with Google and imports your calendars with full read and write access.
+8. In Prism, open **Settings > Integrations > Google > "Connect without a public URL (advanced)"** and paste the Client ID, Client Secret and Refresh token. Prism checks them with Google and imports your calendars with full read and write access.
 
 **Troubleshooting:**
 
@@ -46,11 +48,11 @@ Do every step signed into one Google account, the one whose calendars you want, 
 - If the Playground's *Exchange* step returns no refresh token, you have already granted the app once. Revoke it at [myaccount.google.com/permissions](https://myaccount.google.com/permissions), then authorize again to get a fresh consent.
 - If the project doesn't appear in the Console, you are signed into the wrong Google account. The project, client, consent screen and Playground authorization all have to be on the same account.
 
-To take away Prism's access completely, go to *Google Account → Security → Third-party access*.
+To take away Prism's access completely, go to *Google Account > Security > Third-party access*.
 
 #### iCal subscriptions (read-only)
 
-*Open the Calendar page → **Manage** → Subscribe to a calendar → paste URL.*
+*Calendar page > **View** > **Manage calendars** > Subscribe to a calendar > paste URL.*
 
 Many calendars are published as an `.ics` URL: school calendars, sports leagues, holiday feeds, a spouse's outlook.live.com calendar. Paste the URL and Prism subscribes to it. The events sync every so often and appear with your Google events. These feeds have no way to accept changes, so iCal sources are always read-only. Their events display like any others, but Prism offers no edit controls for them.
 
@@ -61,9 +63,9 @@ iCloud has no OAuth sign-in and no public REST API, so Prism uses the same iCal 
 1. Open *Calendar.app*, right-click the calendar in the sidebar and choose *Share Calendar*.
 2. Tick **Public Calendar**, and a URL appears underneath.
 3. Click the *share* button next to the URL and choose *Copy Link*. The link starts with `webcal://`.
-4. In Prism, open the Calendar page → **Manage** → *Subscribe to a calendar*, paste the URL, give it a name and click *Add*.
+4. In Prism, open the Calendar page > **View** > **Manage calendars** > *Subscribe to a calendar*, paste the URL, give it a name and click *Add*.
 
-On iCloud.com it works the same way: *Calendar → ⓘ next to the calendar → Public Calendar → Copy Link*.
+On iCloud.com it works the same way: *Calendar > ⓘ next to the calendar > Public Calendar > Copy Link*.
 
 Two things to know. The feed only goes one way, so nothing you do in Prism reaches iCloud, and Prism shows no edit option on these events. The calendar also has to stay marked Public on the iCloud side.
 
@@ -71,8 +73,8 @@ Two things to know. The feed only goes one way, so nothing you do in Prism reach
 
 If you don't want to mark a calendar Public, or you want **Reminders** to sync as tasks, Prism can connect to iCloud over CalDAV. That is the same protocol the Calendar app on macOS and iOS uses.
 
-1. Generate an app-specific password at [appleid.apple.com](https://appleid.apple.com) under *Sign-In and Security → App-Specific Passwords → Generate*.
-2. In Prism, go to *Settings → Integrations → Apple iCloud / CalDAV → Connect*.
+1. Generate an app-specific password at [appleid.apple.com](https://appleid.apple.com) under *Sign-In and Security > App-Specific Passwords > Generate*.
+2. In Prism, go to *Settings > Integrations > Apple iCloud / CalDAV > Connect*.
 3. Enter:
    - **Server URL:** `https://caldav.icloud.com`
    - **Username:** your iCloud email
@@ -89,33 +91,39 @@ A new event you create in Prism on a CalDAV calendar is created on the server to
 
 #### Per-calendar customization
 
-In the **Manage** overlay on the Calendar page, each source has these settings:
+In **Manage calendars**, each source has these settings:
 
 - **Enable/disable**: turn a calendar off without disconnecting it. A disabled calendar doesn't appear anywhere in Prism.
 - **Assign to a family member**: link the calendar to a person so its events go in that person's column in Day and List views. Mark a shared household calendar as **Family**.
-- **Display name**: replace the Google or iCal name (for example "Mike's Work" becomes "Work").
+- **Display name**: replace the Google or iCal name (for example "Alex's Work" becomes "Work").
 - **Color**: replace the source's default color.
 - **Show in Add Event modal**: untick this for subscription and read-only calendars so they aren't offered when you create an event.
+
+Each calendar also has three display rules, which change how its events show in Prism and leave the calendar itself alone:
+
+- **Show its events only as "Busy"**: every event on the calendar reads as Busy. Its title, notes and place never reach the screen. Use it for a work calendar on a wall everyone walks past.
+- **Birthdays as name and age**: a birthday event reads as the name and the age turned, for example "Emma, 9". It works when the [birthday list](BIRTHDAYS.md) has that name with a birth year; otherwise the title shows as it is.
+- **Hide today's events after**: pick a time, and the calendar's events on today's date leave the screen after it, for example bin day after 11:00. They are back the next day. **Clear** removes the time.
 
 ### Calendar Groups & Columns
 
 In Day and List views, events sit in columns, one per calendar group:
 
 - The **Family** group always comes first and holds shared or Family-tagged calendars.
-- Person columns follow, in the order set in *Settings → Family Members*. Reorder the family members there to change the columns.
+- Person columns follow, in the order set in *Settings > Family Members*. Reorder the family members there to change the columns.
 - The **Merge / Split** toggle in View Options puts every event in one column or splits them by person.
 
-The filter buttons at the top of the calendar show or hide calendar groups in the current view. Click **All** to show everything again.
+Under the header, after **Show:**, is a row of person dots, one per calendar group. Tap one to show or hide that group in the current view: a shown group is its dot and name, a hidden one a faded ring. Tap **All** to show everything again.
 
 ### Hidden Hours
 
-You can hide a range of hours from the Day, Schedule and Week views so the space goes to the hours your family uses. Set the range in the **Manage** overlay on the Calendar page, under Calendar Hours, with a start hour (say midnight) and an end hour (say 6 AM).
+You can hide a range of hours from the Day, Schedule and Week views so the space goes to the hours your family uses. Set the range in **Manage calendars**, under **Calendar Hours**, with a start hour (say midnight) and an end hour (say 6 AM).
 
 The **clock button** in the calendar views turns hiding on and off, and it dims while hiding is on. The hours that are left stretch to fill the panel, so events don't shrink into tiny blocks.
 
 ### Color coding
 
-An event takes its color from the calendar it belongs to. When calendars are assigned to family members, each person's events appear in their column in that calendar's color. You can change the color per calendar in the **Manage** overlay on the Calendar page.
+An event takes its color from the calendar it belongs to. When calendars are assigned to family members, each person's events appear in their column in that calendar's color. You can change the color per calendar in **Manage calendars**.
 
 Meals on the calendar have a small **utensils icon** before the title so you can tell them from ordinary events at a glance.
 
@@ -143,7 +151,11 @@ The 1W, 3W and 4W grids have been removed. A screen that was showing one of them
 
 On phones the calendar only shows Agenda, with no view switcher and no chevrons, and the header reads "Upcoming Events."
 
-Multi-day events, such as trips and holidays, draw as one continuous bar across their days in the Month, multi-week and week grids, instead of a separate chip on each day. Where the bar crosses a week or month boundary it ends in a chevron and carries on in the next row. Events that have already finished are dimmed. All-day events are placed by calendar date, so they stay on the right day whatever time zone the display uses.
+Multi-day events, such as trips and holidays, draw as one continuous bar across their days in the Month, multi-week and week grids, instead of a separate chip on each day. Where the bar crosses a week or month boundary it ends in a chevron and carries on in the next row. All-day events are placed by calendar date, so they stay on the right day whatever time zone the display uses.
+
+### Past events
+
+Events that have ended are dimmed in every view, the agenda included. To clear them out of the agenda and list views instead, turn on **Hide ended events in the agenda and list** under **Past Events** in **Manage calendars**. A short agenda then shows only what is still to come. The day, week and month grids keep ended events dimmed, so a past day never looks empty. The setting is the household's, and changing it needs a parent.
 
 ### Display modes: inline vs cards
 
@@ -175,11 +187,19 @@ If the API refuses the move (moving one occurrence of a recurring event can be r
 - **Events** keep their start and end times, and only the date changes.
 - **Meals and chores** usually have no set time, so they simply move to the new day.
 
-### Click-to-edit from the widget
+### The event sheet
 
-You can click the tasks, chores and meals on the dashboard CalendarWidget. A tap opens the same edit modal the calendar subpage uses. The modals load only when needed, so they don't slow down the dashboard's first paint.
+Tapping an event opens its event sheet, the same one wherever you tap it: on the Calendar page, on Glance or on the dashboard's calendar widget. The sheet shows:
 
-That means most calendar jobs can be done from the dashboard: edit a chore, drag a meal or open an event's details, all without going to `/calendar`.
+- the person's colour dot and the event's title
+- when and where, as a sentence, for example "Thursday, November 5, 4 to 5:30, at Community Park"
+- the event's notes, and the calendars it is on
+- **Hide in Prism** (see [Hiding an event](#hiding-an-event))
+- **Delete**, **Close** and **Edit**.
+
+**Edit** opens the full event form. On the calendar widget, the **+** in its header adds an event on the day the widget shows.
+
+Tasks, chores and meals on the calendar widget open their own edit windows, the same ones the calendar subpage uses. The windows load only when needed, so they don't slow down the dashboard's first paint. Most calendar jobs can be done from the dashboard: edit a chore, drag a meal or open an event's sheet, all without going to `/calendar`.
 
 ### View Options menu
 
@@ -191,6 +211,7 @@ The gear next to the view dropdown opens View Options. Which toggles you see dep
 - **Overlay toggles**: show or hide events, meals, chores and tasks separately. A badge on the View Options button tells you when any of these is changed from its default.
 - **Display mode**: Inline or Cards. You can set it here too, on top of the per-view default.
 - **Reset to defaults**: puts every option back.
+- **Manage calendars**: at the foot of the menu, opens the calendar settings described under [Set it up](#set-it-up).
 
 These settings are saved in the browser's localStorage, separately for the subpage and the dashboard widget.
 
@@ -210,11 +231,11 @@ When nobody is logged in, notes are read-only, so the screensaver and babysitter
 
 ### Hiding an event
 
-A parent can hide an event without deleting it. Click the event and tick **Hide in Prism**. It disappears straight away from every view, widget and voice answer, and a toast offers **Undo**. The event stays in its source calendar, and later syncs don't bring it back.
+A parent can hide an event without deleting it. Tap the event and tick **Hide in Prism** in its sheet. The box shows to a signed-in parent and on a screen where nobody is signed in; there, the tick asks for a parent's PIN before it hides anything. A signed-in child doesn't see it. The event disappears straight away from every view, widget and voice answer, and a toast offers **Undo**. It stays in its source calendar, and later syncs don't bring it back.
 
 On one occurrence of a recurring event from Google or an iCal feed, ticking the box asks whether you mean **This event** or **Every event in the series**. Hiding the series also hides occurrences that sync in later. Events from a CalDAV calendar can only be hidden one at a time for now.
 
-Hidden events and series are listed under **Hidden events** in the **Manage** overlay on the Calendar page (Settings → Calendars), and **Unhide** brings one back.
+Hidden events and series are listed under **Hidden events** in **Manage calendars**, and **Unhide** brings one back.
 
 Hiding is separate from **Delete**. Delete removes the event from Prism and, for Google events and single CalDAV events, from the source calendar as well.
 
@@ -223,7 +244,7 @@ Hiding is separate from **Delete**. Delete removes the event from Prism and, for
 Click **Add Event** in the calendar header or on the CalendarWidget. The modal has these fields:
 
 - **Title** (required)
-- **Calendar**: the Prism, Google and CalDAV calendars marked "Show in Add Event modal" (*Settings → Calendars*). iCal feeds aren't offered, and neither are calendars with subscription-style names (Birthdays, Holidays, Week Numbers).
+- **Calendar**: the Prism, Google and CalDAV calendars marked "Show in Add Event modal" in **Manage calendars**. iCal feeds aren't offered, and neither are calendars with subscription-style names (Birthdays, Holidays, Week Numbers).
 - **Color**: a preset palette plus your profile color.
 - **Description**
 - **Location**
@@ -257,25 +278,27 @@ Sync never removes events without asking. When an event disappears from its sour
 
 A connection can expire or be revoked. A password change can do it, so can withdrawing the grant on the provider's own security page, and so can an OAuth consent screen still in Testing, which limits tokens to seven days. When that happens sync stops, and a calendar that has stopped syncing looks just like a calendar with nothing on it.
 
-Prism tells you when this happens. A **Sync paused** badge appears on the Calendar page next to **Review N**, and a matching line appears on the Calendar dashboard widget. Either one opens the **Manage** overlay, where the **Reconnect** button restores the connection for every calendar on that account at once.
+Prism tells you when this happens. A **Sync paused** badge appears on the Calendar page next to **Review N**, and a matching line appears on the Calendar dashboard widget. Either one opens **Manage calendars**, where the **Reconnect** button restores the connection for every calendar on that account at once.
 
 The badge says as little as possible: how many calendars are affected, and which service if they are all on the same one. It never names a calendar or an account, because anyone walking past can read a wall display. It also stays off the screensaver.
 
-Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` if you only want syncs you start yourself, for example on a low-power device where you don't want background work. You can always sync by hand from the **Manage** overlay on the Calendar page (*Sync*).
+Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` if you only want syncs you start yourself, for example on a low-power device where you don't want background work. You can always sync by hand with **Sync Now** in **Manage calendars**.
 
 ### Troubleshooting
 
 #### Events not showing
 
-1. Open the Calendar page → **Manage** and check that the calendar is enabled.
-2. Tap **Sync** to force a refresh.
-3. Check *Settings → Integrations* to see if Google is still connected. OAuth tokens stop working if they are revoked on the Google side.
+1. Open **Manage calendars** (Calendar page > **View**) and check that the calendar is enabled.
+2. Tap **Sync Now** to force a refresh.
+3. Check *Settings > Integrations* to see if Google is still connected. OAuth tokens stop working if they are revoked on the Google side.
 4. The background sync also runs every 10 minutes, so you can wait one round.
-5. Look in **Hidden events** in the **Manage** overlay. A hidden event stays hidden through every sync.
+5. Look in **Hidden events** in **Manage calendars**. A hidden event stays hidden through every sync.
+6. If an ended event is missing from the agenda or list view, check **Past Events** in **Manage calendars**: with **Hide ended events in the agenda and list** on, those views leave out events that have ended.
+7. If a calendar's events vanish partway through the day, check its **Hide today's events after** rule.
 
 #### Events appearing in the wrong person's column
 
-Check which person the calendar is assigned to in the **Manage** overlay on the Calendar page. An event that is on both a personal calendar and the Family calendar is shown once, matched by `groupId`. If you still see duplicates, file an issue and include the calendar names.
+Check which person the calendar is assigned to in **Manage calendars**. An event that is on both a personal calendar and the Family calendar is shown once, matched by `groupId`. If you still see duplicates, file an issue and include the calendar names.
 
 #### "Sync paused" badge won't clear
 
@@ -297,7 +320,7 @@ The API refused the move. The usual cause is dragging one occurrence of a recurr
 
 #### Hidden hours showing the wrong range
 
-The hours use the 24-hour clock, so midnight to 6am is `0` to `6`. Check Calendar Hours in the **Manage** overlay on the Calendar page and save again if needed.
+The hours use the 24-hour clock, so midnight to 6am is `0` to `6`. Check **Calendar Hours** in **Manage calendars** and save again if needed.
 
 #### Forecast day-of-week labels are off
 

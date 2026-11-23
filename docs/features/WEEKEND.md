@@ -27,7 +27,7 @@ A place can also hold a location (place name, address, latitude and longitude), 
 
 ### Adding a place
 
-*Weekend → Add place* opens the form. Only the name is required.
+*Weekend > Add place* opens the form. Only the name is required.
 
 A new place starts with one of two statuses:
 

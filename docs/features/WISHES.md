@@ -62,7 +62,7 @@ There is one safeguard. **If someone has already secretly bought the item,** cro
 
 #### Microsoft To Do sync
 
-Each family member's wish list can sync both ways with a Microsoft To Do list. Set it up in *Settings → Integrations → Microsoft card → Wish lists*. The old *?section=wish* address now takes you there.
+Each family member's wish list can sync both ways with a Microsoft To Do list. Set it up in *Settings > Integrations > Microsoft card > Wish lists*. The old *?section=wish* address now takes you there.
 
 - You set it up for each family member separately.
 - Pick the Microsoft To Do list that goes with that person's wish list.

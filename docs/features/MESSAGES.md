@@ -11,7 +11,7 @@ Leave a note for the family on the wall. Everyone sees it when they walk past, a
 You can post a message from two places:
 
 1. **From the dashboard MessagesWidget**: the **+** (Add message) button opens the Post Message window.
-2. **From the full Messages page**: go to *nav → Messages* and type in the box at the top.
+2. **From the full Messages page**: go to *nav > Messages* and type in the box at the top.
 
 Both need you to be logged in. The message is signed with whoever is logged in, so nobody can post as someone else.
 
@@ -158,4 +158,4 @@ Pinned messages come first, newest first among them, and then the rest, newest f
 
 #### Important badge color clashes with theme
 
-The important accent uses your theme's destructive color, which is usually red. It is pure red on the default light theme and a little softer on the dark theme. A custom theme can change it, so check *Settings → Appearance*.
+The important accent uses your theme's destructive color, which is usually red. It is pure red on the default light theme and a little softer on the dark theme. A custom theme can change it, so check *Settings > Appearance*.

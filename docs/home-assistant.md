@@ -17,7 +17,7 @@ Home Assistant can show any web page as a sidebar entry. Prism only lets a site 
 
 Add the address you open Home Assistant at, exactly as the browser shows it (scheme, host and port):
 
-- **Home Assistant add-on:** *Settings → Add-ons → Prism → Configuration*, set **allowed_frame_ancestors** to your Home Assistant address (for example `http://homeassistant.local:8123`), save, and restart the add-on.
+- **Home Assistant add-on:** *Settings > Add-ons > Prism > Configuration*, set **allowed_frame_ancestors** to your Home Assistant address (for example `http://homeassistant.local:8123`), save, and restart the add-on.
 - **Docker:** set `ALLOWED_FRAME_ANCESTORS` in your `.env`, then `docker compose up -d app`:
 
 ```env
@@ -32,7 +32,7 @@ ALLOWED_FRAME_ANCESTORS=http://homeassistant.local:8123, https://ha.example.com
 
 ### Add the sidebar entry
 
-In Home Assistant: *Settings → Dashboards → Add dashboard → Webpage*. Give it a title and icon, and set the URL to Prism's address, for example `http://homeassistant.local:3000`. To open one particular dashboard, use its own address, such as `http://homeassistant.local:3000/d/kitchen`. Leave **Show in sidebar** on.
+In Home Assistant: *Settings > Dashboards > Add dashboard > Webpage*. Give it a title and icon, and set the URL to Prism's address, for example `http://homeassistant.local:3000`. To open one particular dashboard, use its own address, such as `http://homeassistant.local:3000/d/kitchen`. Leave **Show in sidebar** on.
 
 Older guides use `panel_iframe` in `configuration.yaml`. Home Assistant replaced it with Webpage dashboards in 2024.4.
 
@@ -234,7 +234,7 @@ The write endpoints (`shopping/add`, `chore/complete`) are part of the Voice API
 
 **"Authentication required" error**
 - Check that the `Authorization` header has `Bearer ` (with a space) before the token.
-- Check that the token hasn't been revoked in Settings → Security → API Tokens.
+- Check that the token hasn't been revoked in Settings > Security > API Tokens.
 
 **Sidebar page is blank or "refused to connect"**
 - Check that the allowlist is set (the add-on option `allowed_frame_ancestors`, or `ALLOWED_FRAME_ANCESTORS` in `.env`) and that Prism was restarted after.
@@ -247,4 +247,4 @@ The write endpoints (`shopping/add`, `chore/complete`) are part of the Voice API
 - Look for connection errors in the HA logs.
 
 **Google Calendar won't connect: "must end with a public top-level domain"**
-- The add-on runs on a private LAN address, and Google won't accept that as an OAuth redirect URI (the address Google sends you back to after sign-in). Either put Prism behind a public HTTPS URL, or use the method that needs no public URL, where you paste a refresh token from Google's OAuth Playground. See [Calendar → Google Calendar without a public URL](features/CALENDAR.md#google-calendar-without-a-public-url-oauth-playground).
+- The add-on runs on a private LAN address, and Google won't accept that as an OAuth redirect URI (the address Google sends you back to after sign-in). Either put Prism behind a public HTTPS URL, or use the method that needs no public URL, where you paste a refresh token from Google's OAuth Playground. See [Calendar > Google Calendar without a public URL](features/CALENDAR.md#google-calendar-without-a-public-url-oauth-playground).
