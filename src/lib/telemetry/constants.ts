@@ -13,6 +13,8 @@
  *     IP (the collector is instructed not to store it), no PII, no config, no
  *     usage. The id is a random UUID with no link to any account or hostname.
  *   - Inert until configured: if no collector endpoint is set, nothing is sent.
+ *   - Feedback votes (#1311) send {schema,id,referendum,answer}, and only when
+ *     someone taps an answer in More. The same switches stop them.
  */
 
 /** Bump if the payload shape changes so the collector can branch on it. */
@@ -45,6 +47,49 @@ export const DEFAULT_TELEMETRY_ENDPOINT = '';
 export function getTelemetryEndpoint(): string {
   return (process.env.PRISM_TELEMETRY_URL || DEFAULT_TELEMETRY_ENDPOINT).trim();
 }
+
+/**
+ * Where a feedback vote goes (#1311): `/vote` beside the check-in on the same
+ * collector. The check-in posts to the Worker's root, or to `/v1/checkin`, so
+ * `https://c.example.com` gives `https://c.example.com/vote` and
+ * `https://c.example.com/v1/checkin` gives `https://c.example.com/v1/vote`.
+ * Empty when there is no endpoint (or it is not a URL), which means inert.
+ */
+export function getVoteEndpoint(): string {
+  const base = getTelemetryEndpoint();
+  if (!base) return '';
+  try {
+    const url = new URL(base);
+    url.pathname = url.pathname.replace(/\/checkin\/?$/, '').replace(/\/$/, '') + '/vote';
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Why nothing may be sent right now (see telemetryOffReason in checkIn.ts):
+ *   - 'hard-disabled': PRISM_DISABLE_TELEMETRY=true (the Home Assistant
+ *     add-on's Anonymous stats option sets it).
+ *   - 'disabled': the switch in Settings > About is off.
+ *   - 'no-endpoint': no collector on this build (forks, source builds).
+ */
+export type TelemetryOffReason = 'hard-disabled' | 'disabled' | 'no-endpoint';
+
+/** Bump if the vote payload shape changes. Separate from the check-in's. */
+export const VOTE_SCHEMA_VERSION = 1;
+
+/** The exact payload a feedback vote sends (#1311). */
+export type VotePayload = {
+  /** Vote payload schema version. */
+  schema: number;
+  /** The same random install UUID the check-in sends, so one install has one answer. */
+  id: string;
+  /** Which question, e.g. "2026-11-navigation". */
+  referendum: string;
+  /** Which answer, e.g. "bottom-bar". */
+  answer: string;
+};
 
 /** The exact anonymous payload sent on each weekly check-in. */
 export type TelemetryPayload = {

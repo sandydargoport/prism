@@ -24,7 +24,8 @@
       "prism": "Prism",
       "pages": "Pages",
       "label": "Pages",
-      "home": "Home"
+      "home": "Home",
+      "feedback": "Feedback"
     },
     "actions": {
       "save": "Save",

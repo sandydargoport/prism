@@ -76,6 +76,33 @@ Any one of these turns it off:
   feature off for the whole install, which suits distro or workplace builds, and
   greys out the switch in the app.
 
+## Feedback votes
+
+Sometimes Prism asks one question at the bottom of **More**, with a button for
+each answer. The first one asks whether to keep the bar along the bottom or
+bring back the sidebar. Nothing is sent until someone taps an answer. Then
+Prism sends these fields to the same collector as the weekly check-in:
+
+```json
+{
+  "schema": 1,
+  "id": "9f2c7b3e-…",                  // the same random install id as above
+  "referendum": "2026-11-navigation",  // which question
+  "answer": "bottom-bar"               // which answer
+}
+```
+
+Each install has one answer per question. Tapping another answer replaces the
+first. The collector keeps the id, the question, the answer and when it was
+set, and no IP address. Because the id is the same, an answer sits next to that
+install's check-in, and the maintainer reads the totals for each answer.
+
+**The same switch turns votes off.** If the check-in is off in any of the ways
+below, or no collector is set, nothing is sent. The question then says the
+vote can't be sent and shows no buttons, with a link to a public poll when
+there is one. Turning stats off later stops new votes. An answer that was
+already sent stays in the totals.
+
 ## Self-hosting the collector
 
 The collector is a small open-source Cloudflare Worker in

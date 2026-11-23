@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { ScreenJobs } from './DashboardGrid';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { FeedbackCard } from '@/components/feedback/FeedbackCard';
 
 /** How long the wall's dock stays after the last touch. */
 export const DOCK_WALL_MS = 10_000;
@@ -309,6 +310,8 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
               </section>
             );
           })}
+          {/* Last on a wall and on a phone alike (#1311). Hidden when no question is open. */}
+          <FeedbackCard />
         </DialogContent>
       </Dialog>
     </>
