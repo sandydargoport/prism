@@ -32,7 +32,6 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ArrowUp, ChevronRight, Plus, X } from 'lucide-react';
-import Link from 'next/link';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
@@ -220,7 +219,7 @@ export function ThroughTheDaySheet({
   idleBackground, onIdleBackgroundChange, idleHalf, onIdleHalfChange, editTab, onEditTabChange, idleCheck,
   allDashboards = [], currentDashboardId, onSwitchDashboard,
   screenPlan = null, onScreenPlanChange, screenId = null, forScreen = true, deviceNamed = true, onDeviceNamed,
-  previewDashboardId = null, onPreviewDashboardChange,
+  previewDashboardId = null, onPreviewDashboardChange, onOpenLook,
 }: {
   idleBackground?: IdleBackground;
   onIdleBackgroundChange?: (bg: IdleBackground) => void;
@@ -246,6 +245,8 @@ export function ThroughTheDaySheet({
   /** Another dashboard the canvas shows as it is saved, for a stop in its switch; null is this one. */
   previewDashboardId?: string | null;
   onPreviewDashboardChange?: (id: string | null) => void;
+  /** Opens the editor's Look panel, where screen fit and performance are. */
+  onOpenLook?: () => void;
 }) {
   const { timeFormat, householdTimezone } = useTimeFormat();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -657,7 +658,10 @@ export function ThroughTheDaySheet({
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(false)} onClick={() => setMotionOpen(true)}>Screensaver motion</button>
-              <Link href="/settings?section=display" className={chip(false)}>Screen fit and performance</Link>
+              {/* Screen fit and performance are the editor's Look > This screen (#1313). */}
+              {onOpenLook && (
+                <button type="button" className={chip(false)} onClick={onOpenLook} data-day-open-look>Screen fit and performance</button>
+              )}
             </div>
           </div>
         )}

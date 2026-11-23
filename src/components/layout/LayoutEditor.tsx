@@ -286,6 +286,7 @@ export function LayoutEditor({
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
+            onOpenLook={() => setSheet('look')}
           />
         );
       case 'look':

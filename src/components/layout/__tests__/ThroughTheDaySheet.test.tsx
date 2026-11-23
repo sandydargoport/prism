@@ -77,13 +77,15 @@ function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forS
       onDeviceNamed={named}
       previewDashboardId={preview}
       onPreviewDashboardChange={setPreview}
+      onOpenLook={lookOpened}
     />
   );
 }
 const named = jest.fn();
 const switched = jest.fn();
+const lookOpened = jest.fn();
 
-afterEach(() => { localStorage.clear(); switched.mockReset(); named.mockReset(); });
+afterEach(() => { localStorage.clear(); switched.mockReset(); named.mockReset(); lookOpened.mockReset(); });
 
 /** The switches the editor page holds now. */
 const kept = () => seen.plan!.switches;
@@ -205,6 +207,15 @@ describe('ThroughTheDaySheet', () => {
       pick('Night look', 'dashboard');
       expect(seen.value).toEqual({ source: 'dashboard' });
       expect(localStorage.getItem('prism-screensaver-dim')).toBeNull();
+    });
+
+    it('More\'s Screen fit and performance opens the editor\'s Look, not a Settings page (#1313)', () => {
+      render(<Harness initial={{ source: 'photos' }} />);
+      fireEvent.click(document.querySelector<HTMLElement>('[data-day-more]')!);
+      // No link out of the editor.
+      expect(document.querySelector('a[href*="/settings"]')).toBeNull();
+      press('Screen fit and performance');
+      expect(lookOpened).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -313,10 +313,10 @@ export function DisplaySection() {
         </div>
       </div>
 
-      {/* One screen's own settings live on that screen's editing bar (#1159). */}
+      {/* One screen's own settings live in that screen's editor (#1159), opened from More (#1313). */}
       <p className="text-sm text-muted-foreground" data-screen-settings-moved>
         One screen&apos;s own settings, like when it rests, the screensaver, orientation, performance
-        and the on-screen keyboard, are on that screen&apos;s editing bar: press Edit at the bottom of
+        and the on-screen keyboard, are in that screen&apos;s editor: choose More &gt; Edit layout on
         the screen, or choose it in{' '}
         <a href="/settings?section=displays" className="underline">Settings &gt; Screens</a> from a phone.
       </p>
