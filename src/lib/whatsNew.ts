@@ -10,7 +10,7 @@ export const WHATS_NEW = {
   title: "What's new in Prism",
   changelog: 'https://sandydargoport.github.io/prism/CHANGELOG/',
   items: [
-    "**Glance, a new front page layout.** The clock, the weather, what's next and the coming days, written as sentences over your photos. To use it: More > Edit layout > Dashboard > Glance. Your own dashboards are unchanged.",
+    "**Glance, a new front page layout.** The clock, the weather, what's next and the coming days, written as sentences over your photos. To use it: More > Edit layout > Dashboard > Glance > Make the default. Your own dashboards are unchanged.",
     '**Navigation is at the bottom of the screen.** Your main pages sit in a bar along the bottom. Its **More** button opens the other pages, Settings and Help.',
     '**Each screen is set up on the screen itself.** More > Edit layout > Through the day chooses what the screen shows when nobody is using it and at night, and when it switches to another dashboard. From your phone: More > Settings > Screens > Edit.',
     '**Photos fade from one to the next and slowly zoom**, and can show when and where they were taken: More > Settings > Appearance.',
