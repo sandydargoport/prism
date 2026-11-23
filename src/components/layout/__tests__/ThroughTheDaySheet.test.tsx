@@ -200,13 +200,17 @@ describe('ThroughTheDaySheet', () => {
 
   describe('a screen\'s switches are on the Screen sheet (#1326)', () => {
     beforeEach(() => {
+      // A Monday at 10 am on the screen's own clock, in any time zone, so both
+      // switches (weekday bus routes, and set times every day) are on today's line.
+      jest.useFakeTimers({ now: new Date(2026, 10, 23, 10, 0), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick'] });
       global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES }) })) as never;
     });
+    afterEach(() => jest.useRealTimers());
 
     it('Through the day holds none of the screen\'s controls: what it shows, its switches, Rest after, How dark, naming', async () => {
       render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} plan={{ dashboardId: BUS, switches: [
         { when: 'bus', dashboardId: BUS },
-        { when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: HOME },
+        { when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '08:00', dashboardId: HOME },
       ] }} />);
       await act(async () => {});
       expect(document.querySelector('[data-screen-plan], [data-switch-add], [data-switch-row], [data-screen-dashboard], [data-name-device]')).toBeNull();
