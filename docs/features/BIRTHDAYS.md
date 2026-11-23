@@ -62,12 +62,30 @@ Prism matches titles in English and German, so `Geburtstag`, `Hochzeitstag` and
 `Jubiläum` all work. Adding another language takes one line in
 `src/lib/services/birthday-detect.ts`, and contributions are welcome.
 
+### Birthdays on the calendar as name and age
+
+A birthday event on the calendar normally shows its own title. To have it read
+as the name and the age turned instead, for example "Emma, 9", turn on
+**Birthdays as name and age** for that calendar in **Manage calendars** (on the
+Calendar page, in the **View** menu). It works when the birthday list has that
+name with a birth year; otherwise the title shows as it is.
+
 ### Removing one
 
-A birthday you delete in Prism stays deleted. It won't come back on the next
-sync, even though the calendar event is still there, so you can tidy the list
-without touching the calendar itself. Delete the calendar event as well if you
-want it gone everywhere.
+Tap a row in the Birthdays widget to remove it, or tap it in the full list the
+widget opens on a phone. Prism asks for a parent's PIN, then for a
+confirmation. The birthday goes from the widget at once, and other screens drop
+it within 5 minutes.
+
+A birthday you remove in Prism stays removed. It won't come back on the next
+sync, even though the calendar event or contact is still there, so you can tidy
+the list without touching the calendar itself. Delete the calendar event as
+well if you want it gone everywhere.
+
+To bring one back, open **Manage calendars** and find it under **Removed
+birthdays**, below **Birthdays & milestones**, then tap **Restore**. The
+**Birthdays & milestones** list there can also remove a birthday with
+**Remove**.
 
 ## Details
 

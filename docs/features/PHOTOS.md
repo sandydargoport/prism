@@ -140,6 +140,27 @@ Each of these has its own settings:
 
 The browser fetches photos ahead of time and rotates them itself, so a new photo doesn't need a trip to the server.
 
+### Crossfade and slow zoom
+
+The wallpaper and the screensaver share one way of showing photos. The next photo is loaded and decoded first, then fades in over the current one for 2.2 seconds, so the picture never dips to black. While a photo is on screen it zooms slowly in or out, the next one the other way, anchored on its subject. Each photo is also cropped so its subject sits where no widget or Glance text covers it.
+
+Prism finds each photo's subject on the wall itself, a few photos every few minutes, and no photo leaves your install to do it.
+
+The zoom is off when the device asks for reduced motion, below the **Full** performance level, for a pinned photo, and when rotation is set to never. A screen that keeps dropping frames as its photo changes steps down a performance level, which also turns the zoom off.
+
+### When and where a photo was taken
+
+The wallpaper and the screensaver can say when the photo on screen was taken, in a bottom corner: "March", "March last year", "March 2019" or "On this day, 2021". The line moves clear of anything small already in that corner, and hides when neither bottom corner has room. It doesn't show on a phone.
+
+Two switches set it, in the **Background Wallpaper** card under *Settings → Appearance → Background and away*:
+
+- **Show when photos were taken**: on by default.
+- **Show where photos were taken**: off by default. Turned on, the line also names the town, for photos that have a location. To find it, Prism sends the photo's rough location (rounded to about a kilometre) to OpenStreetMap, once per photo.
+
+### On this day
+
+**On this day**, in the same card (off by default), mixes photos taken on today's date in earlier years into the rotation, every other turn. It goes by each screen's own date.
+
 ### Travel Map photo linking
 
 Photos with GPS data link themselves to travel pins nearby, using the Haversine formula for distance on a globe (by default within 50 km of each pin). A pin's detail panel shows a strip of the matching photos, and tapping one opens the lightbox.
@@ -178,7 +199,7 @@ For photos that synced before you set up GPS linking, *Settings → Photos → B
 
 ### Performance level interaction
 
-At the **Minimal** performance level (*Settings → Appearance → Performance*, chosen there or set by Auto):
+At the **Minimal** performance level (set per screen in its editor under **More → Edit layout → Look → This screen → Performance**, or chosen by Auto):
 
 - The Photo widget shows one fixed photo, the first one matching its filter, and stops cycling.
 - A pinned dashboard wallpaper still shows, since a fixed image costs nothing per frame.

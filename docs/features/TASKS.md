@@ -86,7 +86,7 @@ Both need someone logged in, parent or child. The text box records the logged-in
 
 ### Completing tasks
 
-Tap the checkbox to mark a task done. The row gets a line through it and fades. The undo button in the nav bar can reverse it for about 5 seconds.
+Tap a task's row to mark it done. The row gets a line through it and fades. The **Undo** button in the page header can reverse it for 30 seconds. To edit a task instead, use the small gear at the end of its row.
 
 If the task syncs with Microsoft To Do or Google Tasks, the completed state goes to that service on the next sync.
 
@@ -128,7 +128,7 @@ To move a task to another list, drag it onto that list's card header.
 
 ### Undo
 
-One undo history covers tasks, chores, shopping items and wishes. After you complete or delete a task, an **Undo** button shows in the nav bar for about 5 seconds. Tap it to reverse your last action.
+One undo history covers completing a task, checking off a shopping item and claiming a wish. After one of these, an **Undo** button shows in the page header for 30 seconds. Tap it to reverse your last action; it keeps up to your last three. Deleting a task cannot be undone.
 
 ### Mobile behavior
 

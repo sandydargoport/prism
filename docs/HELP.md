@@ -9,10 +9,10 @@ The guide gives every Prism feature its own page. Once setup is done, start here
 Setup takes five steps:
 
 1. Install Prism by following the [installation guide](getting-started/install.md).
-2. Add your family members under **Settings → Family Members → Add Member**. Each one gets a name, colour, avatar, role (parent or child) and their own 4- or 6-digit PIN.
-3. Set the PINs. Each member chooses a 4- or 6-digit PIN in the setup wizard when you first install, and can change it later in **Settings → Security**. A fresh install opens straight into the setup wizard, since there is no default PIN to log in with. The optional demo family uses `1234` for everyone, so change those PINs before you use Prism for real.
+2. Add your family members under **Settings → Family Members → Add Member**. Each one gets a name, colour, avatar, role (parent or child) and their own 4- or 6-digit PIN. Pets are added in the same section.
+3. Set the PINs. Each member chooses a 4- or 6-digit PIN in the setup wizard when you first install, and can change it later in **Settings → Security**. A member who would rather sign in with letters can use an alphanumeric PIN instead: in **Settings → Family Members**, edit the member and pick **Passcode**, 6, 8, 10 or 12 lowercase letters and numbers. A fresh install opens straight into the setup wizard, since there is no default PIN to log in with. The optional demo family uses `1234` for everyone, so change those PINs before you use Prism for real.
 4. Connect integrations under **Settings → Integrations**. Most families connect at least Google Calendar, weather (Open-Meteo is the default and needs no setup) and OneDrive. The [first-time setup walkthrough](getting-started/first-time-setup.md) has more.
-5. Arrange the dashboard: click the **grid icon** to start layout edit mode and move the widgets where you want them.
+5. Arrange the dashboard: tap **More → Edit layout** in the dock at the bottom of the screen, and move the widgets where you want them.
 
 After setup, install Prism as a PWA (a web app you can add to the home screen) on phones and tablets. The [Mobile guide](features/MOBILE.md) shows how.
 
@@ -20,7 +20,9 @@ After setup, install Prism as a PWA (a web app you can add to the home screen) o
 
 ## Logging in
 
-Tap your avatar and enter your PIN, which is 4 or 6 digits depending on how it was set. The PIN goes in as soon as you type the last digit. You can also use a keyboard (0-9, Backspace and Enter). Each time you use Prism, your sign-in is extended: parents stay signed in for about 7 days after their last use and children for 1 day, up to a hard limit of 30 days for parents and 7 days for children. There is no separate setting for shared devices.
+Tap your avatar and enter your PIN, which is 4 or 6 digits depending on how it was set. The PIN goes in as soon as you type the last digit. You can also use a keyboard (0-9, Backspace and Enter). A member with an alphanumeric PIN gets an **ABC** key on the pad, which shows the letters, and **123** to go back; letters typed on a keyboard work too. Each time you use Prism, your sign-in is extended: parents stay signed in for about 7 days after their last use and children for 1 day, up to a hard limit of 30 days for parents and 7 days for children.
+
+A parent can keep a phone they use every day signed in for longer. In **Settings → Security → Signed-in devices**, tap **Keep signed in**: that device then stays signed in for 30 days from its last use, up to a year from sign-in. The same card lists the parent's other signed-in devices, with **Sign out** on each and **Sign out all other devices**.
 
 ---
 
@@ -45,15 +47,23 @@ There is also a third role, guest, for shared displays and kiosks. A guest can l
 
 ## Features
 
+### [Glance](features/DASHBOARD.md)
+
+Glance is the built-in dashboard and the front page on a new install. It draws the day as one scene over the photo: the date and clock, the weather as one line, **Next** and **Later today**, the coming days as short sentences, and quiet lines for chores left, the shopping list and a birthday coming up. It can be edited like any dashboard: its **Widgets** sheet in the editor chooses which parts show, and **Show the day as an arc** draws the day as the sun's path instead of a list. Glance can be reset to its default but not deleted.
+
+### The dock
+
+The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Screensaver), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). Which pages sit on the dock is chosen in **Settings → Features**.
+
 ### [Calendar](features/CALENDAR.md)
 
-The calendar pulls from Google (signed in with OAuth) and from iCal subscriptions. It has seven views (Agenda, Day, List, Schedule, 2W, Month and 3 Months). You can drag events to move them and click one in the dashboard widget to edit it. The server syncs on a schedule, and there are calendar notes, hidden hours and a view options menu. On a phone, only the Agenda view is shown.
+The calendar pulls from Google (signed in with OAuth) and from iCal subscriptions. It has seven views (Agenda, Day, List, Schedule, 2W, Month and 3 Months). You can drag events to move them, and tapping an event on the Calendar page, Glance or the dashboard widget opens its event sheet, with **Edit** and **Delete**. The server syncs on a schedule, and there are calendar notes, hidden hours and a **View** menu. On a phone, only the Agenda view is shown.
 
-A parent can hide an event in Prism and leave it in its calendar, using **Hide in Prism** in the event detail. On a recurring Google, iCal or CalDAV event, they can hide the whole series. Hidden events and series are listed under **Settings → Calendars**, each with **Unhide**. The same card lists birthdays and milestones, each with **Remove**, and a synced birthday you removed can be brought back from **Removed birthdays**.
+A parent can hide an event in Prism and leave it in its calendar, using **Hide in Prism** in the event sheet. On a screen where nobody is signed in, the tick asks for a parent's PIN. On a recurring Google, iCal or CalDAV event, they can hide the whole series. Hidden events and series are listed under **Hidden events** in **Manage calendars** (on the Calendar page, in the **View** menu), each with **Unhide**. The same window lists birthdays and milestones, each with **Remove**, and a synced birthday you removed can be brought back from **Removed birthdays**.
 
 ### [Shopping](features/SHOPPING.md)
 
-Keep several lists, each laid out by category, and see who added each item. You can scan barcodes with the camera or a USB scanner, sync lists both ways with Microsoft To Do, and send a list to your online Kroger cart at any Kroger banner with one click. The dashboard and screensaver widget hide checked items, and an item ticked by mistake stays for five seconds so you can untick it.
+Keep several lists, each laid out by category. Tap an item to cross it off; it moves to **Checked off**, and the pencil at the end of its row edits or deletes it. You can scan barcodes with the camera or a USB scanner, sync lists both ways with Microsoft To Do, and send a list to your online Kroger cart at any Kroger banner with one click. The dashboard and screensaver widget hide checked items, and an item ticked by mistake stays for five seconds so you can untick it.
 
 ### [Recipes](features/RECIPES.md)
 
@@ -61,11 +71,11 @@ Import recipes from a web address (any page that uses the schema.org recipe form
 
 ### [Tasks](features/TASKS.md)
 
-Tasks are to-do items that you can assign to someone and give a due date, a priority and a list. They group by person and then by list, and sync both ways with Microsoft To Do or Google Tasks.
+Tasks are to-do items that you can assign to someone and give a due date, a priority and a list. They group by person and then by list, and sync both ways with Microsoft To Do or Google Tasks. Google Tasks subtasks and Microsoft To Do steps come in indented under their task, and a tick on either side reaches the other.
 
 ### [Chores](features/CHORES.md)
 
-Chores are household jobs that come round again, each with a person, a frequency and points. The Chores page opens on what to do today, tomorrow and later this week, and parents set chores up behind **Manage**. A chore can need a parent's approval before its points count. When **Require the PIN for every change** is off, chores can be ticked on the wall without a PIN.
+Chores are household jobs that come round again, each with a person, a frequency and points. The Chores page opens on what to do today, tomorrow and later this week, and parents set chores up behind **Manage**. A chore can need a parent's approval before its points count. A chore can also be **For** a pet, added under **Settings → Family Members**, and then says who did it today. When **Require the PIN for every change** is off, a named wall screen can tick chores without a PIN.
 
 ### [Goals & Points](features/GOALS.md)
 
@@ -81,7 +91,7 @@ Each member has a wish list, and others can claim an item in secret. Gift-givers
 
 ### [Photos](features/PHOTOS.md)
 
-Upload photos directly or sync them from OneDrive, choosing folders with a folder picker. The location stored in each photo feeds the Travel Map photo strip. The screensaver, the dashboard wallpaper and the slideshow widget all use these photos.
+Upload photos directly or sync them from OneDrive, choosing folders with a folder picker. The location stored in each photo feeds the Travel Map photo strip. The screensaver, the dashboard wallpaper and the slideshow widget all use these photos. On the wallpaper and the screensaver, each photo crossfades into the next and zooms slowly, and a small line can say when and where it was taken.
 
 ### [Travel Map](features/TRAVEL.md)
 
@@ -93,7 +103,7 @@ Weekend Ideas is a family board of local places to visit. Keep a list of ideas, 
 
 ### [Bus Tracking](features/BUS.md)
 
-Bus Tracking predicts when the school bus will arrive by reading FirstView emails in Gmail. It adjusts how often it checks, finds routes on its own and keeps separate morning and afternoon trips for each student.
+Bus Tracking predicts when the school bus will arrive by reading FirstView emails in Gmail. It adjusts how often it checks, finds routes on its own and keeps separate morning and afternoon trips for each student. With a walk time set on a route, the Now & Next widget says when to leave for the stop.
 
 ### [Display Modes](features/DISPLAY-MODES.md)
 
@@ -125,13 +135,13 @@ Meals is a weekly meal planner. Plan each meal by day and type (breakfast, lunch
 
 ### Performance
 
-Each screen runs at one of three levels, set in *Settings → Appearance → Performance*:
+Each screen runs at one of three levels, set in that screen's editor under **More → Edit layout → Look → This screen → Performance**. From a phone, open **Settings → Screens**, tap **Edit** on the screen, then **Look → This screen**.
 
 - **Full**: every effect is on.
 - **Reduced**: no backdrop blur, no full-screen celebrations or particle effects, a still night sky.
 - **Minimal**: Reduced, plus the Photo widget shows one static image, refreshes come ~2.5× less often, and fades are near-instant.
 
-**Auto** is the default. It starts at Full and times the fade each time the screen goes idle or wakes. After three choppy fades in a row it steps down one level and stays there. Picking a level by hand overrides it. A lightning-bolt badge in the dashboard header shows while a screen runs below Full. A kiosk can set the level in its address with `?perf=auto`, `full`, `reduced` or `minimal`.
+**Auto** is the default. It starts at Full and times the fade each time the screen goes idle or wakes. After three choppy fades in a row it steps down one level and stays there. Picking a level by hand overrides it. While a screen runs below Full, a **Performance** tile shows under **More → This screen**, and tapping it puts the screen back to Full. A kiosk can set the level in its address with `?perf=auto`, `full`, `reduced` or `minimal`.
 
 ---
 
@@ -140,23 +150,24 @@ Each screen runs at one of three levels, set in *Settings → Appearance → Per
 This is a short tour of **Settings**. Where a section belongs to a feature, that feature's page above covers it in full.
 
 - **Account & Profile** shows the current session and the default display user.
-- **Family Members** is where you add, edit and remove members and set their names, colours, avatars, roles and order. Pick a colour from the 18 presets, or tap the rainbow swatch to choose any colour with the sliders or a colour code, then tap **Done**. The panel shows each colour next to every other member's. A colour another member already uses, preset or custom, shows that member's initial, and two members can still share it.
+- **Family Members** is where you add, edit and remove members and set their names, colours, avatars, roles and order. Each member signs in with a **PIN** (4 or 6 digits) or a **Passcode**, an alphanumeric PIN of 6, 8, 10 or 12 lowercase letters and numbers; a child who cannot spell yet is better on a PIN. **Pets** are listed here too, each with a name, a kind (cat, dog or other) and a colour. A pet has no sign-in or points, and a chore can be **For** a pet. Pick a colour from the 18 presets, or tap the rainbow swatch to choose any colour with the sliders or a colour code, then tap **Done**. The panel shows each colour next to every other member's. A colour another member already uses, preset or custom, shows that member's initial, and two members can still share it.
 - **General** sets the weather location (city or postal code), the time zone and **Week Starts On**.
 - **Integrations** has one card for each provider: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV and Kroger (shopping cart push), plus **Photo Sources**. You choose which task, shopping and wish lists sync inside the Microsoft or Google card.
 - **Text Size** sets how large everything reads on each dashboard.
-- **Appearance** holds **Color Scheme** (Light, Dark or System), **Theme Palette**, **Seasonal Theme**, **Performance**, **Screensaver** (start delay, a background of photos or night sky, photo rotation, the widget transition effect and its options, and drift), the timers for **Auto-Hide Navigation**, **Away Mode** and sign-out, and **Orientation Override**.
-- **Screens** lists every named screen, whether it is on and the dashboard it shows (picked there too), with **Edit**, **Rename** and **Remove**. A screen is named from its own editor: on the screen, open the editor, then **Through the day** → **Name this device** (for example "Kitchen"). A named screen keeps its screensaver, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. A browser nobody has named shows the default dashboard.
+- **Appearance** is in three groups. **Look** has **Color Scheme** (Light, Dark or System) with the **Palette**, and **Seasonal Theme**. **Background and away** has **Background Wallpaper** (with **Show when photos were taken**, **Show where photos were taken** and **On this day**), **Away mode** (how long the house sits idle before it turns on) and **Night sky**. **All screens** has **Units** and **Language**.
+- **One screen's own settings** are in that screen's editor (**More → Edit layout**), not in Settings. **Through the day** has when the screen rests and how dark it goes at night, and its **More** holds the screensaver motion. **Look → This screen** has **Performance**, **On-screen keyboard**, **Orientation**, **Auto-hide navigation** and **Sign out after**.
+- **Screens** lists every named screen, whether it is on and the dashboard it shows (picked there too), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor, also from a phone. A screen is named from its own editor: on the screen, open the editor, then **Through the day** → **Name this device** (for example "Kitchen"). A named screen keeps its screensaver, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. A browser nobody has named shows the default dashboard.
 - **Photos** manages sources (Local, OneDrive, Immich), with a folder picker, display filters for orientation and resolution, GPS backfill (adding locations to older photos) and the pinned wallpaper and screensaver photos.
 - **Bus Tracking** covers the Gmail connection, route setup, finding routes automatically and the Gmail label filter.
-- **Input** has switches for the on-screen keyboard and the barcode scanner. The keyboard has a household switch and a choice per device (**Use household setting**, **Always** or **Never**), so a tablet can use its own keyboard while a wall display keeps Prism's.
+- **Input** has switches for the on-screen keyboard and the barcode scanner. The keyboard switch here is for all screens. To choose **Always** or **Never** for one screen, such as a tablet with its own keyboard, use **On-screen keyboard** in that screen's editor under **Look → This screen**.
 - **Babysitter Info** holds emergency contacts, house info (the WiFi password is stored encrypted with AES-256-GCM), child info and house rules.
-- **Features** shows or hides each page in the navigation.
-- **Security** holds the PINs and API tokens, with a choice of Voice or Full scope for each token.
+- **Features** shows or hides each page in the navigation, and picks the pages on the dock: Home and up to five ticked with **On the dock**. The rest are in **More**.
+- **Security** holds the PINs and API tokens, with a choice of Voice or Full scope for each token. **Require the PIN for every change** decides whether a wall screen asks for a PIN to tick a chore, a task or a shopping item, or to add a shopping item; it is on for existing installs and off for new ones. **Signed-in devices** keeps the device in hand signed in for 30 days from its last use and lists the other devices signed in as you, with **Sign out**.
 - **Backups & Data** lets you create, download, restore or delete database backups. It also has destructive actions (**Truncate** and **Seed demo data**) that ask you to confirm first. On an install that started with the demo family, a **Demo data** card removes it.
 - **Activity Log** is a log of every action taken in the app, which you can filter.
 - **About** shows the version and links, and lets you run the setup wizard again.
 
-> Calendar management (turning synced calendars on, assigning and colouring them, iCal subscriptions and **Calendar Hours**) has moved out of Settings. You now find it behind the **Manage** button on the Calendar page.
+> Calendar management (turning synced calendars on, assigning and colouring them, each calendar's display rules, iCal subscriptions, **Past Events** and **Calendar Hours**) has moved out of Settings. You now find it in **Manage calendars**, in the **View** menu on the Calendar page.
 
 ---
 
@@ -180,6 +191,8 @@ The [Mobile & PWA guide](features/MOBILE.md) has the steps and tips for each ope
 | Ctrl+U | Calendar notes | Underline |
 | Ctrl+Shift+S | Calendar notes | Strikethrough |
 | Ctrl+Shift+L | Calendar notes | Bullet list |
+| Delete or Backspace | Layout editor | Remove the selected widget (with Undo) |
+| Arrow keys | Layout editor | Move the selected widget one cell, or resize it in resize mode |
 | Ctrl+Shift+M | Layout editor | Toggle measure mode |
 
 ---

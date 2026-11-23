@@ -222,7 +222,7 @@ There are three possible causes:
 
 MapLibre's globe projection works the GPU hard. On low-power hardware you can:
 
-- set *Settings → Appearance → Performance* to Reduced or Minimal
+- set the screen's **Performance** to Reduced or Minimal, in its editor under **More → Edit layout → Look → This screen**
 - turn off other widgets to leave the GPU more room
 - switch to the flat Mercator map, which looks plainer but is lighter, by setting `projection: 'mercator'` where the globe starts up.
 

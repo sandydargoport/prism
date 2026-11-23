@@ -17,37 +17,30 @@ Prism holds as many shopping lists as you like. Families tend to set up somethin
 - A general list for Target, Costco or anywhere else that sells a bit of everything.
 - One list per store, for example separate Mariano's and Costco lists for the same week, each with its own default store in the Kroger picker.
 
-Create one in *Shopping → New List*. Each list has:
+Create one with **Add List** in the Shopping header (on a phone, **New list** in the page's menu, the ⋮ button). Each list has:
 
-- **Name**
-- **Icon** (a Lucide icon name)
-- **Color**
-- **List type**: `grocery`, `hardware` or `general`. This sets the category layout; grocery uses the six-category grid.
-- **Visible categories**: leave it empty (null) to show all, or pick a subset for a non-grocery list.
-- **Assigned member** (optional): for a personal list that only one family member should see.
+- **List Name**
+- **Description** (optional)
+- **List Type**: **Grocery**, **General**, **All** or **Custom**. Each preset picks which categories the list shows, and you can tick categories one by one below it.
+- **Assign To** (optional): only that person, or a parent, can check items off. Leave it on **Everyone** for a family list.
 
-Tap a list's tab to switch to it. The list you were on is remembered in the browser's localStorage.
+To change a list later, open the page's menu and tap **Edit List** (parents only). Tap a list's tab to switch to it. The list you were on is remembered in the browser's localStorage.
 
 ### Categories
 
-Grocery lists sort items into a grid of six categories:
+Items sit under category headings. Prism starts with six grocery categories (Produce, Bakery, Meat, Dairy, Frozen and Pantry) and six for other shops (Clothes, Housewares, Gardening, Electronics, Office and Gifts). An item with no category goes under **Other**.
 
-- **Produce** (green)
-- **Bakery** (brown)
-- **Meat** (red)
-- **Dairy** (blue)
-- **Frozen** (cyan)
-- **Pantry** (amber)
+#### Manage
 
-On other lists a category can be any word you like, such as `clothes`, `housewares`, `electronics` or `garden`.
+**Manage** in the Shopping header (or **Manage Categories** in the page's menu) shows the categories, one row each, in the household's order. Tap **Done** to go back to the list. Each row says how many of its items are still to buy on this list, and you can:
 
-#### Drag-to-reorder
+- **Reorder** it. With a mouse, drag the row by its grip (⋮⋮). On a touchscreen, press and hold the row for half a second and then drag it. Put the categories in the order you walk through your store. The order is the household's and applies to every list.
+- **Rename** it: tap its name, type the new one and press Enter.
+- **Change its emoji**: tap the emoji and pick another.
+- **Show or hide it on this list** with its switch.
+- **Remove** it with the trash icon. It goes from every list, and its items move to Other.
 
-With a mouse, drag a category by its header, which carries a **grip icon** (⋮⋮). On a touchscreen, press and hold anywhere on a category for half a second and then drag it, the same way you move a meal. If your finger moves straight away, the page scrolls instead. Put the categories in the order you walk through your store. The order is saved in localStorage as `prism:grocery-category-order` and applies to every grocery list.
-
-#### Empty rows
-
-Each category card starts with six empty lines to type into. The **+1**, **-1** and **+5** buttons change the count for that card. A card always keeps at least one empty line so you have somewhere to tap.
+Below the rows, type a name and tap **Add category** to make a new one. On a list that shows chosen categories, the new one is added to that list at once. **Reset to the default categories** puts back the defaults and their order for every list. Changing categories needs someone signed in.
 
 ### Microsoft To Do sync
 
@@ -64,13 +57,12 @@ Sync runs both ways, and when the two sides disagree the newest change wins. Ite
 
 ### Adding items
 
-You can add an item three ways:
+You can add an item two ways:
 
-1. Type in the text field inside a category card and press Enter. The item goes into that category. Pressing Tab or clicking away also adds it.
-2. Tap the **+** button in a category header to open the Add Item window with that category already chosen. Use this when you want to set a quantity, unit or note as you add it.
-3. Scan a barcode with the phone camera or a USB scanner (see below). Prism fills in the name from Open Food Facts and picks a category.
+1. Type in the **Add an item** field at the top of the list and press Enter. Prism asks where it goes (*Where does milk go?*) and offers the categories, this list's first. Tap one to file the item there, or **Skip** to leave it under Other. The item is saved before the question, so walking away leaves it under Other. On a phone, the round button at the bottom right takes you to the same field.
+2. Scan a barcode with the phone camera or a USB scanner (see below). Prism fills in the name from Open Food Facts and picks a category.
 
-Each item has:
+To set a quantity, unit or note, add the item, then tap the pencil at the end of its row. Each item has:
 
 - **Name** (required)
 - **Quantity** (a whole number)
@@ -80,24 +72,23 @@ Each item has:
 
 ### Toggling items
 
-Tap an item's row to check it off. The text gets a line through it and fades. The progress bar at the top of the list moves as you go.
+Tap anywhere on an item to check it off. Its name gets a line through it, and a moment later it moves down into **Checked off** at the foot of the list. Tap **Checked off** to open it, and tap an item there to put it back on the list. The count beside the Shopping title (for example 3/12) shows how many items are checked off out of the total.
 
 There are no checkboxes because the whole row is the tap target, which is easier to hit with one hand in the store.
 
 The line appears as soon as you tap, before the server has answered, so it feels instant on a slow connection. In the rare case the server refuses the change, the row goes back to how it was.
 
+After a check-off, an **Undo** button shows in the page header for 30 seconds. Tap it to put the item back.
+
 ### Editing / Deleting
 
-Every item row has an **Edit** (pencil) and a **Delete** (trash) button on the right, always visible:
-
-- **Edit** opens the item's window with its current values.
-- **Delete** removes the item at once. Deletes cannot be undone; the Undo button in the nav bar only reverses a check-off.
+The pencil at the end of each row opens the item's window with its current values. **Delete** is inside that window and removes the item at once. Deletes cannot be undone; the Undo button only reverses a check-off.
 
 ### Barcode scanning
 
 #### Phone camera (PWA + browser)
 
-Tap the **camera icon** in the Shopping header to open a full-screen scanner. It uses the device camera and the ZXing library to read the barcode. When a scan succeeds:
+On a phone, open the page's menu (⋮) and tap **Scan Barcode** to open a full-screen scanner. It uses the device camera and the ZXing library to read the barcode. When a scan succeeds:
 
 1. The phone vibrates, where the device supports it.
 2. A tone plays. On iOS, tapping "Open Camera" is what allows the sound to play.
@@ -115,7 +106,7 @@ It has been tested with scanners from Honeywell, Eyoyo, Symcode and NADAMOO.
 
 ### Send to Kroger / Mariano's
 
-Once you connect a Kroger account (*Settings → Integrations → Kroger*), the Shopping header shows a **Send to Kroger** button. Tap it to open the SKU picker (a SKU is one specific product in the store's catalog).
+Once you connect a Kroger account (*Settings → Integrations → Kroger*), the Shopping header shows a **Send to Kroger** button (on a phone, it is in the page's menu). Tap it to open the SKU picker (a SKU is one specific product in the store's catalog).
 
 The picker goes through each unchecked item on the active list in turn:
 
@@ -145,13 +136,13 @@ The [Kroger integration guide](KROGER.md) walks through the whole setup: creatin
 
 ### Shopping mode (full-screen in-store)
 
-Tap the **maximize icon** in the list header to switch to shopping mode. The list fills the screen, the list tabs and filter buttons are hidden, and a small header shows the list name and a progress badge, so all the height goes to items.
+Tap the **maximize icon** in the Shopping header (on a phone, **Shopping mode** in the page's menu) to switch to shopping mode. The list fills the screen, the list tabs and filter buttons are hidden, and a small header shows the list name and a progress badge, so all the height goes to items.
 
 It is meant for using a phone in one hand while you push a cart. Tap **minimize** to leave.
 
 ### Progress + celebration
 
-The progress bar at the top of each list shows how many items are checked out of the total. When you check off the last one, a short animation plays: a shopping cart rolls across the screen with a kid riding in it, arms up, trailing confetti, and "All Done!" bounces in. It goes away by itself after 3 seconds.
+The count beside the Shopping title, and the progress bar in shopping mode, show how many items are checked out of the total. When you check off the last one, a short animation plays: a shopping cart rolls across the screen with a kid riding in it, arms up, trailing confetti, and "All Done!" bounces in. It goes away by itself after 3 seconds.
 
 The animation is skipped if the device asks for reduced motion (`prefers-reduced-motion`) or Prism's performance level is set to Reduced or Minimal.
 

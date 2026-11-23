@@ -36,6 +36,7 @@ For each route, set:
 - **Checkpoints**: the geofence labels you want to show, in order. A geofence is a zone FirstView draws on the map, and its emails name the zone the bus just entered. You list the ones you care about, such as "Bus barn", "Maple & 3rd" and "Pine Grove".
 - **Your Stop**: a dropdown to choose which of your checkpoints is your stop. The arrival prediction counts down to it.
 - **School name**: the school, which counts as the last checkpoint in the morning and the first in the afternoon.
+- **Minutes to walk to the stop** (0 to 60): how long it takes to get from the door to the stop. With a walk time, the Now & Next widget says when to leave (see [When to leave](#when-to-leave)). 0 shows no leave time.
 
 Active days are Mon to Fri by default (`[1,2,3,4,5]`), and you can't change them in the route dialog yet.
 
@@ -67,7 +68,7 @@ Positions come every few seconds and are already a little old when they arrive, 
 
 1. Go to *Settings → Bus Tracking → Live Tracking → Create provider token.* The token has the `bus:ingest` scope, which lets it post positions and nothing else. Prism shows it only once.
 2. Point your provider at `https://<your-prism>/api/bus-tracking/live/ingest` with the header `Authorization: Bearer <token>`.
-3. If you like, choose the map's look under *Map style*: Simple (plain grey streets) is the default, and Detailed adds coloured roads and parks. Choose what it shows under *Camera*: *Follow* frames the bus and your stop and zooms in as the bus gets near, and *Whole route* keeps the whole trip in view. The camera moves only when the bus nears the edge or the view can zoom in a whole level, so it isn't zooming all the time. The map goes dark with Prism's theme. Its + and - buttons zoom by hand, and the camera takes over again a minute later. The bus shows as a beacon, a dot with a cone pointing the way it is heading, which pulses while its position is live. Speed shows in mph or km/h, following *Settings → Display → Units*.
+3. If you like, choose the map's look under *Map style*: Simple (plain grey streets) is the default, and Detailed adds coloured roads and parks. Choose what it shows under *Camera*: *Follow* frames the bus and your stop and zooms in as the bus gets near, and *Whole route* keeps the whole trip in view. The camera moves only when the bus nears the edge or the view can zoom in a whole level, so it isn't zooming all the time. The map goes dark with Prism's theme. Its + and - buttons zoom by hand, and the camera takes over again a minute later. The bus shows as a beacon, a dot with a cone pointing the way it is heading, which pulses while its position is live. Speed shows in mph or km/h, following **Units** in *Settings → Appearance → All screens*.
 4. Once a provider reports drivers, *Drivers this week* lists them. Type how each one should appear on the display (say "Mr. Lastname"), and wide widgets read "Today's driver: Mr. Lastname". Prism never chooses a title itself, and if you leave the entry blank it shows the name as reported.
 5. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
 
@@ -137,6 +138,10 @@ With six or more checkpoints, the dots wrap onto two rows that read in order, le
 #### On the screensaver
 
 You can also put the Bus Tracker widget on the screensaver canvas (it's hidden there by default). It shows the same full train-map widget, with no cut-down version. It helps when a child checks the wall display on the way out of the door.
+
+### When to leave
+
+A route with **Minutes to walk to the stop** set gets a leave-by line in the Now & Next widget, above the bus line: for example *Leave · Morning bus · in 6 min*. Prism counts back the walk time from the bus's predicted arrival at your stop, or from the timetable when there is no live prediction yet. The line turns amber in the last five minutes, says *now* when it is time to go, and drops out once that moment has passed.
 
 ### Status states
 
