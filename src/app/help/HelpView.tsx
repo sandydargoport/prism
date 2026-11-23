@@ -317,7 +317,7 @@ function DashboardHelp() {
       <P>Widgets &gt; <strong>Start from a template</strong> offers six built-in dashboards: <strong>Family Central</strong>, <strong>Calendar Focus</strong>, <strong>Command Center</strong>, <strong>Meal Planner</strong>, <strong>School Mornings</strong>, and a photo-forward <strong>Ambient</strong>. Each is built around a single hero widget (usually the calendar) with the other widgets sized to their natural shape and grouped into a couple of balanced zones, a starting point you then rearrange. Every template ships in both landscape and portrait versions, and the resting layout has its own matching set.</P>
 
       <H2>Overview</H2>
-      <P>More &gt; <strong>Overview</strong> shows a small map of your layout. It highlights widget positions and flags issues like overlapping or undersized widgets. Click the map to scroll the canvas to that spot. To see the layout at another screen's size, use <strong>Shown at</strong> above the canvas.</P>
+      <P>More &gt; <strong>Overview</strong> shows a small map of your layout. It highlights widget positions and flags issues like overlapping or undersized widgets. Click the map to scroll the canvas to that spot. To see the layout at another screen&apos;s size, use <strong>Shown at</strong> above the canvas.</P>
 
       <H2>Seeing It at a Screen Size</H2>
       <P>Look &gt; <strong>See it at a screen size</strong> (or Ctrl+Shift+M) hides the editor and shows the layout as it will appear. <strong>Show Nav</strong> or <strong>Hide Nav</strong> shows it with or without the bar along the bottom; <strong>Exit Preview</strong> goes back to the editor.</P>
