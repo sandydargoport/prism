@@ -158,18 +158,19 @@ On the live dashboard the box around your widgets is stretched to fill the real 
 - **Drag** a widget to move it on the grid.
 - **Tap** a widget to select it; it is marked **Move**. Tap it again for resize mode, marked **Resize**, and drag the handles on its edges and corners. A third tap lets it go.
 - With a widget selected, **Delete** or **Backspace** removes it, with **Undo** in the message that follows. The arrow keys move it one cell, or in resize mode make it wider or taller (right, down) or narrower or shorter (left, up). No key acts while you type in a field or hold Ctrl, Alt or Cmd.
-- In the **Widgets** panel, **On this dashboard** lists each widget with its **X**, **Y**, **W** and **H**, for exact placement. Tap a widget's name there to hide it, and **+ Add widget** brings back a hidden one.
+- In the **Widgets** panel, **On this dashboard** lists each widget with its **X**, **Y**, **W** and **H**, for exact placement. Tap a widget's name there to pick it, as a tap on the screen does; the **×** beside the name hides it, and **+ Add widget** brings back a hidden one.
 
 The widgets are **Clock, Weather, Calendar, Tasks, Chores, Shopping, Meals, Messages, Photos, Points/Goals, Birthdays, Wishes, and Bus Tracker.**
 
 #### Widget properties
 
-Select a widget and a bar of its properties appears at the top of the canvas. It styles that widget on its own:
+Pick a widget on the screen or in the list in the **Widgets** panel (**More > Edit layout > Widgets**); its settings are below the list, beside the canvas on a laptop and below it on a phone. Its row in the list is marked. If another panel is open, Widgets comes forward. With nothing picked, that place says so in one line. The settings style that widget on its own, and the canvas shows only the screen. The **×** beside the widget's name lets it go, as a third tap on it does. With the focus on a setting, **Delete**, **Backspace** and the arrow keys still act on the widget.
 
+- **Colours**: which set of colours the Fill, Outline and Text swatches offer (Seasonal, Ocean, Sunset, Forest, Mono or Candy).
 - **Fill**: **Default** (the theme's card), **Transparent** (no card: the words sit straight on the photo in light text with a soft shadow), **Frosted** (a white, blurred card), **Glass** (a see-through card over the photo, which the Ambient templates use), a colour from the palette, or **Custom**. Under the swatches, **Opacity** sets how strong the fill is, or **Blur** for Frosted.
 - **Outline**: the border's colour and opacity, including **None** to remove the widget's border.
 - **Text**: the text colour, and **Size** (S, M, L or XL).
-- **Align**, for the clock and the weather, in their **Text** choices: **Across** (Auto, Left, Centre, Right) and **Up/down** (Auto, Top, Middle, Bottom) set where the contents sit. On **Auto**, a small tile (a third of the width or less) that touches a screen corner hugs that corner, and any other tile is centred. A small weather tile shows the icon, temperature and condition on one line each, and the rest once the tile is wide enough.
+- **Align**, for the clock and the weather, under **Text**: **Across** (Auto, Left, Centre, Right) and **Up/down** (Auto, Top, Middle, Bottom) set where the contents sit. On **Auto**, a small tile (a third of the width or less) that touches a screen corner hugs that corner, and any other tile is centred. A small weather tile shows the icon, temperature and condition on one line each, and the rest once the tile is wide enough.
 - **Grid**, for the calendar: the strength of its grid lines and a background colour for its cells.
 - **Hide when empty**: Prism doesn't draw the widget while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and brings it back when something arrives. Its space stays blank, so nothing else moves. It is on by default on the screensaver and on a calm dashboard's idle screen, and off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't have this option. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.
 - **Hide first on a small screen**: leaves the widget out on a screen below about three quarters of the design size, so the others have room.

@@ -497,6 +497,16 @@ export function Dashboard({
   const previewLayout = layout.isEditing && previewId && previewId !== layout.activeLayout?.id
     ? data.layouts.allLayouts.find((l) => l.id === previewId) ?? null
     : null;
+  // The widget selected on the canvas, whose own settings show in the
+  // Widgets panel (#1323). Let go whenever the canvas shows another layout:
+  // the screensaver's, another dashboard's, or none.
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  useResetOn(
+    !layout.isEditing ? 'off' : previewLayout ? `preview:${previewLayout.id}` : layout.editingScreensaver ? 'resting' : 'in use',
+    () => setSelectedWidgetId(null),
+  );
+  // Stays / Fades on the canvas, on a dashboard that is its own idle screen.
+  const idleToggles = layout.isEditing && layout.editTab === 'idle' && !isMobile;
 
   // Always this wrapper, styled or not, so a change of text size does not
   // remount the dashboard under it.
@@ -627,6 +637,11 @@ export function Dashboard({
               onDeleteDashboard={handleDeleteDashboard}
               view={layout.activeLayout?.view}
               onResetBuiltIn={() => layout.setEditingWidgets(TODAY_TEMPLATE.widgets.map((w) => ({ ...w })))}
+              selectedWidgetId={selectedWidgetId}
+              onSelectedWidgetChange={setSelectedWidgetId}
+              // As the grid being edited draws the selected widget.
+              hideEmptyByDefault={layout.editingScreensaver || calmIdle}
+              idleToggles={!layout.editingScreensaver && idleToggles}
             />
           )}
 
@@ -649,6 +664,8 @@ export function Dashboard({
               enabledSizes={enabledSizes}
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
+              selectedWidgetId={selectedWidgetId}
+              onSelectedWidgetChange={setSelectedWidgetId}
             />
           ) : previewLayout ? (
             // Another dashboard as it is saved, for a moment in its switch
@@ -697,7 +714,7 @@ export function Dashboard({
                   drift={idleDrift}
                   morph
                   // Stays / Fades belongs to the Idle screen tab, on a dashboard that is its own idle screen.
-                  idleToggles={layout.isEditing && layout.editTab === 'idle' && !isMobile}
+                  idleToggles={idleToggles}
                   widgetConstraints={dashboardConstraints}
                   margin={8}
                   headerOffset={layout.isEditing ? 16 : uiHidden || wallDock ? 0 : 56}
@@ -706,6 +723,8 @@ export function Dashboard({
                   enabledSizes={enabledSizes}
                   onScrollInfo={handleScrollInfo}
                   scrollToRef={scrollToGridRef}
+                  selectedWidgetId={selectedWidgetId}
+                  onSelectedWidgetChange={setSelectedWidgetId}
                 />
               </WidgetExpandProvider>
             </WidgetErrorBoundary>

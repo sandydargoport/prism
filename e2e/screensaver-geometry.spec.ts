@@ -1585,6 +1585,16 @@ test.describe('editor keys (#987)', () => {
     await page.keyboard.press('ArrowLeft');
     await expect.poll(async () => (await box()).x).toBeLessThan(moved.x - 4);
 
+    // From its settings in the Widgets panel (#1323), on the editor page and
+    // not in the frame, the keys still reach it, as they did from the strip
+    // that sat over the canvas.
+    const glass = page.locator('[data-editor-sheet="widgets"] [data-widget-settings="clock"]').getByLabel('Glass fill');
+    await glass.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(async () => (await box()).x).toBeGreaterThan(start.x + 4);
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => (await box()).x).toBeLessThan(start.x + 4);
+
     // Second tap: resize mode. Down grows it a cell, left shrinks it a cell.
     await clock.click();
     const before = await box();

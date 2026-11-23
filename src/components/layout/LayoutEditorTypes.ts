@@ -95,6 +95,15 @@ export interface LayoutEditorProps {
   view?: string | null;
   /** Put the built-in dashboard's widgets back as they came. */
   onResetBuiltIn?: () => void;
+  /**
+   * The widget selected on the canvas (#1323): its own settings show in the
+   * Widgets panel, which comes forward when one is selected.
+   */
+  selectedWidgetId?: string | null;
+  onSelectedWidgetChange?: (id: string | null) => void;
+  /** How the grid being edited draws the selected widget: see LayoutGridEditorProps. */
+  hideEmptyByDefault?: boolean;
+  idleToggles?: boolean;
 }
 
 export interface ExportWidget {
