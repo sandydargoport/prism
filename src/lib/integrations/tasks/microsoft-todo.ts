@@ -19,6 +19,7 @@ import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { dueFromInstant } from '@/lib/utils/taskDue';
 import { isValidTimezone } from '@/lib/utils/timezone';
 import { parseDateOnly, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
+import { envCredential } from '@/lib/integrations/envCredential';
 
 const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -333,8 +334,8 @@ export const microsoftTodoProvider: TaskProvider = {
       return null;
     }
 
-    const clientId = process.env.MICROSOFT_CLIENT_ID;
-    const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+    const clientId = envCredential('MICROSOFT_CLIENT_ID');
+    const clientSecret = envCredential('MICROSOFT_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
       console.error('Microsoft OAuth credentials not configured');

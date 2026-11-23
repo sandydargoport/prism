@@ -15,6 +15,7 @@ import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { decrypt } from '@/lib/utils/crypto';
+import { envCredential } from '@/lib/integrations/envCredential';
 
 type GoogleCredentials = { clientId: string; clientSecret: string; redirectUri: string; gmailRedirectUri: string };
 type MicrosoftCredentials = { clientId: string; clientSecret: string; redirectUri: string; tasksRedirectUri: string };
@@ -46,8 +47,10 @@ export async function getGoogleCredentials(): Promise<GoogleCredentials | null> 
       gmailRedirectUri: stored.gmailRedirectUri ?? process.env.GOOGLE_GMAIL_REDIRECT_URI ?? '',
     };
   }
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  // envCredential reads a blank value or the .env.example placeholder as unset,
+  // so an unedited copy of the example file does not count as set up.
+  const clientId = envCredential('GOOGLE_CLIENT_ID');
+  const clientSecret = envCredential('GOOGLE_CLIENT_SECRET');
   // redirectUri is derived per-request now (#124); the env var is an optional
   // fallback and no longer required for the config to count as "set up".
   const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? '';
@@ -66,8 +69,8 @@ export async function getMicrosoftCredentials(): Promise<MicrosoftCredentials | 
       tasksRedirectUri: stored.tasksRedirectUri ?? process.env.MICROSOFT_TASKS_REDIRECT_URI ?? stored.redirectUri ?? '',
     };
   }
-  const clientId = process.env.MICROSOFT_CLIENT_ID;
-  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+  const clientId = envCredential('MICROSOFT_CLIENT_ID');
+  const clientSecret = envCredential('MICROSOFT_CLIENT_SECRET');
   // redirectUri is derived per-request now (#124); env var is an optional fallback.
   const redirectUri = process.env.MICROSOFT_REDIRECT_URI ?? '';
   const tasksRedirectUri = process.env.MICROSOFT_TASKS_REDIRECT_URI ?? redirectUri ?? '';

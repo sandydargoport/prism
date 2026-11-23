@@ -16,6 +16,7 @@ import type {
   CreateWishItemInput,
   UpdateWishItemInput,
 } from './types';
+import { envCredential } from '@/lib/integrations/envCredential';
 
 const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -166,8 +167,8 @@ export const microsoftTodoWishItemProvider: WishItemProvider = {
       return null;
     }
 
-    const clientId = process.env.MICROSOFT_CLIENT_ID;
-    const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+    const clientId = envCredential('MICROSOFT_CLIENT_ID');
+    const clientSecret = envCredential('MICROSOFT_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
       console.error('Microsoft OAuth credentials not configured');
