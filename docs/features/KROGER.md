@@ -26,7 +26,7 @@ It takes about 5 minutes.
 
 #### 2. Register the application
 
-- Go to Manage → **Applications** → **Add Application** (https://developer.kroger.com/manage/apps).
+- Go to Manage > **Applications** > **Add Application** (https://developer.kroger.com/manage/apps).
 - Fill in:
   - **Application Name**: anything you like. `Prism Family Dashboard` works.
   - **Environment**: **Production**. (Skip "Certification", which has fake data.)
@@ -63,7 +63,7 @@ The app's detail page shows a **Client ID** and a **Client Secret**. Click **Sho
 
 In Prism:
 
-1. Open the **Settings → Integrations → "Kroger / Mariano's cart"** card (direct link `/settings?section=integrations#kroger`).
+1. Open the **Settings > Integrations > "Kroger / Mariano's cart"** card (direct link `/settings?section=integrations#kroger`).
 2. If no credentials are set yet, click **Enter Kroger credentials** and paste the Client ID and Client Secret. Prism stores them encrypted.
 3. Click **Connect Kroger**. You go to `kroger.com`, sign in with your **shopper account** (the one you really shop with, which may differ from the developer account if you used two emails) and approve the requested scopes.
 4. You come back to Prism with the status **Connected**.
@@ -75,7 +75,7 @@ Setup is finished, so go to **Shopping**, add some items and tap **Send to Kroge
 
 ### What it does
 
-- **Per-user OAuth**: each family member who wants to send items to Kroger connects their own shopper account on the **Settings → Integrations → "Kroger / Mariano's cart"** card. Their tokens are stored encrypted with AES-256-GCM, using the existing `ENCRYPTION_KEY`.
+- **Per-user OAuth**: each family member who wants to send items to Kroger connects their own shopper account on the **Settings > Integrations > "Kroger / Mariano's cart"** card. Their tokens are stored encrypted with AES-256-GCM, using the existing `ENCRYPTION_KEY`.
 - **SKU picker per item**: for each unchecked shopping item, Prism fetches up to 5 matching products from Kroger and shows them with image, name, size, price and a unit price in the same unit (lb, fl oz or ct), so you can compare the products on a page directly.
 - **SKU caching**: once you pick *"Mariano's 2% Reduced Fat Milk Gallon"* for the item *"milk"*, Prism remembers that productId on the shopping item. The next time you send *"milk"*, the same product is already selected, so after the first trip your weekly staples take one tap.
 - **Quantity controls**: set how many of each item go in the cart (1 to 99) with the +/- buttons. The review screen shows `× 2` next to anything with more than one.
@@ -106,7 +106,7 @@ Setup is finished, so go to **Shopping**, add some items and tap **Send to Kroge
 | `403 Forbidden` on developer.kroger.com | Your session went stale. Sign out, open a private window and sign back in. |
 | `kroger_state_mismatch` after consent | Redis was cleared, or more than 10 minutes passed between starting and finishing sign-in. Click Connect again. |
 | `kroger_token_exchange_failed` | Usually the secret changed, so paste the credentials again. Less often the redirect URI doesn't match: compare the one in the developer portal with the URL your browser went to. |
-| Picker shows `no price` everywhere | No default store is set. Go to Settings → Integrations → "Kroger / Mariano's card" → "Set store". |
+| Picker shows `no price` everywhere | No default store is set. Go to Settings > Integrations > "Kroger / Mariano's card" > "Set store". |
 | Picker can't find your item | Use the search box above the products to change the term (for example shorten `"jumbo, raw, tail-on shrimp, peeled and deveined"` to `"shrimp"`). |
 | "Too many items (max 200 per request)" | A shopping list has more than 200 unchecked items. Split it into two lists. |
 

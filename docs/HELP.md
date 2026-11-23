@@ -9,10 +9,10 @@ The guide gives every Prism feature its own page. Once setup is done, start here
 Setup takes five steps:
 
 1. Install Prism by following the [installation guide](getting-started/install.md).
-2. Add your family members under **Settings → Family Members → Add Member**. Each one gets a name, colour, avatar, role (parent or child) and their own 4- or 6-digit PIN. Pets are added in the same section.
-3. Set the PINs. Each member chooses a 4- or 6-digit PIN in the setup wizard when you first install, and can change it later in **Settings → Security**. A member who would rather sign in with letters can use an alphanumeric PIN instead: in **Settings → Family Members**, edit the member and pick **Passcode**, 6, 8, 10 or 12 lowercase letters and numbers. A fresh install opens straight into the setup wizard, since there is no default PIN to log in with. The optional demo family uses `1234` for everyone, so change those PINs before you use Prism for real.
-4. Connect integrations under **Settings → Integrations**. Most families connect at least Google Calendar, weather (Open-Meteo is the default and needs no setup) and OneDrive. The [first-time setup walkthrough](getting-started/first-time-setup.md) has more.
-5. Arrange the dashboard: tap **More → Edit layout** in the dock at the bottom of the screen, and move the widgets where you want them.
+2. Add your family members under **Settings > Family Members > Add Member**. Each one gets a name, colour, avatar, role (parent or child) and their own 4- or 6-digit PIN. Pets are added in the same section.
+3. Set the PINs. Each member chooses a 4- or 6-digit PIN in the setup wizard when you first install, and can change it later in **Settings > Security**. A member who would rather sign in with letters can use an alphanumeric PIN instead: in **Settings > Family Members**, edit the member and pick **Passcode**, 6, 8, 10 or 12 lowercase letters and numbers. A fresh install opens straight into the setup wizard, since there is no default PIN to log in with. The optional demo family uses `1234` for everyone, so change those PINs before you use Prism for real.
+4. Connect integrations under **Settings > Integrations**. Most families connect at least Google Calendar, weather (Open-Meteo is the default and needs no setup) and OneDrive. The [first-time setup walkthrough](getting-started/first-time-setup.md) has more.
+5. Arrange the dashboard: tap **More > Edit layout** in the dock at the bottom of the screen, and move the widgets where you want them.
 
 After setup, install Prism as a PWA (a web app you can add to the home screen) on phones and tablets. The [Mobile guide](features/MOBILE.md) shows how.
 
@@ -22,7 +22,7 @@ After setup, install Prism as a PWA (a web app you can add to the home screen) o
 
 Tap your avatar and enter your PIN, which is 4 or 6 digits depending on how it was set. The PIN goes in as soon as you type the last digit. You can also use a keyboard (0-9, Backspace and Enter). A member with an alphanumeric PIN gets an **ABC** key on the pad, which shows the letters, and **123** to go back; letters typed on a keyboard work too. Each time you use Prism, your sign-in is extended: parents stay signed in for about 7 days after their last use and children for 1 day, up to a hard limit of 30 days for parents and 7 days for children.
 
-A parent can keep a phone they use every day signed in for longer. In **Settings → Security → Signed-in devices**, tap **Keep signed in**: that device then stays signed in for 30 days from its last use, up to a year from sign-in. The same card lists the parent's other signed-in devices, with **Sign out** on each and **Sign out all other devices**.
+A parent can keep a phone they use every day signed in for longer. In **Settings > Security > Signed-in devices**, tap **Keep signed in**: that device then stays signed in for 30 days from its last use, up to a year from sign-in. The same card lists the parent's other signed-in devices, with **Sign out** on each and **Sign out all other devices**.
 
 ---
 
@@ -53,7 +53,7 @@ Glance is the built-in dashboard and the front page on a new install. It draws t
 
 ### The dock
 
-The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Screensaver), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). Which pages sit on the dock is chosen in **Settings → Features**.
+The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Screensaver), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). Which pages sit on the dock is chosen in **Settings > Features**.
 
 ### [Calendar](features/CALENDAR.md)
 
@@ -75,7 +75,7 @@ Tasks are to-do items that you can assign to someone and give a due date, a prio
 
 ### [Chores](features/CHORES.md)
 
-Chores are household jobs that come round again, each with a person, a frequency and points. The Chores page opens on what to do today, tomorrow and later this week, and parents set chores up behind **Manage**. A chore can need a parent's approval before its points count. A chore can also be **For** a pet, added under **Settings → Family Members**, and then says who did it today. When **Require the PIN for every change** is off, a named wall screen can tick chores without a PIN.
+Chores are household jobs that come round again, each with a person, a frequency and points. The Chores page opens on what to do today, tomorrow and later this week, and parents set chores up behind **Manage**. A chore can need a parent's approval before its points count. A chore can also be **For** a pet, added under **Settings > Family Members**, and then says who did it today. When **Require the PIN for every change** is off, a named wall screen can tick chores without a PIN.
 
 ### [Goals & Points](features/GOALS.md)
 
@@ -131,17 +131,17 @@ These smaller features have no page of their own, so they are described here.
 
 ### Meals
 
-Meals is a weekly meal planner. Plan each meal by day and type (breakfast, lunch, snack or dinner). A meal can also have a time of day, which places it on the calendar; if you leave it blank, breakfast is at 7am, lunch at 12pm, snack at 3pm and dinner at 6pm. Link a meal to a recipe from the [Recipes](features/RECIPES.md) library, and opening the meal takes you to that recipe. Mark meals as cooked to keep track. You can drag meals between days, also in the dashboard Meals widget on a touch screen, and filter the week to one or more meal types with the breakfast, lunch, dinner and snack pills. To bring in a meal plan from Tandoor or Mealie, use **Add ▾ → Sync meal plan…**: you review and approve the meals, and they arrive with their recipes. The week starts on the day set in **Settings → General → Week Starts On**.
+Meals is a weekly meal planner. Plan each meal by day and type (breakfast, lunch, snack or dinner). A meal can also have a time of day, which places it on the calendar; if you leave it blank, breakfast is at 7am, lunch at 12pm, snack at 3pm and dinner at 6pm. Link a meal to a recipe from the [Recipes](features/RECIPES.md) library, and opening the meal takes you to that recipe. Mark meals as cooked to keep track. You can drag meals between days, also in the dashboard Meals widget on a touch screen, and filter the week to one or more meal types with the breakfast, lunch, dinner and snack pills. To bring in a meal plan from Tandoor or Mealie, use **Add ▾ > Sync meal plan…**: you review and approve the meals, and they arrive with their recipes. The week starts on the day set in **Settings > General > Week Starts On**.
 
 ### Performance
 
-Each screen runs at one of three levels, set in that screen's editor under **More → Edit layout → Look → This screen → Performance**. From a phone, open **Settings → Screens**, tap **Edit** on the screen, then **Look → This screen**.
+Each screen runs at one of three levels, set in that screen's editor under **More > Edit layout > Look > This screen > Performance**. From a phone, open **Settings > Screens**, tap **Edit** on the screen, then **Look > This screen**.
 
 - **Full**: every effect is on.
 - **Reduced**: no backdrop blur, no full-screen celebrations or particle effects, a still night sky.
 - **Minimal**: Reduced, plus the Photo widget shows one static image, refreshes come ~2.5× less often, and fades are near-instant.
 
-**Auto** is the default. It starts at Full and times the fade each time the screen goes idle or wakes. After three choppy fades in a row it steps down one level and stays there. Picking a level by hand overrides it. While a screen runs below Full, a **Performance** tile shows under **More → This screen**, and tapping it puts the screen back to Full. A kiosk can set the level in its address with `?perf=auto`, `full`, `reduced` or `minimal`.
+**Auto** is the default. It starts at Full and times the fade each time the screen goes idle or wakes. After three choppy fades in a row it steps down one level and stays there. Picking a level by hand overrides it. While a screen runs below Full, a **Performance** tile shows under **More > This screen**, and tapping it puts the screen back to Full. A kiosk can set the level in its address with `?perf=auto`, `full`, `reduced` or `minimal`.
 
 ---
 
@@ -155,11 +155,11 @@ This is a short tour of **Settings**. Where a section belongs to a feature, that
 - **Integrations** has one card for each provider: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV and Kroger (shopping cart push), plus **Photo Sources**. You choose which task, shopping and wish lists sync inside the Microsoft or Google card.
 - **Text Size** sets how large everything reads on each dashboard.
 - **Appearance** is in three groups. **Look** has **Color Scheme** (Light, Dark or System) with the **Palette**, and **Seasonal Theme**. **Background and away** has **Background Wallpaper** (with **Show when photos were taken**, **Show where photos were taken** and **On this day**), **Away mode** (how long the house sits idle before it turns on) and **Night sky**. **All screens** has **Units** and **Language**.
-- **One screen's own settings** are in that screen's editor (**More → Edit layout**), not in Settings. **Through the day** has when the screen rests and how dark it goes at night, and its **More** holds the screensaver motion. **Look → This screen** has **Performance**, **On-screen keyboard**, **Orientation**, **Auto-hide navigation** and **Sign out after**.
-- **Screens** lists every named screen, whether it is on and the dashboard it shows (picked there too), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor, also from a phone. A screen is named from its own editor: on the screen, open the editor, then **Through the day** → **Name this device** (for example "Kitchen"). A named screen keeps its screensaver, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. A browser nobody has named shows the default dashboard.
+- **One screen's own settings** are in that screen's editor (**More > Edit layout**), not in Settings. **Through the day** has when the screen rests and how dark it goes at night, and its **More** holds the screensaver motion. **Look > This screen** has **Performance**, **On-screen keyboard**, **Orientation**, **Auto-hide navigation** and **Sign out after**.
+- **Screens** lists every named screen, whether it is on and the dashboard it shows (picked there too), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor, also from a phone. A screen is named from its own editor: on the screen, open the editor, then **Through the day** > **Name this device** (for example "Kitchen"). A named screen keeps its screensaver, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. A browser nobody has named shows the default dashboard.
 - **Photos** manages sources (Local, OneDrive, Immich), with a folder picker, display filters for orientation and resolution, GPS backfill (adding locations to older photos) and the pinned wallpaper and screensaver photos.
 - **Bus Tracking** covers the Gmail connection, route setup, finding routes automatically and the Gmail label filter.
-- **Input** has switches for the on-screen keyboard and the barcode scanner. The keyboard switch here is for all screens. To choose **Always** or **Never** for one screen, such as a tablet with its own keyboard, use **On-screen keyboard** in that screen's editor under **Look → This screen**.
+- **Input** has switches for the on-screen keyboard and the barcode scanner. The keyboard switch here is for all screens. To choose **Always** or **Never** for one screen, such as a tablet with its own keyboard, use **On-screen keyboard** in that screen's editor under **Look > This screen**.
 - **Babysitter Info** holds emergency contacts, house info (the WiFi password is stored encrypted with AES-256-GCM), child info and house rules.
 - **Features** shows or hides each page in the navigation, and picks the pages on the dock: Home and up to five ticked with **On the dock**. The rest are in **More**.
 - **Security** holds the PINs and API tokens, with a choice of Voice or Full scope for each token. **Require the PIN for every change** decides whether a wall screen asks for a PIN to tick a chore, a task or a shopping item, or to add a shopping item; it is on for existing installs and off for new ones. **Signed-in devices** keeps the device in hand signed in for 30 days from its last use and lists the other devices signed in as you, with **Sign out**.
@@ -213,7 +213,7 @@ These problems come up often:
 
 ### Forgot PIN
 
-A parent can set a new PIN for a child or guest without knowing the old one, in **Settings → Security → Change PIN**. Changing a parent's own PIN, or a co-parent's, still needs the current one. A parent who forgot theirs can be reset with `scripts/reset-pin.js` on the server.
+A parent can set a new PIN for a child or guest without knowing the old one, in **Settings > Security > Change PIN**. Changing a parent's own PIN, or a co-parent's, still needs the current one. A parent who forgot theirs can be reset with `scripts/reset-pin.js` on the server.
 
 ### Stuck in Away or Babysitter Mode
 

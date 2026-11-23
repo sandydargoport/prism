@@ -22,7 +22,7 @@ subscriptions and calendars you made inside Prism.
 !!! tip "iPhone birthdays"
     iCloud contacts use CardDAV (the standard for syncing contacts), so the
     birthdays saved on contacts on your phone come straight through. Tick
-    **contact birthdays** when you connect iCloud under *Settings → Integrations*.
+    **contact birthdays** when you connect iCloud under *Settings > Integrations*.
 
 ### Adding one Prism can't find
 

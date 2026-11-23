@@ -18,7 +18,7 @@ Lists are the main way to organize tasks. Families often use lists like these:
 - **Work**, one per parent.
 - **School**, one per child.
 
-Create lists in *Settings → Integrations → (Google or Microsoft) card → New List*. Each list has:
+Create lists in *Settings > Integrations > (Google or Microsoft) card > New List*. Each list has:
 
 - **Name**
 - **Color**: shown as a colored dot in the list picker and as a tag on each task.
@@ -33,7 +33,7 @@ Each Prism instance uses one provider.
 
 #### Microsoft To Do (bidirectional)
 
-1. In *Settings → Integrations → Microsoft* card, connect your account.
+1. In *Settings > Integrations > Microsoft* card, connect your account.
 2. In the same card, pick a Microsoft To Do list for each Prism list you want to sync.
 
 Sync runs both ways, and the newest change wins. It covers the title, the notes (which become the description), whether it is completed, and the due date.
@@ -42,7 +42,7 @@ Microsoft To Do's steps come in as subtasks, indented under their task. A step h
 
 #### Google Tasks (bidirectional)
 
-1. In *Settings → Integrations → Google* card, connect your account. This is the same Google sign-in used for Calendar, with Tasks access added.
+1. In *Settings > Integrations > Google* card, connect your account. This is the same Google sign-in used for Calendar, with Tasks access added.
 2. In the same card, choose which Google Tasks list goes with which Prism list.
 
 It works the same as Microsoft: both ways, newest change wins, and it syncs the title, notes, completed state and due date. Subtasks come in too, indented under their task in the order Google keeps them, each with its own due date and notes, and ticking one off in Prism ticks it off in Google. Ticking a task leaves its subtasks as they are, as Google does. Attachments are not imported.
@@ -172,7 +172,7 @@ Use the Microsoft To Do or Google Tasks sync. Share the list with the other pers
 
 #### Tasks not syncing
 
-1. Open *Settings → Integrations → (Google or Microsoft) card* and check the provider is still connected.
+1. Open *Settings > Integrations > (Google or Microsoft) card* and check the provider is still connected.
 2. In the same card, check that sync is turned on for the list.
 3. Tap **Sync now** to sync straight away.
 4. Look at the list in the other service and check the task you expect is there.
@@ -187,11 +187,11 @@ The other service marked the task not done, and because the newest change wins, 
 
 #### "Create List" button missing
 
-Lists are created in *Settings → Integrations → (Google or Microsoft) card → New List*. The Tasks page has no button for making a list; its picker only shows lists that already exist.
+Lists are created in *Settings > Integrations > (Google or Microsoft) card > New List*. The Tasks page has no button for making a list; its picker only shows lists that already exist.
 
 #### List deletion deleted my tasks
 
-That should not happen: deleting a list moves its tasks to the inbox. If tasks did disappear, look in the audit log (*Settings → Activity Log*) to see what was actually done.
+That should not happen: deleting a list moves its tasks to the inbox. If tasks did disappear, look in the audit log (*Settings > Activity Log*) to see what was actually done.
 
 #### Sub-grouping (Person → List) looks weird
 

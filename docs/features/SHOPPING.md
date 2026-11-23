@@ -44,7 +44,7 @@ Below the rows, type a name and tap **Add category** to make a new one. On a lis
 
 ### Microsoft To Do sync
 
-Each shopping list can sync with one Microsoft To Do list. Set it up in the **Microsoft** provider card under *Settings → Integrations*:
+Each shopping list can sync with one Microsoft To Do list. Set it up in the **Microsoft** provider card under *Settings > Integrations*:
 
 1. Connect Microsoft (a one-time OAuth sign-in).
 2. Pick a Prism shopping list.
@@ -106,7 +106,7 @@ It has been tested with scanners from Honeywell, Eyoyo, Symcode and NADAMOO.
 
 ### Send to Kroger / Mariano's
 
-Once you connect a Kroger account (*Settings → Integrations → Kroger*), the Shopping header shows a **Send to Kroger** button (on a phone, it is in the page's menu). Tap it to open the SKU picker (a SKU is one specific product in the store's catalog).
+Once you connect a Kroger account (*Settings > Integrations > Kroger*), the Shopping header shows a **Send to Kroger** button (on a phone, it is in the page's menu). Tap it to open the SKU picker (a SKU is one specific product in the store's catalog).
 
 The picker goes through each unchecked item on the active list in turn:
 
@@ -171,11 +171,11 @@ You have hit the rate limit of 120 requests a minute. Recipe imports add ingredi
 
 #### Send to Kroger button missing
 
-The button only appears when there is something to send. Either Kroger is not connected (*Settings → Integrations → Kroger*) or the active list has no unchecked items.
+The button only appears when there is something to send. Either Kroger is not connected (*Settings > Integrations > Kroger*) or the active list has no unchecked items.
 
 #### SKU picker shows "no price" everywhere
 
-You have not set a default store. Go to *Settings → Integrations → Kroger → Set store* and enter your zip code. With no store set, Kroger's API returns nationwide product data with no store prices.
+You have not set a default store. Go to *Settings > Integrations > Kroger > Set store* and enter your zip code. With no store set, Kroger's API returns nationwide product data with no store prices.
 
 #### SKU picker can't find an obvious item
 
@@ -191,4 +191,4 @@ The scanner only reaches Prism when the Prism page has keyboard focus. If an ope
 
 #### Microsoft To Do sync stuck
 
-Open the **Microsoft** provider card under *Settings → Integrations* and tap **Sync now**. If that does not help, check the card's connection, because the sign-in may have expired.
+Open the **Microsoft** provider card under *Settings > Integrations* and tap **Sync now**. If that does not help, check the card's connection, because the sign-in may have expired.

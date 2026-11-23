@@ -131,7 +131,7 @@ Prism works out the matches each time you open a pin's detail panel. It stores n
 
 #### GPS backfill
 
-For photos that synced before Prism saved GPS data, run *Settings → Photos → Backfill GPS*. It reads the EXIF GPS data from the files already synced, without downloading them again, and fills the `photos.latitude` and `photos.longitude` columns. A photo with coordinates shows up the next time you open a pin near it.
+For photos that synced before Prism saved GPS data, run *Settings > Photos > Backfill GPS*. It reads the EXIF GPS data from the files already synced, without downloading them again, and fills the `photos.latitude` and `photos.longitude` columns. A photo with coordinates shows up the next time you open a pin near it.
 
 #### Match radius
 
@@ -215,14 +215,14 @@ The status toggles (been there, want to go) and the bucket list star save when y
 There are three possible causes:
 
 1. The photos have no GPS EXIF data. Check the photo's metadata: not every phone records GPS, and iOS removes it on share unless "preserve location" is on.
-2. The photos haven't been through GPS backfill. Run *Settings → Photos → Backfill GPS*.
+2. The photos haven't been through GPS backfill. Run *Settings > Photos > Backfill GPS*.
 3. The place is more than 50 km from where the photos were taken. Matching uses a fixed 50 km radius, so photos from further away don't attach.
 
 #### Globe rotation feels jerky on a Pi
 
 MapLibre's globe projection works the GPU hard. On low-power hardware you can:
 
-- set the screen's **Performance** to Reduced or Minimal, in its editor under **More → Edit layout → Look → This screen**
+- set the screen's **Performance** to Reduced or Minimal, in its editor under **More > Edit layout > Look > This screen**
 - turn off other widgets to leave the GPU more room
 - switch to the flat Mercator map, which looks plainer but is lighter, by setting `projection: 'mercator'` where the globe starts up.
 

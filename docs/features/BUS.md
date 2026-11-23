@@ -10,13 +10,13 @@ Prism reads the arrival emails FirstView sends to your Gmail and shows "Bus 4 mi
 
 #### 1. Connect Gmail
 
-Go to *Settings → Bus Tracking → Gmail Connection → Connect.*
+Go to *Settings > Bus Tracking > Gmail Connection > Connect.*
 
 This opens Google's sign-in (OAuth, the standard way to grant an app access without giving it your password). Prism asks for the `gmail.modify` scope so it can mark each bus email read once it has it. It doesn't send or delete mail. All it does is list and read the messages that match the bus filter and mark them read. A token with only the `gmail.readonly` scope still works, and the emails stay unread.
 
 #### 2. Auto-discover routes
 
-Go to *Settings → Bus Tracking → Discover from Emails.*
+Go to *Settings > Bus Tracking > Discover from Emails.*
 
 Prism looks through your Gmail for FirstView emails (up to the latest 100 or so) and creates every new route it finds in one click. It skips any route whose trip ID and direction you already have. Each new route gets:
 
@@ -42,7 +42,7 @@ Active days are Mon to Fri by default (`[1,2,3,4,5]`), and you can't change them
 
 #### 4. Optional: Gmail label filter
 
-If a Gmail filter sends FirstView emails to a label and skips the inbox (a `bus` label, say), tell Prism which label to read in *Settings → Bus Tracking → Gmail label*.
+If a Gmail filter sends FirstView emails to a label and skips the inbox (a `bus` label, say), tell Prism which label to read in *Settings > Bus Tracking > Gmail label*.
 
 By default Prism searches all mail. With a busy inbox, the label filter makes sync faster.
 
@@ -66,9 +66,9 @@ Positions come every few seconds and are already a little old when they arrive, 
 
 #### Setup
 
-1. Go to *Settings → Bus Tracking → Live Tracking → Create provider token.* The token has the `bus:ingest` scope, which lets it post positions and nothing else. Prism shows it only once.
+1. Go to *Settings > Bus Tracking > Live Tracking > Create provider token.* The token has the `bus:ingest` scope, which lets it post positions and nothing else. Prism shows it only once.
 2. Point your provider at `https://<your-prism>/api/bus-tracking/live/ingest` with the header `Authorization: Bearer <token>`.
-3. If you like, choose the map's look under *Map style*: Simple (plain grey streets) is the default, and Detailed adds coloured roads and parks. Choose what it shows under *Camera*: *Follow* frames the bus and your stop and zooms in as the bus gets near, and *Whole route* keeps the whole trip in view. The camera moves only when the bus nears the edge or the view can zoom in a whole level, so it isn't zooming all the time. The map goes dark with Prism's theme. Its + and - buttons zoom by hand, and the camera takes over again a minute later. The bus shows as a beacon, a dot with a cone pointing the way it is heading, which pulses while its position is live. Speed shows in mph or km/h, following **Units** in *Settings → Appearance → All screens*.
+3. If you like, choose the map's look under *Map style*: Simple (plain grey streets) is the default, and Detailed adds coloured roads and parks. Choose what it shows under *Camera*: *Follow* frames the bus and your stop and zooms in as the bus gets near, and *Whole route* keeps the whole trip in view. The camera moves only when the bus nears the edge or the view can zoom in a whole level, so it isn't zooming all the time. The map goes dark with Prism's theme. Its + and - buttons zoom by hand, and the camera takes over again a minute later. The bus shows as a beacon, a dot with a cone pointing the way it is heading, which pulses while its position is live. Speed shows in mph or km/h, following **Units** in *Settings > Appearance > All screens*.
 4. Once a provider reports drivers, *Drivers this week* lists them. Type how each one should appear on the display (say "Mr. Lastname"), and wide widgets read "Today's driver: Mr. Lastname". Prism never chooses a title itself, and if you leave the entry blank it shows the name as reported.
 5. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
 
@@ -105,7 +105,7 @@ PRISM_URL=http://localhost:3000 PRISM_INGEST_TOKEN=<token> npx tsx scripts/fake-
 
 #### How long it is kept
 
-There are two settings under *Live Tracking → Keep history*:
+There are two settings under *Live Tracking > Keep history*:
 
 - **Exact route**, 30 days by default: every position, which is where the bus was minute by minute.
 - **Stop times**, 365 days by default: when the bus reached and left each stop, one summary per trip, and the arrival-time checks described below. Arrival predictions learn from this.
@@ -116,7 +116,7 @@ A daily job deletes anything older than these limits. Both kinds of history stay
 
 #### Arrival time accuracy
 
-While a trip runs, Prism saves the arrival time it is showing for your stop at 20, 15, 10, 5 and 2 minutes out, and later compares each with when the bus really got there. *Live Tracking → Arrival time accuracy* shows, for each of those lead times, the typical miss, the margin that four trips in five land within, and which way it leans (whether the bus tends to come later or earlier than shown). Only trips that reached your stop are scored, and a lead time appears once it has three.
+While a trip runs, Prism saves the arrival time it is showing for your stop at 20, 15, 10, 5 and 2 minutes out, and later compares each with when the bus really got there. *Live Tracking > Arrival time accuracy* shows, for each of those lead times, the typical miss, the margin that four trips in five land within, and which way it leans (whether the bus tends to come later or earlier than shown). Only trips that reached your stop are scored, and a lead time appears once it has three.
 
 ## Use it
 
@@ -177,7 +177,7 @@ When the bus is late, the widget shows which checkpoints it has passed (so you c
 
 ### How it works (at a glance)
 
-1. You connect Gmail in *Settings → Bus Tracking → Gmail Connection*.
+1. You connect Gmail in *Settings > Bus Tracking > Gmail Connection*.
 2. You set up one or more bus routes. Each route is a student, a morning or afternoon trip, and an ordered list of geofence checkpoints.
 3. Prism checks Gmail for new FirstView emails, reads them, and updates each route's next checkpoint, ETA and status.
 4. The dashboard widget shows the status as it changes. As the bus gets closer, Prism checks more often so the ETA stays accurate.
@@ -233,7 +233,7 @@ Your bus tracking data stays on your instance. Gmail is the only outside service
 
 - Gmail OAuth tokens are stored encrypted with AES-256-GCM.
 - Prism doesn't keep the email text. It stores only the fields it reads out (checkpoint, event time, event type) and the Gmail message ID for skipping duplicates.
-- You can disconnect at any time in *Settings → Bus Tracking → Gmail Connection → Disconnect*. Prism deletes the tokens, and the bus data you already have stays in your database but stops updating.
+- You can disconnect at any time in *Settings > Bus Tracking > Gmail Connection > Disconnect*. Prism deletes the tokens, and the bus data you already have stays in your database but stops updating.
 
 ### Troubleshooting
 
@@ -243,13 +243,13 @@ The most common cause is that no FirstView email has arrived yet today. The widg
 
 If Gmail has them and Prism doesn't, check:
 
-1. *Settings → Bus Tracking → Gmail Connection*, to see that it is still connected.
-2. *Settings → Bus Tracking → Gmail label*, to see that the label filter is right. If your filter sends the emails to a `bus` label, the default search of all mail might not find them, but a search of that label would.
-3. Then force a sync with *Settings → Bus Tracking → Sync now.*
+1. *Settings > Bus Tracking > Gmail Connection*, to see that it is still connected.
+2. *Settings > Bus Tracking > Gmail label*, to see that the label filter is right. If your filter sends the emails to a `bus` label, the default search of all mail might not find them, but a search of that label would.
+3. Then force a sync with *Settings > Bus Tracking > Sync now.*
 
 #### Route auto-discovery missed a trip
 
-Discovery looks at the latest 100 or so FirstView emails. If your district has just added a trip, or you recently forwarded older emails into Gmail, discovery might miss it. Add the route yourself in *Settings → Bus Tracking → Add Route* with the trip ID and direction.
+Discovery looks at the latest 100 or so FirstView emails. If your district has just added a trip, or you recently forwarded older emails into Gmail, discovery might miss it. Add the route yourself in *Settings > Bus Tracking > Add Route* with the trip ID and direction.
 
 #### Checkpoint progress dots don't fill in
 

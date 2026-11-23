@@ -14,7 +14,7 @@ Four ways of importing cover about 95% of recipes, and a fifth pulls them from a
 
 #### URL import
 
-*Recipes → Add → Import from URL.*
+*Recipes > Add > Import from URL.*
 
 Paste the address of a recipe page. Prism reads the page's **schema.org Recipe JSON-LD**, the standard structured data that most big recipe sites publish so search engines can read them. That covers AllRecipes, NYT Cooking, Food Network, Bon Appétit, Serious Eats, Smitten Kitchen and about 80% of recipe sites that search engines index.
 
@@ -24,18 +24,18 @@ If the site has no JSON-LD, the import fails without saving anything. Use paste-
 
 #### Paprika import
 
-*Recipes → Add → Import from Paprika.*
+*Recipes > Add > Import from Paprika.*
 
 This is for moving a library over from Paprika. Export your Paprika recipes as HTML and paste the result into the Prism import window, and they are all added at once. The HTML can be up to 5 MB, a limit that keeps a huge paste from using up the server's memory.
 
 #### Paste recipe text (OCR-friendly)
 
-*Recipes → Add → Paste recipe text.*
+*Recipes > Add > Paste recipe text.*
 
 This is the easiest way to get a printed or handwritten recipe card into Prism:
 
 1. Take a photo of the card and let iOS Live Text (or Google Lens on Android) read the words. This is OCR, short for optical character recognition.
-2. Use "Select all → Copy" on the text it found.
+2. Use "Select all > Copy" on the text it found.
 3. Open Prism on your phone or laptop and paste into the window.
 4. The parser splits the text into title, ingredients, instructions, prep and cook time, and servings. It keeps any section headings inside the ingredients.
 
@@ -55,22 +55,22 @@ The result fills in the same form that manual entry uses, so you can check and f
 
 #### Manual entry
 
-When nothing else fits, use *Recipes → Add → Create manually*, which gives you the full form with every field. In the ingredients box, the same `{ heading }` syntax works: put `Fries:` on its own line to get a bold section heading in the detail view.
+When nothing else fits, use *Recipes > Add > Create manually*, which gives you the full form with every field. In the ingredients box, the same `{ heading }` syntax works: put `Fries:` on its own line to get a bold section heading in the detail view.
 
 #### Sync from Tandoor / Mealie
 
-*Recipes → Add → Sync recipes (Tandoor / Mealie)…*
+*Recipes > Add > Sync recipes (Tandoor / Mealie)…*
 
 If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](https://mealie.io/), connect that server with its base URL and an API token and Prism pulls the recipes in.
 
-- The server's card says whether the token **Reads only** or **Reads and writes**. In Tandoor that is the token's scope: `read` reads only, `read write` reads and writes (*Settings → API* makes one). A Mealie token always reads and writes, because Mealie has no read-only tokens. A token that reads only works as before.
+- The server's card says whether the token **Reads only** or **Reads and writes**. In Tandoor that is the token's scope: `read` reads only, `read write` reads and writes (*Settings > API* makes one). A Mealie token always reads and writes, because Mealie has no read-only tokens. A token that reads only works as before.
 
 - Each sync shows you a list of changes to approve first. New and changed recipes are ticked already. Removals are only made if you tick them, and a guard stops a wrongly set up source from deleting your whole library in one go.
 - Running the sync again is **idempotent**, meaning it gives the same result however often you run it: recipes you already imported are matched and updated in place, so you never get a second copy.
 
 #### Send recipe edits back
 
-*Recipes → Add → Sync recipes…*, on a server whose card says **Reads and writes**.
+*Recipes > Add > Sync recipes…*, on a server whose card says **Reads and writes**.
 
 - A synced recipe edited in Prism since the last sync is listed under **Change in …**, ticked. Its name, description, servings, prep time and cook time go back, and so do its ingredients and steps, without losing what the other app knows about them:
   - An ingredient line you did not change keeps the other app's ingredient (its food, unit and amount, and the shopping-list and nutrition links that come with them).
@@ -84,7 +84,7 @@ If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](
 
 #### Send meal-plan changes back
 
-*Meals → Add → Sync meal plan…*, on a server whose card says **Reads and writes**.
+*Meals > Add > Sync meal plan…*, on a server whose card says **Reads and writes**.
 
 The meal-plan sync also lists what changed in Prism since the last sync, to send to Tandoor or Mealie. Nothing is sent unless it is ticked.
 

@@ -76,7 +76,7 @@ docker compose up -d
 
 If you already run Home Assistant (OS or Supervised), Prism installs as an add-on, and you do not have to deal with Docker Compose, Nginx or certificates.
 
-1. Go to **Settings → Add-ons → Add-on store**.
+1. Go to **Settings > Add-ons > Add-on store**.
 2. Open the **⋮** menu in the top right and choose **Repositories**.
 3. Paste `https://github.com/sandydargoport/prism` and click **Add**.
 4. Find **Prism** in the store and click **Install**.
@@ -116,7 +116,7 @@ You do not need to restart the container, because the permissions are checked ea
 ### Locked out: forgot a PIN
 
 Each member picks their own 4- or 6-digit PIN in the setup wizard or under
-**Settings → Security**. Someone who forgets their PIN can be locked out. You
+**Settings > Security**. Someone who forgets their PIN can be locked out. You
 can reset it from the server with the recovery script:
 
 ```bash

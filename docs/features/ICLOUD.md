@@ -41,7 +41,7 @@ So no amount of further research turns a ❌ into a ✅. A community library tha
 
 ## Practical advice for Apple households
 
-- **Calendars + birthdays:** connect them through CalDAV and CardDAV on the *Apple/CalDAV* provider card under *Settings → Integrations*. These work and keep working.
+- **Calendars + birthdays:** connect them through CalDAV and CardDAV on the *Apple/CalDAV* provider card under *Settings > Integrations*. These work and keep working.
 - **Photos:** make OneDrive (or another supported source) the main backup for your photos. The OneDrive app on iOS and a one-tap iOS Shortcut give you a "share to Prism" step without iCloud Shared Albums. See [Photos setup](PHOTOS.md#getting-photos-into-the-folder-from-your-iphone).
 - **Reminders / Notes / Find My:** copy them to another service first (Microsoft To Do syncs both ways with Prism Tasks, and Home Assistant handles presence). Prism then connects to that service, and iCloud stays out of the loop.
 

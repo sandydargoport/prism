@@ -2,7 +2,7 @@
 
 Choose how Prism looks (a photo behind glass, the same kept dark, or plain paper), then pick a colour palette.
 
-There are seven palettes, and you choose one under *Settings → Appearance → Palette*.
+There are seven palettes, and you choose one under *Settings > Appearance > Palette*.
 
 | | |
 |---|---|
@@ -44,7 +44,7 @@ This is there because a wall display has no keyboard, and a palette with a bad p
 
 A theme is only colour values, so households can pass themes to each other. There are three ways, and each treats your work differently:
 
-- **As a file**: *Settings → Display → Palette → Share → Download file* saves the palette you are using as a `.json` file. Send it any way you like, and the other household installs it with **Import**, next to Browse. You don't need a GitHub account, and only the people you send it to get the file.
+- **As a file**: *Settings > Appearance > Palette > Share > Download file* saves the palette you are using as a `.json` file. Send it any way you like, and the other household installs it with **Import**, next to Browse. You don't need a GitHub account, and only the people you send it to get the file.
 - **Through the gallery**: anyone can install it, and it stays yours. You need a GitHub account to submit it.
 - **As a contribution**: it ships with Prism for everyone. That needs the Contributor License Agreement, because Prism then distributes it.
 

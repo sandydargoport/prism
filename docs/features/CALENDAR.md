@@ -18,15 +18,15 @@ You can start using the calendar without connecting anything. A fresh install gi
 
 #### Google Calendar (OAuth, bidirectional)
 
-*Settings → Integrations → Google → Connect.*
+*Settings > Integrations > Google > Connect.*
 
 OAuth (Google's sign-in and permission flow) gives Prism read and write access to your Google calendars. You can create, edit, drag and delete events in Prism, and the change reaches Google Calendar within seconds. Every calendar in the Google account (personal, family-shared, work and so on) is listed in **Manage calendars**, where you pick which ones to show.
 
-This connection covers Calendar only. Google Tasks sync is set per list inside the Google provider card on the same *Settings → Integrations* page.
+This connection covers Calendar only. Google Tasks sync is set per list inside the Google provider card on the same *Settings > Integrations* page.
 
 #### Google Calendar without a public URL (OAuth Playground)
 
-*Settings → Integrations → Google → **Connect without a public URL (advanced)**.*
+*Settings > Integrations > Google > **Connect without a public URL (advanced)**.*
 
 The normal **Connect** button needs a public HTTPS address, because Google will not register a private or LAN redirect URI such as `http://homeassistant.local:8123/…` or `http://192.168.x.x:3000/…`. If you try, you see *"must end with a public top-level domain."* When Prism only runs on your LAN (Home Assistant add-on, bare Docker) and you don't want to put it behind a public URL, you can still get full read and write access. You make a refresh token yourself in Google's OAuth Playground and paste it into Prism. The sign-in happens on Google's own domain and never passes through a third party.
 
@@ -34,12 +34,12 @@ Do every step signed into one Google account, the one whose calendars you want, 
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), **create a project**, then enable the **Google Calendar API**.
 2. Configure the **OAuth consent screen**: pick User type **External** and fill in the app name and your support and developer email.
-3. **Publish the app to Production.** Don't skip this one. In *Testing* mode Google expires refresh tokens after 7 days, and publishing removes that limit. You own the project, so you can click through the one-time "Google hasn't verified this app" notice (**Advanced → proceed**). Your own use of the Calendar scope needs no formal verification.
+3. **Publish the app to Production.** Don't skip this one. In *Testing* mode Google expires refresh tokens after 7 days, and publishing removes that limit. You own the project, so you can click through the one-time "Google hasn't verified this app" notice (**Advanced > proceed**). Your own use of the Calendar scope needs no formal verification.
 4. Create an **OAuth Client ID** of type **Web application**. Under **Authorized redirect URIs**, add exactly `https://developers.google.com/oauthplayground`. Copy the **Client ID** and **Client Secret**. Google shows the secret only once.
 5. Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground), click the gear icon, tick **"Use your own OAuth credentials"** and paste in the Client ID and Secret.
-6. In *Step 1*, enter the scope `https://www.googleapis.com/auth/calendar`, click **Authorize APIs**, sign in, then **Advanced → proceed → Allow**.
+6. In *Step 1*, enter the scope `https://www.googleapis.com/auth/calendar`, click **Authorize APIs**, sign in, then **Advanced > proceed > Allow**.
 7. In *Step 2*, click **Exchange authorization code for tokens** and copy the **Refresh token** (it starts with `1//`).
-8. In Prism, open **Settings → Integrations → Google → "Connect without a public URL (advanced)"** and paste the Client ID, Client Secret and Refresh token. Prism checks them with Google and imports your calendars with full read and write access.
+8. In Prism, open **Settings > Integrations > Google > "Connect without a public URL (advanced)"** and paste the Client ID, Client Secret and Refresh token. Prism checks them with Google and imports your calendars with full read and write access.
 
 **Troubleshooting:**
 
@@ -48,11 +48,11 @@ Do every step signed into one Google account, the one whose calendars you want, 
 - If the Playground's *Exchange* step returns no refresh token, you have already granted the app once. Revoke it at [myaccount.google.com/permissions](https://myaccount.google.com/permissions), then authorize again to get a fresh consent.
 - If the project doesn't appear in the Console, you are signed into the wrong Google account. The project, client, consent screen and Playground authorization all have to be on the same account.
 
-To take away Prism's access completely, go to *Google Account → Security → Third-party access*.
+To take away Prism's access completely, go to *Google Account > Security > Third-party access*.
 
 #### iCal subscriptions (read-only)
 
-*Calendar page → **View** → **Manage calendars** → Subscribe to a calendar → paste URL.*
+*Calendar page > **View** > **Manage calendars** > Subscribe to a calendar > paste URL.*
 
 Many calendars are published as an `.ics` URL: school calendars, sports leagues, holiday feeds, a spouse's outlook.live.com calendar. Paste the URL and Prism subscribes to it. The events sync every so often and appear with your Google events. These feeds have no way to accept changes, so iCal sources are always read-only. Their events display like any others, but Prism offers no edit controls for them.
 
@@ -63,9 +63,9 @@ iCloud has no OAuth sign-in and no public REST API, so Prism uses the same iCal 
 1. Open *Calendar.app*, right-click the calendar in the sidebar and choose *Share Calendar*.
 2. Tick **Public Calendar**, and a URL appears underneath.
 3. Click the *share* button next to the URL and choose *Copy Link*. The link starts with `webcal://`.
-4. In Prism, open the Calendar page → **View** → **Manage calendars** → *Subscribe to a calendar*, paste the URL, give it a name and click *Add*.
+4. In Prism, open the Calendar page > **View** > **Manage calendars** > *Subscribe to a calendar*, paste the URL, give it a name and click *Add*.
 
-On iCloud.com it works the same way: *Calendar → ⓘ next to the calendar → Public Calendar → Copy Link*.
+On iCloud.com it works the same way: *Calendar > ⓘ next to the calendar > Public Calendar > Copy Link*.
 
 Two things to know. The feed only goes one way, so nothing you do in Prism reaches iCloud, and Prism shows no edit option on these events. The calendar also has to stay marked Public on the iCloud side.
 
@@ -73,8 +73,8 @@ Two things to know. The feed only goes one way, so nothing you do in Prism reach
 
 If you don't want to mark a calendar Public, or you want **Reminders** to sync as tasks, Prism can connect to iCloud over CalDAV. That is the same protocol the Calendar app on macOS and iOS uses.
 
-1. Generate an app-specific password at [appleid.apple.com](https://appleid.apple.com) under *Sign-In and Security → App-Specific Passwords → Generate*.
-2. In Prism, go to *Settings → Integrations → Apple iCloud / CalDAV → Connect*.
+1. Generate an app-specific password at [appleid.apple.com](https://appleid.apple.com) under *Sign-In and Security > App-Specific Passwords > Generate*.
+2. In Prism, go to *Settings > Integrations > Apple iCloud / CalDAV > Connect*.
 3. Enter:
    - **Server URL:** `https://caldav.icloud.com`
    - **Username:** your iCloud email
@@ -110,7 +110,7 @@ Each calendar also has three display rules, which change how its events show in 
 In Day and List views, events sit in columns, one per calendar group:
 
 - The **Family** group always comes first and holds shared or Family-tagged calendars.
-- Person columns follow, in the order set in *Settings → Family Members*. Reorder the family members there to change the columns.
+- Person columns follow, in the order set in *Settings > Family Members*. Reorder the family members there to change the columns.
 - The **Merge / Split** toggle in View Options puts every event in one column or splits them by person.
 
 Under the header, after **Show:**, is a row of person dots, one per calendar group. Tap one to show or hide that group in the current view: a shown group is its dot and name, a hidden one a faded ring. Tap **All** to show everything again.
@@ -288,9 +288,9 @@ Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` if you only want syncs you
 
 #### Events not showing
 
-1. Open **Manage calendars** (Calendar page → **View**) and check that the calendar is enabled.
+1. Open **Manage calendars** (Calendar page > **View**) and check that the calendar is enabled.
 2. Tap **Sync Now** to force a refresh.
-3. Check *Settings → Integrations* to see if Google is still connected. OAuth tokens stop working if they are revoked on the Google side.
+3. Check *Settings > Integrations* to see if Google is still connected. OAuth tokens stop working if they are revoked on the Google side.
 4. The background sync also runs every 10 minutes, so you can wait one round.
 5. Look in **Hidden events** in **Manage calendars**. A hidden event stays hidden through every sync.
 6. If an ended event is missing from the agenda or list view, check **Past Events** in **Manage calendars**: with **Hide ended events in the agenda and list** on, those views leave out events that have ended.
