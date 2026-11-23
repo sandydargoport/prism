@@ -1,10 +1,13 @@
-# CLA Assistant — asks first-time contributors to sign the Prism CLA (CLA.md)
-# with a one-click PR comment, and records signatures in signatures/cla.json.
+# CLA Assistant: asks first-time contributors to sign the Prism CLA (CLA.md)
+# with a one-click PR comment, and records signatures in signatures/cla.json
+# on the cla-signatures branch.
 #
-# One-time setup by the maintainer:
-#   - Create a fine-grained/classic Personal Access Token with `repo` scope and
-#     add it as a repository secret named CLA_PAT (needed so the bot can commit
-#     the signature file). GITHUB_TOKEN alone can't push the signature commit.
+# pull_request_target, because it comments on pull requests from forks and
+# commits their signatures, which a fork's read-only pull_request token cannot.
+# It runs with this repository's token on a fork's pull request, so it never
+# checks out or runs the pull request's code (src/lib/__tests__/prTargetWorkflows.test.ts).
+# The Actions event policy allows this file only the events below
+# (Settings > Actions > Policies); a new trigger needs adding there too.
 name: CLA Assistant
 on:
   issue_comment:
@@ -12,11 +15,13 @@ on:
   pull_request_target:
     types: [opened, closed, synchronize]
 
+# Only what the action uses: actions to re-run the check after a signature,
+# contents to commit the signature to cla-signatures, pull-requests to comment
+# and to lock a merged pull request. It sets no commit status.
 permissions:
   actions: write
   contents: write
   pull-requests: write
-  statuses: write
 
 jobs:
   cla:
@@ -38,12 +43,14 @@ jobs:
         if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA and I agree') || github.event_name == 'pull_request_target'
         uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08  # v2.6.1
         env:
+          # The built-in token commits the signatures, as they are kept in this
+          # repository: the action asks for a personal token only to keep them
+          # in another one.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_PAT }}
         with:
           path-to-signatures: 'signatures/cla.json'
           path-to-document: 'https://github.com/sandydargoport/prism/blob/master/CLA.md'
-          # Signatures are committed to this dedicated, UNPROTECTED branch — the
+          # Signatures are committed to this dedicated, UNPROTECTED branch: the
           # bot cannot push to master (branch protection ruleset).
           branch: 'cla-signatures'
           allowlist: sandydargoport,dependabot[bot],github-actions[bot]
