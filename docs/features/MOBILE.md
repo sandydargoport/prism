@@ -22,7 +22,7 @@ The app opens without the browser's own controls, so there is no URL bar or Safa
 #### Android (Chrome / Edge)
 
 1. Open Prism in Chrome.
-2. Tap **Menu** (three dots) → **Install app**, or **Add to Home Screen** on older versions.
+2. Tap **Menu** (three dots) > **Install app**, or **Add to Home Screen** on older versions.
 3. Confirm.
 
 The app then opens on its own, full screen.
@@ -47,68 +47,51 @@ You can add your own shortcuts by editing `public/manifest.json`.
 
 ## Use it
 
-### Navigation by surface
+### Getting around
 
-Prism has three navigation components and picks one by screen size and orientation:
+Every page has the dock, one row of pages along the bottom of the screen, on a phone as on a wall screen or a laptop. On a phone it holds five pages and **More**: Home, Calendar, Chores, Shopping and Meals, unless the household chose others in *Settings > Features*. Each page shows its icon and its name, and the page you are on is marked. **Home** goes back to the dashboard.
 
-| Layout | Component | When |
-|---|---|---|
-| **SideNav** | Collapsible left sidebar | Landscape desktops and large tablets. This is what most kiosks use. |
-| **PortraitNav** | Bottom drawer + sliding panel | Portrait tablets. A bar at the bottom has a drawer that slides up for more pages. |
-| **MobileNav (FAB)** | Floating action button | Phones. One floating button takes the place of the bottom bar. |
+- **More** opens the rest: the other pages under **Pages**, then **Settings**, **Help** and **Sign in** under **Prism**, then **This screen** with **Reload**, **Babysitter mode** and **Away mode**. Signed in, the **Sign in** tile shows your name, and a tap signs you out.
+- **Swipe in from the edge** to move along the dock: from the left edge of the screen to the page before, from the right edge to the next one. The swipe has to start at the very edge and go sideways, so a swipe in the middle of a page (the Calendar's dates, Shopping's lists) still belongs to the page.
 
-The `AppShell` component chooses the navigation from the current screen size and orientation, and chooses again whenever the orientation changes.
+#### The round button
 
-#### FAB (phone PWA)
+The round button at the bottom right, above the dock, is the page's Add: **Add Event** on the Calendar, **Add chore**, **Add item** on Shopping, **Add meal**, **Add task**, **Add message**, **Add recipe**, **Add wish** and **Add goal**. Those pages have no **+** in their header on a phone. A page with nothing to add has no round button, and it hides while a window is open.
 
-The Floating Action Button is one round button in the bottom corner. Tap it to open a small menu. The actions in it depend on the page you are on.
-
-On every page:
+On the dashboard it is **Dashboard options**, with a sliders mark. It opens a small menu:
 
 - **Home**: goes back to the dashboard.
 - **Settings**: opens the full Settings page.
-- **Login / Logout**: switches users. It shows **Login** when nobody is logged in.
-
-On the dashboard only:
-
-- **Reorder**: drag the dashboard cards into the order you want.
-- **Cards**: show or hide dashboard cards, with layout and theme controls too (see below).
-
-On the Shopping page only:
-
-- **Scan Barcode**: scans an item into the active list.
-
-The button takes up as little of the screen as possible and stays out of the way the rest of the time.
+- **Login / Logout**: switches users, the same as **Sign in** in **More**.
+- **Reorder** and **Cards**: only on a dashboard that shows cards (see below).
 
 #### Card reorder mode
 
-In FAB → Reorder, each dashboard card gets a grip so you can drag it. Drag the cards into order and tap **Done** to save. Each user keeps their own order.
+In **Dashboard options > Reorder**, each dashboard card gets a grip so you can drag it. Drag the cards into order, then open **Dashboard options** again and tap **Done** to save. The order is kept on this phone.
 
-#### FAB → Cards
+#### Dashboard options > Cards
 
-FAB → Cards has a toggle for each card. Turn off the ones you don't use, for example Bus Tracker if you have no bus to track. Hidden cards aren't drawn at all, which saves the phone some work.
+**Dashboard options > Cards** has a toggle for each card. Turn off the ones you don't use, for example Bus Tracker if you have no bus to track. Hidden cards aren't drawn at all, which saves the phone some work.
 
 The same panel has two more controls:
 
-- **Layout**: switches the mobile dashboard between **Rows** and **Tiles**.
+- **Layout**: switches the cards between **Rows** and **Tiles**.
 - **Theme**: steps through **Light / Dark / Auto**.
 
-### Mobile dashboard
+### The dashboard on a phone
 
-On a phone, the dashboard grid turns into a single column of summary cards:
+On a phone, Glance, the built-in dashboard, shows a phone page instead of widget cards:
 
-- **Weather card**: the current temperature and conditions, with a small forecast strip.
-- **Calendar card**: the next 5 events, as an agenda.
-- **Tasks card**: the top 5 unfinished tasks.
-- **Shopping card**: the top 5 items on the active list.
-- **Chores card**: chores still waiting, for everyone.
-- **Meals card**: the meals planned for today.
-- **Messages card**: the last 3 messages.
-- **Birthdays card**: birthdays coming up.
+- The time with the temperature, and the date with the condition, in two aligned rows over the photo.
+- **Next**, the event under way or about to start, in its own card, then **Later today**.
+- The coming days as short sentences.
+- The chores and shopping lines: how many chores are left, with a ring to tick each one, and the shopping list's count, with a plus to add an item. The birthday nudge joins them when a birthday is close.
 
-Those eight show by default. **Clock, Bus Tracker, Recipes, Goals, Wishes, and Photos** are also available, and you can turn them on in FAB → Cards.
+The page is one screen tall, without the rubber-band bounce. It shows the parts that are switched on in Glance's **Widgets** panel (see [Glance](DASHBOARD.md#glance-the-built-in-dashboard)). Tap an event to open it.
 
-Tap a card to open the full page for that feature. You can reorder the cards and hide any of them from the FAB.
+A dashboard with a grid layout keeps its cards on a phone: a single column of summary cards, or tiles. In their usual order they are Weather, Calendar, Bus Tracker (once a route is set up), Chores, Tasks, Shopping, Meals, Recipes, Messages, Birthdays (when one is coming up), Goals (when there are goals) and Wishes. **Clock** and **Photos** are off until you turn them on in **Dashboard options > Cards**.
+
+Tap a card to open the full page for that feature. You can reorder the cards and hide any of them from **Dashboard options**.
 
 ### Calendar on mobile
 
@@ -134,27 +117,27 @@ The usual gestures:
 
 ### Screensaver + Away mode behavior on PWA
 
-An installed PWA does not start the screensaver or Away mode by itself, unless it is a screen named in its editor (*Through the day* → **Name this device**). Without a name it skips both, for these reasons:
+A phone never shows the screensaver; it dims and locks itself. An installed PWA on a larger screen does not start the screensaver or Away mode by itself either, unless it is a screen named in its editor (More > Edit layout > Through the day > **Name this device**). Without a name it skips both, for these reasons:
 
 - A phone has no idle time the way a kiosk does. It is either in your pocket or in your hand.
 - If Away mode turned on by itself on a phone, it would lock the family member out of their own device.
 - A photo slideshow on a phone screen only uses up the battery.
 
-A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (*Through the day* → **Name this device**) and its screensaver and Away mode start on their timers as they do in a browser.
+A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (More > Edit layout > Through the day > **Name this device**) and its screensaver and Away mode start on their timers as they do in a browser.
 
 ### Common workflows
 
 #### Phone in pocket, occasional checks
 
-Install Prism as a PWA on the phone. It opens on the dashboard summary cards, and a tap on a card opens the full feature. Use the FAB to switch users when you need to.
+Install Prism as a PWA on the phone. It opens on the dashboard: Glance's phone page, or the cards of a grid dashboard. A tap on an event or a card opens it. Use **Sign in** in **More** to switch users when you need to.
 
 #### Tablet permanently mounted in the kitchen
 
-Don't install it as a PWA. Open it in full-screen Chrome or use kiosk mode. The SideNav stays visible with nothing held back, so the dashboard grid, Calendar and Shopping are all there. Set the orientation override to match how the tablet is mounted.
+Open it in full-screen Chrome or use kiosk mode, or install it as a PWA and name the screen (More > Edit layout > Through the day > **Name this device**) so it rests and goes idle. On the dashboard the dock may wait behind the small **Menu** tab on the bottom edge; a tap brings it up. If photos come up for the wrong shape, set **Orientation** in More > Edit layout > Look, under **This screen**.
 
 #### Phone in shopping mode at the grocery store
 
-Install Prism as a PWA and open the Shopping page. Tap the maximize icon (top right) to enter shopping mode, which fills the screen, hides the navigation and lets you tap items to strike them out. The camera icon in the header scans barcodes.
+Install Prism as a PWA and open the Shopping page. Open the page's menu (**More options** in the header) and choose **Shopping mode**, which fills the screen, hides the navigation and lets you tap items to strike them out. **Scan Barcode** in the same menu scans barcodes.
 
 #### Spouse uses iOS, you use Android
 
@@ -185,13 +168,13 @@ html { font-size: 16px; }                                        /* phone defaul
 
 The `pointer: fine` and `pointer: coarse` media queries tell a mouse (a laptop) apart from touch (a tablet kiosk) at the same screen size. The same 13" screen gets 14px on a laptop with a mouse and 20px on a touch tablet.
 
-A global override in *Settings → Appearance → Font Scale* is planned and had not shipped as of v1.8.
+To make a whole dashboard read larger or smaller, use *Settings > Text Size*.
 
 ### Orientation detection
 
-The `useOrientation` hook listens for `resize` and `orientationchange` events and returns the current orientation. The `AppShell` picks the navigation again on every orientation change.
+The `useOrientation` hook listens for `resize` and `orientationchange` events and returns the current orientation. The navigation is the same in either orientation: the dock at the bottom.
 
-You can set an orientation in *Settings → Appearance → Orientation Override* (Landscape, Portrait or Auto). This override only affects which photos and wallpapers are matched by orientation. The navigation and layout keep following the detected orientation of the screen (its width against its height).
+You can set an orientation in More > Edit layout > Look, under **This screen**: **Orientation** (Detect, Landscape or Portrait). It only affects which photos and wallpapers are matched by orientation. The layout keeps following the detected orientation of the screen (its width against its height).
 
 ### Notification badges (planned)
 
@@ -201,9 +184,9 @@ iOS 16+ and Android Chrome support PWA notification badges, the small number on 
 
 #### "Install" prompt missing
 
-To be installable, Prism has to be served over HTTPS with a valid manifest and a valid service worker, and it can't already be installed. If Chrome doesn't offer to install it, look for the install icon (a small `+`) in the address bar, or check DevTools → Application → Manifest for errors.
+To be installable, Prism has to be served over HTTPS with a valid manifest and a valid service worker, and it can't already be installed. If Chrome doesn't offer to install it, look for the install icon (a small `+`) in the address bar, or check DevTools > Application > Manifest for errors.
 
-iOS Safari never shows an install prompt. You always install through Share → Add to Home Screen.
+iOS Safari never shows an install prompt. You always install through Share > Add to Home Screen.
 
 #### Updates not showing after a deploy
 
@@ -211,26 +194,26 @@ The service worker caches heavily. After a deploy, try one of these:
 
 - Force a refresh with a hard reload (Ctrl+Shift+R on a desktop, or pull down and hold in Chrome on mobile).
 - Uninstall the PWA and install it again.
-- In DevTools → Application → Service Workers, use Update or Unregister.
+- In DevTools > Application > Service Workers, use Update or Unregister.
 
 The service worker is set to take over as soon as a new version arrives, so a reload usually picks up the update within seconds. Now and then a cached page sticks anyway.
 
-#### Bottom nav covers content
+#### The dock covers content
 
-Mobile pages have extra space at the bottom to clear the nav bar. If something is hidden behind it, file an issue naming the page. The cause is almost always a missing `pb-20` (or similar) on a page added recently.
+Every page leaves room at the bottom for the dock, so the last row of a list can scroll clear of it. If something is hidden behind it, file an issue naming the page.
 
 #### Calendar showing month view on phone (not agenda)
 
 The agenda-only rule arrived in v1.8. If your phone shows the month view, it is running an older build of the app. Do a hard refresh.
 
-#### FAB missing
+#### The round button is missing
 
-The FAB only shows on phone-sized screens (`max-width: 767px`). On a tablet you get the PortraitNav bottom drawer in its place. On a phone the FAB is there whether or not anyone is logged in, and when nobody is, it offers a **Login** action.
+The round button only shows on phone-sized screens (narrower than 768px). On the dashboard it is always there as **Dashboard options**. On another page it shows only when the page has something to add, and it hides while a window is open.
 
 #### Cards in mobile dashboard appearing in wrong order
 
-Check whether someone changed the order in FAB → Reorder. Each user keeps their own order, so switching users loads that user's saved order. To set it again, tap FAB → Reorder, drag the cards and tap Done.
+Check whether someone changed the order in **Dashboard options > Reorder**. The order is kept on each phone, so another phone has its own. To set it again, tap **Dashboard options > Reorder**, drag the cards, then open **Dashboard options** and tap **Done**.
 
 #### Service worker registration fails
 
-This is usually a problem with the service worker file's path. Look in DevTools → Console for `Failed to register a ServiceWorker` errors. `public/sw.js` has to be served from the root scope (`/sw.js`). If you moved it, the registration in the app's entry point needs updating too.
+This is usually a problem with the service worker file's path. Look in DevTools > Console for `Failed to register a ServiceWorker` errors. `public/sw.js` has to be served from the root scope (`/sw.js`). If you moved it, the registration in the app's entry point needs updating too.

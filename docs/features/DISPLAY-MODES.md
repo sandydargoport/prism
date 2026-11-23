@@ -18,32 +18,32 @@ The screensaver starts after the screen has been idle for a time you set. It sho
 
 Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitchen`) can have a big clock, the weather and a slow photo cycle, while the bedroom dashboard (`/d/bedroom`) has a smaller clock and tomorrow's calendar.
 
-A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** sheet, a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
+A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
 
-The sheet is a few rows. In a screen's editor it starts with which dashboard the screen shows and the dashboards it switches to at bus time or at set times (see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)). Then come the dashboard's own rows: **Resting** (after how long, and what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it, and **How dark**. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. How soon the screen rests and how dark it goes are the screen's own, so they show only when the editor is for a screen.
+The panel is a few rows. In a screen's editor it starts with which dashboard the screen shows and the dashboards it switches to at bus time or at set times (see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)). Then come the dashboard's own rows: **Resting** (after how long, and what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it, and **How dark**. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. How soon the screen rests and how dark it goes are the screen's own, so they show only when the editor is for a screen.
 
 #### A calm dashboard is its own idle screen
 
-A dashboard set to rest as **This dashboard** (in the Through the day sheet) has no separate screensaver. When the display goes idle, some widgets fade out where they are and the others stay. A tap brings everything back, and nothing moves.
+A dashboard set to rest as **This dashboard** (in the Through the day panel) has no separate screensaver. When the display goes idle, some widgets fade out where they are and the others stay. A tap brings everything back, and nothing moves.
 
-Tap **See it** on the **Resting** row of the Through the day sheet and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
+Tap **See it** on the **Resting** row of the Through the day panel and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
 
 #### Resting, night and what shows
 
-The Through the day sheet sets what shows while the screen rests (**This dashboard**, **Photos** or **Night sky**, on the Resting row) and what night looks like (**Dim this dashboard**, **Night sky**, **Photos** or **Screen off**, on the At night row). Both belong to the dashboard, so every screen showing it rests the same. If one screen should idle differently, have it show another dashboard.
+The Through the day panel sets what shows while the screen rests (**This dashboard**, **Photos** or **Night sky**, on the Resting row) and what night looks like (**Dim this dashboard**, **Night sky**, **Photos** or **Screen off**, on the At night row). Both belong to the dashboard, so every screen showing it rests the same. If one screen should idle differently, have it show another dashboard.
 
 - **Photos**: the slideshow.
-- **Night sky**: the stars, Milky Way, constellation figures and moon as they are outside right now, worked out from the household location in *Settings → General* and drawn over a treeline on the horizon. As at a real dusk, the Milky Way is the last thing to appear, and it fades when the moon is bright. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside). Then it is named, with what the name means and the names of its brightest stars, for about twenty seconds. The next one follows after a pause. Each display remembers which constellations it has shown and picks the one shown longest ago, best known first, skipping any that a widget would cover, so over the nights of a season it gets through all of them. The brightest stars twinkle, and a shooting star crosses every few minutes. On the nights around the peak of one of the ten major yearly meteor showers (the Quadrantids, Lyrids, Eta Aquariids, Southern Delta Aquariids, Perseids, Draconids, Orionids, Leonids, Geminids and Ursids), while its radiant (the point the meteors seem to come from) is above the horizon, a line at the top says so, for example "Geminids peak tonight, up to 150 an hour", and mentions whether a bright moon will hide the fainter ones. A small ring marks the radiant when it is in view, and shooting stars come more often and streak away from it. During a lunar eclipse visible from home, the moon turns copper as it moves into the Earth's shadow. If **Say when aurora may be visible** is ticked in *Settings → Appearance → Screensaver* (off by default, one switch for every display), a second line says when NOAA's aurora forecast gives a chance of aurora overhead or low on the horizon toward the pole ("Aurora possible now, low in the northern sky"). When the device is set to reduced motion, or the performance level is Reduced or Minimal, the twinkling and shooting stars stop and each constellation appears whole instead of being traced. In the daytime it shows a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and visitors see no family photos.
-- **Night**: from dusk to dawn, half an hour after sunset until half an hour before sunrise where the household is, or at set times on the display's clock, such as 21:00 to 06:30. The sheet shows tonight's real times, and under them you can move each edge earlier or later by some minutes or hours. Near midsummer, far from the equator, dusk and dawn are only a few hours apart and large offsets can make the night end before it starts. The editor warns you and won't save a setting like that. While resting, the display checks every minute whether night has begun. The same night also turns Glance's ink warm and brings up its veil, and it is when the screen dims.
+- **Night sky**: the stars, Milky Way, constellation figures and moon as they are outside right now, worked out from the household location in *Settings > General* and drawn over a treeline on the horizon. As at a real dusk, the Milky Way is the last thing to appear, and it fades when the moon is bright. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside). Then it is named, with what the name means and the names of its brightest stars, for about twenty seconds. The next one follows after a pause. Each display remembers which constellations it has shown and picks the one shown longest ago, best known first, skipping any that a widget would cover, so over the nights of a season it gets through all of them. The brightest stars twinkle, and a shooting star crosses every few minutes. On the nights around the peak of one of the ten major yearly meteor showers (the Quadrantids, Lyrids, Eta Aquariids, Southern Delta Aquariids, Perseids, Draconids, Orionids, Leonids, Geminids and Ursids), while its radiant (the point the meteors seem to come from) is above the horizon, a line at the top says so, for example "Geminids peak tonight, up to 150 an hour", and mentions whether a bright moon will hide the fainter ones. A small ring marks the radiant when it is in view, and shooting stars come more often and streak away from it. During a lunar eclipse visible from home, the moon turns copper as it moves into the Earth's shadow. If **Say when aurora may be visible** is ticked in *Settings > Appearance > Night sky* (off by default, one switch for every display), a second line says when NOAA's aurora forecast gives a chance of aurora overhead or low on the horizon toward the pole ("Aurora possible now, low in the northern sky"). When the device is set to reduced motion, or the performance level is Reduced or Minimal, the twinkling and shooting stars stop and each constellation appears whole instead of being traced. In the daytime it shows a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and visitors see no family photos.
+- **Night**: from dusk to dawn, half an hour after sunset until half an hour before sunrise where the household is, or at set times on the display's clock, such as 21:00 to 06:30. The panel shows tonight's real times, and under them you can move each edge earlier or later by some minutes or hours. Near midsummer, far from the equator, dusk and dawn are only a few hours apart and large offsets can make the night end before it starts. The editor warns you and won't save a setting like that. While resting, the display checks every minute whether night has begun. The same night also turns Glance's ink warm and brings up its veil, and it is when the screen dims.
 - **Screen off**: a black screen until someone touches it, for a bedroom or a hallway.
 
-All of this is worked out on the display from the date and location, and nothing is downloaded, apart from the aurora forecast when that is switched on. The server fetches the forecast from NOAA's Space Weather Prediction Center at most every 30 minutes, and only while a display is showing the night sky after dark. If NOAA doesn't answer, the line is left off. The forecast is read for the household location, so it needs a location set in *Settings → General*. Without a location, Prism uses the time zone to estimate it, and the change at sunset is then right to within about an hour.
+All of this is worked out on the display from the date and location, and nothing is downloaded, apart from the aurora forecast when that is switched on. The server fetches the forecast from NOAA's Space Weather Prediction Center at most every 30 minutes, and only while a display is showing the night sky after dark. If NOAA doesn't answer, the line is left off. The forecast is read for the household location, so it needs a location set in *Settings > General*. Without a location, Prism uses the time zone to estimate it, and the change at sunset is then right to within about an hour.
 
 #### Widget transitions
 
 By default the screensaver shows every widget in its layout all the time. It can instead show some of them and rotate which ones are up, so the board changes slowly. That is easier on the panel, because nothing sits in one place for hours, and it gives the screensaver something to do besides change photos.
 
-*Widget transition effect* offers four ways for a widget to come and go:
+**Transition effect** (see [Configuration](#configuration)) offers four ways for a widget to come and go:
 
 - **Fade**: the widget fades in and out, easing at both ends. Arriving and leaving are not mirror images on purpose: a widget appears at once and settles, and it pauses a moment before it goes.
 - **Smoke**: the widget itself dissolves. A turbulence mask thins out its own pixels in soft-edged patches, and nothing is drawn on top of it.
@@ -60,25 +60,34 @@ All widgets move together, so the gaps between them stay as you designed them. T
 
 #### Dim at night
 
-At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night is the dashboard's own, set in the Through the day sheet, and **How dark** there sets the darkness for this screen. Each screen sets its own. Dimming is off until you choose **Dim this dashboard** or a darkness.
+At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night is the dashboard's own, set in the Through the day panel, and **How dark** there sets the darkness for this screen. Each screen sets its own. Dimming is off until you choose **Dim this dashboard** or a darkness.
 
 A web page can't change the panel's own brightness or turn it off. On an OLED panel the black layer really does dim it. On an LCD the backlight stays on, though less light reaches the room. A screen that should go fully dark at night still needs the computer's own display sleep.
 
 #### Configuration
 
-Screensaver settings are under *Settings → Appearance → Screensaver*, and you can also open them from the screensaver itself (see below).
+A screen's own screensaver settings are in its editor, More > Edit layout. From a phone, **Edit** on the screen's row in *Settings > Screens* opens the same editor for that screen.
 
-- **Start after**: how long the screen is idle before the screensaver starts. 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or Never (default 2 minutes).
-- **Change photo every**: how often the photo changes, from 5 seconds up to 1 hour, or Never for one still image.
-- **Widget transition effect** and **Change every**: which effect to use, and the shortest gap between changes. It is a minimum because a new rotation never starts before the last one has finished, so a long effect sets its own pace.
-- **Transition length**: Brisk, Normal, Slow or Very slow. It scales every effect at once.
-- **Show at least / at most**: the fewest and most widgets on screen at once. By default about two thirds of the layout shows, within those limits.
+In **Through the day**, under **On this screen**:
+
+- **Rest after**: how long nobody touches the screen before it rests. 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests** (default 2 minutes).
+- **How dark**: **Not dimmed**, or 25%, 50% or 75% darker at night. Not dimmed by default. It isn't offered when the night look is **Screen off**.
+
+In **Through the day**, **More** > **Screensaver motion** opens the screensaver's own panel:
+
+- **Transition effect** and **Change every**: which effect to use, and the shortest gap between changes. It is a minimum because a new rotation never starts before the last one has finished, so a long effect sets its own pace.
+- **Show at least** and **at most**: the fewest and most widgets on screen at once. By default about two thirds of the layout shows, within those limits.
 - **Hide widget outlines**: removes the border around each widget. Lines inside a widget are left alone.
-- **Carbonation**, **Surface wobble**, **Keep text clear of the waterline**: for fill and drain only. The last one decides whether the water surface passes over the top line of a widget's text or over the empty space above it. Some people like seeing the water cover the content and others see it as a fault, so it is left as a switch.
+- **Transition length**: Brisk, Normal, Slow or Very slow. It scales every effect at once.
+- **Carbonation**, **Keep text clear of the waterline**, **Surface wobble**: for fill and drain only. Keep text clear of the waterline decides whether the water surface passes over the top line of a widget's text or over the empty space above it. Some people like seeing the water cover the content and others see it as a fault, so it is left as a switch.
 - **Drift**: on or off, on by default.
-- **Dim at night**: Off, or 25%, 50% or 75% darker at night. Off by default.
-- **Show a settings shortcut on the screensaver**: off by default.
-- **Sign out after**: how long the display can sit untouched before it stops being signed in as whoever used it last. The choices run from 5 minutes up to 4 hours, or Never, and the default is 30 minutes. Like the other timers here, it is set per device.
+- **Settings shortcut in the screensaver's corner**: off by default.
+- **Start after**: the same setting as **Rest after**.
+- **Change photo every**: how often the photo changes, from 5 seconds up to 1 hour, or Never for one still image.
+
+In **Look**, under **This screen**, are the screen's **Performance**, **On-screen keyboard**, **Orientation** and **Auto-hide navigation**, and:
+
+- **Sign out after**: how long the display can sit untouched before it stops being signed in as whoever used it last. The choices run from 5 minutes up to 4 hours, or Never, and the default is 30 minutes. Like the other settings here, it belongs to this screen.
 
   Signing out leaves the screen showing everything. `getDisplayAuth` keeps serving the dashboard as the configured display user, so anyone who walks up can still read the calendar, tasks and messages. What returns is the PIN prompt on anything that changes something.
 
@@ -88,15 +97,13 @@ Screensaver settings are under *Settings → Appearance → Screensaver*, and yo
 
 #### Changing it from the screensaver
 
-To judge a transition you have to watch it. Without a shortcut, each change meant leaving the screensaver, finding the settings page, changing one value and waiting for the screensaver to come back.
-
-With the shortcut turned on, a Prism mark sits in the top-left corner of the screensaver. It is invisible until you hover over it, then fades in over two seconds, and it opens the same settings in place. On a touchscreen you can tap that corner even when nothing is drawn there.
+To judge a transition you have to watch it. With **Settings shortcut in the screensaver's corner** turned on, a Prism mark sits in the top-left corner of the screensaver. It is invisible until you hover over it, then fades in over two seconds, and it opens the same **Screensaver** panel in place. On a touchscreen you can tap that corner even when nothing is drawn there.
 
 All of these settings are per display and stored on the screen where you set them, so two screens in one house can run different effects.
 
-The screensaver *layout*, meaning which widgets show and where, is edited in dashboard edit mode. The editor links to these settings, because arranging a screensaver and choosing how it moves are two parts of the same job.
+The screensaver *layout*, meaning which widgets show and where, is arranged in the editor too (see [Screensaver layout](DASHBOARD.md#screensaver-layout)), from the same **Through the day** panel as **Screensaver motion**, because arranging a screensaver and choosing how it moves are two parts of the same job.
 
-You choose which photos appear under *Settings → Photos:*
+You choose which photos appear under *Settings > Photos:*
 
 - **Source filter**: which photo sources to use.
 - **Orientation filter**: landscape, portrait or square, set separately for each display context (gallery, wallpaper, screensaver).
@@ -107,9 +114,9 @@ You choose which photos appear under *Settings → Photos:*
 - Any mouse, touch or keyboard activity restarts the idle timer.
 - Whether the tab is visible makes no difference, and an idle tab that is on screen still starts the screensaver. That is the kiosk case: nobody is using the wall display, so it shows the slideshow.
 - The screensaver doesn't start when:
-  - The Edit dashboard mode is on.
+  - The layout editor is open.
   - A modal is open.
-  - The PWA detects mobile mode. It is switched off there automatically, since phones don't need a screensaver.
+  - The screen is phone-sized. A phone has no screensaver; it dims and locks itself.
 
 #### Exiting
 
@@ -130,9 +137,9 @@ Away mode cuts the screen down to the clock, the weather and a photo.
 
 There are two ways to turn it on:
 
-1. **Manual**: tap the **palm-tree icon** in the dashboard header. Prism asks "really activate Away mode?", and when you say yes the mode starts.
-2. **Auto**: set it in *Settings → Appearance → Timers & Auto-Activation → Away Mode Auto-Activation:*
-   - **Never (manual only)**: never turn on by itself.
+1. **Manual**: open **More** on the dock and tap **Away mode** under **This screen**. Prism asks for a parent's PIN, and then the mode starts.
+2. **Auto**: set **Turn on after** in the **Away mode** card in *Settings > Appearance*. It is one setting for every screen in the house:
+   - **Never (only by hand)**: never turn on by itself.
    - **4 hours** without any use, then it turns on.
    - **8 hours** without any use, then it turns on.
    - **12 hours** without any use, then it turns on.
@@ -141,7 +148,7 @@ There are two ways to turn it on:
    - **3 days** without any use, then it turns on.
    - **1 week** without any use, then it turns on.
 
-Any touch, click or key press restarts the auto timer.
+Any touch, click or key press restarts the auto timer. Only a named screen, a trusted device or a screen with someone signed in turns Away mode on by itself.
 
 #### The Away Mode display
 
@@ -174,7 +181,7 @@ Babysitter mode is a cover screen with the household details a caregiver needs. 
 
 #### What's on it
 
-You fill it in under *Settings → Babysitter Info.* The sections are:
+You fill it in under *Settings > Babysitter Info.* The sections are:
 
 - **Emergency contacts**: phone numbers for parents, grandparents, the doctor, the school, poison control and emergency services. Tap a number to call it, if the device can make calls.
 - **House info**: the WiFi name and password (with a QR code to join in one tap), door codes, security system codes, the garage code, the address and the nearest cross street.
@@ -184,7 +191,7 @@ You fill it in under *Settings → Babysitter Info.* The sections are:
 
 #### Sensitive sections
 
-You can mark any section as **sensitive** in *Settings → Babysitter Info.* A sensitive section still appears on the screen, but a parent PIN is needed to reveal it. Some places this helps:
+You can mark any section as **sensitive** in *Settings > Babysitter Info.* A sensitive section still appears on the screen, but a parent PIN is needed to reveal it. Some places this helps:
 
 - Door codes you don't want on show if someone outside the family walks through.
 - The WiFi password, if lots of people get to see the babysitter screen.
@@ -196,7 +203,7 @@ A sensitive section shows a placeholder ("Tap to reveal: parent PIN required") u
 
 There are two ways to turn it on:
 
-1. **Tap the babysitter icon** in the dashboard header.
+1. **Open More** on the dock and tap **Babysitter mode** under **This screen**, then enter a parent's PIN.
 2. **Share the public URL** `/babysitter`, which works without logging in. You can send it to a sitter ahead of time so they have the information on their phone as well.
 
 #### The /babysitter public URL
@@ -250,13 +257,13 @@ These modes sit in layers. The dashboard is always running underneath, and which
 - Away mode shows the photo slideshow, clock and weather, with no widgets.
 - Babysitter mode shows the babysitter information full screen, with no slideshow.
 
-You switch modes with the header icons. Away mode and babysitter mode need a PIN to leave before you can switch.
+You turn Away mode and Babysitter mode on from **More > This screen**, where **Screensaver** also starts the screensaver at once. Away mode and babysitter mode need a PIN to leave before you can switch.
 
 ### Performance considerations
 
 The screensaver, away mode and babysitter mode each load only when they are turned on, and not every time the dashboard draws. In v1.0.4 the chain of imports that had pulled them into the root layout was cut, to keep the dashboard's first paint fast.
 
-At the Reduced and Minimal performance levels (*Settings → Appearance → Performance*):
+At the Reduced and Minimal performance levels (**Performance** in More > Edit layout > Look, under **This screen**, set for each screen):
 
 - The screensaver's Fireworks effect becomes a plain fade, and the night sky stops twinkling.
 - At Minimal, the fades between idle and awake are almost instant.
@@ -279,10 +286,10 @@ If you need to give a babysitter or short-term guest the information they need, 
 
 #### Screensaver doesn't activate
 
-- Check *Settings → Appearance → Timers & Auto-Activation → Screensaver Timeout* to see if it is set to "Never".
-- Check whether the dashboard is in edit mode, which stops the screensaver.
+- Check **Rest after** in More > Edit layout > Through the day. **Never rests** turns the screensaver off.
+- Check whether the layout editor is open, which stops the screensaver.
 - Check whether a modal is open, which also stops it.
-- In an installed app, the screensaver starts by itself only on a screen named in its editor (*Through the day* → **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
+- In an installed app, the screensaver starts by itself only on a screen named in its editor (More > Edit layout > Through the day > **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
 
 #### Away mode won't exit
 
@@ -290,7 +297,7 @@ You need the parent PIN. If you've forgotten it, reset it offline with the scrip
 
 #### Babysitter info shows blank
 
-Nothing has been filled in under *Settings → Babysitter Info.* Add at least one section so the page has something to show.
+Nothing has been filled in under *Settings > Babysitter Info.* Add at least one section so the page has something to show.
 
 #### Sensitive section won't unlock with the right PIN
 
@@ -298,15 +305,15 @@ Check that the PIN belongs to someone with the **parent** role. A child's PIN ca
 
 #### Public /babysitter URL not loading
 
-Make sure at least one section is filled in under *Settings → Babysitter Info*, because an empty babysitter view has nothing to show. Also check that the device can reach the Prism host on your network.
+Make sure at least one section is filled in under *Settings > Babysitter Info*, because an empty babysitter view has nothing to show. Also check that the device can reach the Prism host on your network.
 
 #### Photo slideshow stutters during screensaver
 
-The screen may be running at the Minimal performance level, where the Photo widget shows a single image. Look in *Settings → Appearance → Performance*. With Auto selected, it shows which level is in use.
+The screen may be running at the Minimal performance level, where the Photo widget shows a single image. Look at **Performance** in More > Edit layout > Look, under **This screen**. On **Auto** the screen steps down a level by itself when its fades keep stuttering. While it runs below Full, a **Performance** tile shows in **More > This screen**, and a tap on it sets Full.
 
 #### Wrong photo source on the screensaver
 
-The screensaver's photo filters (sources, orientation per context, pinned photo) are in *Settings → Photos* under the **screensaver** display context. Change them there.
+The screensaver's photo filters (sources, orientation per context, pinned photo) are in *Settings > Photos* under the **screensaver** display context. Change them there.
 
 #### Babysitter QR code for WiFi doesn't work
 
