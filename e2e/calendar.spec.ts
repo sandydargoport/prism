@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Calendar', () => {
   let parent: FamilyMember;
@@ -20,7 +21,7 @@ test.describe('Calendar', () => {
 
   test('calendar page loads with date header', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // The calendar header shows a date range title
     await expect(page.locator('h1').first()).toBeVisible({ timeout: 10000 });
@@ -32,7 +33,7 @@ test.describe('Calendar', () => {
 
   test('Today button navigates to current date', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Navigate away from today first
     await page.click('button[aria-label="Next"]');
@@ -47,7 +48,7 @@ test.describe('Calendar', () => {
 
   test('prev/next buttons navigate dates', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const headerText = await page.locator('h1').first().textContent();
 
@@ -68,7 +69,7 @@ test.describe('Calendar', () => {
 
   test('view switching buttons change calendar layout', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // View switcher buttons are inside a bordered container
     const viewSwitcher = page.locator('.border.rounded-md');
@@ -90,7 +91,7 @@ test.describe('Calendar', () => {
 
   test('add event button is visible for parents', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const addBtn = page.getByRole('button', { name: /Add Event/i });
     await expect(addBtn).toBeVisible({ timeout: 10000 });

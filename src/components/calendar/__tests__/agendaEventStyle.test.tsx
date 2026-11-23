@@ -15,9 +15,12 @@ import type { CalendarEvent } from '@/types/calendar';
 
 // A fixed afternoon in Chicago, where the agenda is drawn. On the real clock,
 // "an hour from now" fell on Chicago's tomorrow between 11pm and midnight
-// there, and the one-day agenda was empty.
+// there, and the one-day agenda was empty. The agenda also reads the
+// household's past-events setting on mount; answer with no settings, so it
+// keeps its default.
 beforeEach(() => {
   jest.useFakeTimers({ now: new Date('2026-11-03T21:00:00Z') }); // 3:00 PM CST
+  global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ settings: {} }) })) as unknown as typeof fetch;
 });
 afterEach(() => {
   jest.useRealTimers();

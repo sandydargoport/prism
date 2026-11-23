@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { resetTasks } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Tasks', () => {
   let parent: FamilyMember;
@@ -22,7 +23,7 @@ test.describe('Tasks', () => {
 
   test('tasks page loads with header', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Header should show "Tasks"
     await expect(page.locator('h1')).toContainText('Tasks');
@@ -30,7 +31,7 @@ test.describe('Tasks', () => {
 
   test('tasks are displayed from database', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Tasks', { timeout: 10000 });
 
     // Use the API to confirm there are tasks
@@ -45,7 +46,7 @@ test.describe('Tasks', () => {
 
   test('status filter buttons are visible', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Tasks', { timeout: 10000 });
 
     // Look for filter buttons — "Active" and "Completed" status filters
@@ -63,7 +64,7 @@ test.describe('Tasks', () => {
 
   test('group by person toggle switches view mode', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Tasks', { timeout: 10000 });
 
     // groupByUser defaults to true — the button should have 'secondary' variant
@@ -83,7 +84,7 @@ test.describe('Tasks', () => {
 
   test('add task button is visible for parents', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const addBtn = page.getByRole('button', { name: /Add Task/i });
     await expect(addBtn).toBeVisible({ timeout: 10000 });

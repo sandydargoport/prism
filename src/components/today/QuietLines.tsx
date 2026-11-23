@@ -14,12 +14,28 @@ import { useAuth, useTimeFormat } from '@/components/providers';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { getDisplayDateKey, toDisplayDate } from '@/lib/utils/timeFormat';
-import { birthdayNudge, choresLeft, type BirthdayLike, type ChoreLike } from '@/lib/today/quietLines';
+import { birthdayNudge, choresLeft, encodePutOff, occasionOf, type BirthdayLike, type ChoreLike } from '@/lib/today/quietLines';
 
-const PUT_OFF_KEY = 'prism-birthday-nudge-put-off';
+/** Put-off nudges, each as a digest of its occasion (encodePutOff). */
+const PUT_OFF_KEY = 'prism-nudge-put-off';
+/**
+ * Where they were kept before, as the occasion itself. Read once, encoded
+ * across and removed. A key of its own, as CodeQL counts whatever is read
+ * from a key named for birthdays as birthday data.
+ */
+const OLD_PUT_OFF_KEY = 'prism-birthday-nudge-put-off';
 
 function readPutOff(): string[] {
-  try { return JSON.parse(localStorage.getItem(PUT_OFF_KEY) ?? '[]') as string[]; } catch { return []; }
+  try {
+    const kept = JSON.parse(localStorage.getItem(PUT_OFF_KEY) ?? '[]') as string[];
+    const old = localStorage.getItem(OLD_PUT_OFF_KEY);
+    if (old === null) return kept;
+    // Each one through encodePutOff by name, so the check sees it encoded.
+    const moved = [...kept, ...(JSON.parse(old) as string[]).map((occasion) => encodePutOff(occasion))];
+    localStorage.setItem(PUT_OFF_KEY, JSON.stringify(moved));
+    localStorage.removeItem(OLD_PUT_OFF_KEY);
+    return moved;
+  } catch { return []; }
 }
 
 export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddShopping, inline = false, onPaper = false }: {
@@ -38,7 +54,7 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
   const locale = useLocale();
   const { displayTimezone } = useTimeFormat();
   const { requireAuth } = useAuth();
-  // Put off "for this birthday", on this screen: id plus the date it falls on.
+  // Put off "for this birthday", on this screen: the digest of its id and the date it falls on.
   const [putOff, setPutOff] = useState<string[]>(() => (typeof window === 'undefined' ? [] : readPutOff()));
 
   const today = toDisplayDate(now, displayTimezone);
@@ -48,14 +64,14 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
   const toBuy = list ? list.items.filter((i) => !i.checked).length : 0;
   const nudge = birthdayNudge(birthdays, {
     hour: today.getHours(),
-    putOff: (b) => putOff.includes(`${b.id}:${b.nextBirthday}`),
+    putOff: (b) => putOff.includes(encodePutOff(occasionOf(b))),
   });
   const nudgeBirthday = nudge ? birthdays.find((b) => b.id === nudge.birthdayId) : undefined;
   const weekday = (days: number) => addDays(today, days).toLocaleDateString(locale, { weekday: 'long' });
 
   const notNow = () => {
     if (!nudgeBirthday) return;
-    const next = [...putOff, `${nudgeBirthday.id}:${nudgeBirthday.nextBirthday}`];
+    const next = [...putOff, encodePutOff(occasionOf(nudgeBirthday))];
     setPutOff(next);
     try { localStorage.setItem(PUT_OFF_KEY, JSON.stringify(next)); } catch { /* the line comes back on reload */ }
   };

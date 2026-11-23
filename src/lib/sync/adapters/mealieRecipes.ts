@@ -38,7 +38,7 @@ export async function ensureMealieRecipeImported(
   slug: string,
 ): Promise<{ recipeId: string; imported: boolean } | null> {
   const source = await loadSourceConnection(sourceId);
-  return ensureImported(sourceId, externalId, source.token, () =>
+  return ensureImported(sourceId, externalId, source, () =>
     fetchMealieRecipeBySlug(source.serverUrl, source.token, slug),
   );
 }
@@ -64,13 +64,13 @@ export const mealieRecipeAdapter: EntitySyncAdapter<Payload> = {
   async applyAdd(sourceId, change) {
     if (!change.payload) return;
     const source = await loadSourceConnection(sourceId);
-    await writeRecipeRow(sourceId, change.payload, source.token, null);
+    await writeRecipeRow(sourceId, change.payload, source, null);
   },
 
   async applyUpdate(sourceId, change) {
     if (!change.payload || !change.localId) return;
     const source = await loadSourceConnection(sourceId);
-    await writeRecipeRow(sourceId, change.payload, source.token, change.localId);
+    await writeRecipeRow(sourceId, change.payload, source, change.localId);
   },
 
   async applyDelete(_sourceId, change) {

@@ -30,6 +30,7 @@ import { loginViaAPI } from './helpers/auth';
 import { resetAll } from './helpers/reset';
 import { ALL_NAV_ITEMS } from '../src/lib/constants/navItems';
 import { layoutProbe, gradeProbe, type LayoutProbeResult, type Severity } from './helpers/ui-detectors';
+import { waitForQuiet } from './helpers/network';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const TOLERANCE = 2; // px slack before flagging overflow
@@ -93,7 +94,7 @@ async function probeRoute(
 ): Promise<Finding> {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.goto(route);
-  await page.waitForLoadState('networkidle').catch(() => {});
+  await waitForQuiet(page).catch(() => {});
   await page.waitForTimeout(500);
 
   const probe = await page.evaluate(layoutProbe, TOLERANCE);

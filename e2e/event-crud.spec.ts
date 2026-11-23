@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { deleteEventByTitle } from './helpers/cleanup';
+import { waitForQuiet } from './helpers/network';
 
 const TEST_TITLE = `E2E Event ${Date.now()}`;
 const EDITED_TITLE = `${TEST_TITLE} (edited)`;
@@ -46,7 +47,7 @@ test.describe('Event CRUD', () => {
 
   test('create event via modal UI', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Look for Add Event button
     const addBtn = page.getByRole('button', { name: /Add Event/i });

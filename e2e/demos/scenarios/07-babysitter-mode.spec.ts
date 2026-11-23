@@ -1,6 +1,7 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData, seedBabysitterInfo } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Babysitter mode overlay', async ({ page }) => {
   resetDemoData();
@@ -8,7 +9,7 @@ test('Babysitter mode overlay', async ({ page }) => {
 
   const member = await loginViaAPI(page, 'Alex');
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(2000);
 
   // Enable babysitter mode via API

@@ -1,13 +1,14 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Away mode overlay', async ({ page }) => {
   resetDemoData();
 
   const member = await loginViaAPI(page, 'Alex');
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(2000);
 
   // Enable away mode via API (skip PIN modal for clean recording)

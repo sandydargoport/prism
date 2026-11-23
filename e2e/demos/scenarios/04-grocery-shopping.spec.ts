@@ -1,13 +1,14 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Grocery shopping check-off with celebration', async ({ page }) => {
   resetDemoData();
 
   await loginViaAPI(page, 'Alex');
   await page.goto('/shopping');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(1500);
 
   // The default active list may not be "Grocery" — click the Grocery tab

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { deleteShoppingItem, deleteShoppingList } from './helpers/cleanup';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Shopping CRUD', () => {
   let parent: FamilyMember;
@@ -51,13 +52,13 @@ test.describe('Shopping CRUD', () => {
     createdItemIds.push(item.id);
 
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.getByText(itemName)).toBeVisible({ timeout: 10000 });
   });
 
   test('add item via modal', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Shopping', { timeout: 10000 });
 
     // Look for Add Item button (icon or text)

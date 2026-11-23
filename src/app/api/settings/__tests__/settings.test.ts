@@ -365,5 +365,21 @@ describe('PATCH /api/settings', () => {
       const res = await PATCH(makePatchRequest({ key: 'nightSkyAurora', value: true }));
       expect(res.status).toBe(200);
     });
+
+    it.each(['shown', 'hidden', '', true, 1])('rejects the past events mode %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'calendarPastEvents', value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it.each(['dim', 'hide'])('accepts the past events mode %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'calendarPastEvents', value }));
+      expect(res.status).toBe(200);
+    });
+
+    it('refuses "show", which the agenda no longer offers', async () => {
+      const res = await PATCH(makePatchRequest({ key: 'calendarPastEvents', value: 'show' }));
+      expect(res.status).toBe(400);
+    });
   });
 });

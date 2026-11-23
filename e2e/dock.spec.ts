@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { waitForQuiet } from './helpers/network';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
@@ -460,7 +461,7 @@ test.describe('the dock on the wall', () => {
     await page.goto('/calendar');
     await expect(page.getByRole('navigation', { name: 'Pages' })).toBeVisible({ timeout: 60_000 });
     // The phone check settles after the first paint; swipe once it has.
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.waitForTimeout(1000);
     const row = await page.getByRole('navigation', { name: 'Pages' }).locator('a[href]').evaluateAll((as) => as.map((a) => new URL((a as HTMLAnchorElement).href).pathname));
     const at = row.indexOf('/calendar');
@@ -490,7 +491,7 @@ test.describe('the dock on the wall', () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => {
       const target = document.body;
       const t = (x: number) => [new Touch({ identifier: 0, target, clientX: x, clientY: 500 })];

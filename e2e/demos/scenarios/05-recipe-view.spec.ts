@@ -1,13 +1,14 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Recipe browsing and ingredient check-off', async ({ page }) => {
   resetDemoData();
 
   await loginViaAPI(page, 'Alex');
   await page.goto('/recipes');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(2000);
 
   // Click the Carne Asada recipe card (user-added recipe)

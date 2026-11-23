@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForQuiet } from './helpers/network';
 import path from 'path';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
@@ -36,7 +37,7 @@ test('the wallpaper crossfades: the old photo stays opaque under the new one, wh
   await expect(stage.locator('[data-photo-layer="front"]')).toHaveCount(1, { timeout: 60_000 });
   // The widgets draw after the photo; measure them once they are all there.
   await expect(page.locator('.widget-cell').first()).toBeVisible({ timeout: 30_000 });
-  await page.waitForLoadState('networkidle').catch(() => {});
+  await waitForQuiet(page).catch(() => {});
   const widgetsBefore = await page.locator('.widget-cell').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
 
   // Wait for the next photo to start fading in.
