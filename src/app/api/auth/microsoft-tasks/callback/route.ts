@@ -6,6 +6,7 @@ import { logError, oneLine } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 import { consumeOAuthState } from '@/lib/auth/oauthState';
+import { envCredential } from '@/lib/integrations/envCredential';
 
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
 const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
@@ -21,8 +22,8 @@ interface MicrosoftTokens {
 }
 
 async function exchangeCodeForTokens(code: string, redirectUriOverride?: string): Promise<MicrosoftTokens> {
-  const clientId = process.env.MICROSOFT_CLIENT_ID;
-  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+  const clientId = envCredential('MICROSOFT_CLIENT_ID');
+  const clientSecret = envCredential('MICROSOFT_CLIENT_SECRET');
   const redirectUri = redirectUriOverride || process.env.MICROSOFT_TASKS_REDIRECT_URI ||
     `${BASE_URL}/api/auth/microsoft-tasks/callback`;
 

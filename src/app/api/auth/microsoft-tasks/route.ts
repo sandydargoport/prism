@@ -4,6 +4,7 @@ import { logError } from '@/lib/utils/logError';
 import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { createOAuthState } from '@/lib/auth/oauthState';
+import { envCredential } from '@/lib/integrations/envCredential';
 
 const MICROSOFT_AUTH_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize';
 // `User.Read` lets us identify which Microsoft account authorized, for the
@@ -17,7 +18,9 @@ export async function GET(request: Request) {
   const forbidden = requireRole(auth, 'canManageIntegrations');
   if (forbidden) return forbidden;
 
-  const clientId = process.env.MICROSOFT_CLIENT_ID;
+  // A blank value or the .env.example placeholder counts as not set, so the
+  // browser goes to Prism's setup prompt rather than Microsoft's error page.
+  const clientId = envCredential('MICROSOFT_CLIENT_ID');
   const redirectUri = resolveRedirectUri(request, '/api/auth/microsoft-tasks/callback'); // dynamic redirect URI per request (#124)
 
   if (!clientId) {
