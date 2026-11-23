@@ -27,7 +27,7 @@ export function announceBirthdaysChanged() {
 
 /**
  * Remove a birthday. A synced one is also recorded as removed, so sync does
- * not add it back; Settings > Calendars can restore it. True if it went.
+ * not add it back; Manage calendars can restore it. True if it went.
  */
 export async function removeBirthday(id: string): Promise<boolean> {
   const res = await fetch(`/api/birthdays/${id}`, { method: 'DELETE' });

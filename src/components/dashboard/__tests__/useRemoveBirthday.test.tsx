@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  *
  * Removing a birthday from the widget: a parent, a confirmation, then the
- * same removal as Settings.
+ * same removal as the Birthdays list in Manage calendars.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -36,6 +36,14 @@ describe('useRemoveBirthday', () => {
     const confirm = await run(true);
     expect(confirm).toHaveBeenCalledWith('Remove Person One?', expect.any(String), expect.objectContaining({ confirmLabel: 'Remove' }));
     expect(fetchMock).toHaveBeenCalledWith('/api/birthdays/b1', { method: 'DELETE' });
+  });
+
+  it('says it can be restored in Manage calendars, not Settings (#1313)', async () => {
+    user = { id: 'p', role: 'parent' };
+    const confirm = await run(false);
+    const [, body] = confirm.mock.calls[0] as unknown as [string, string];
+    expect(body).toContain('restore it in Calendar > View > Manage calendars');
+    expect(body).not.toContain('Settings');
   });
 
   it('keeps it when the parent cancels', async () => {

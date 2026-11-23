@@ -1,5 +1,5 @@
 /**
- * Events hidden in Prism (#592), for the Settings > Calendars list that
+ * Events hidden in Prism (#592), for the Manage calendars list that
  * unhides them: a hidden event can no longer be clicked anywhere else.
  *
  *   GET → { hidden: [{ id, title, startTime, allDay, calendarName }],

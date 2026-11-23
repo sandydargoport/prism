@@ -44,6 +44,29 @@ describe('i18n catalogues', () => {
   });
 });
 
+describe('directions to Manage calendars (#1313)', () => {
+  // Hidden events are unhidden in Manage calendars, in the Calendar page's
+  // View menu; there is no Calendars section in Settings. The path is built
+  // from each catalogue's own labels, so a renamed menu fails here too.
+  const pathIn = (locale: Dict) => {
+    const common = (locale.common as Dict).nav as Dict;
+    const calendar = locale.calendar as Dict;
+    return [common.calendar, (calendar.options as Dict).trigger, (calendar.toolbar as Dict).manageCalendars].join(' > ');
+  };
+
+  it.each([
+    ['en', en, 'Calendar > View > Manage calendars'],
+    ['de', de, 'Kalender > Ansicht > Kalender verwalten'],
+  ] as const)('%s: the Hide in Prism hint and toast name it, not Settings', (_name, locale, path) => {
+    expect(pathIn(locale as Dict)).toBe(path);
+    const event = (locale.calendar as Dict).event as Dict;
+    for (const key of ['hideInPrismHint', 'hiddenToastBody']) {
+      expect(event[key]).toContain(path);
+      expect(event[key]).not.toMatch(/Settings|Einstellungen/);
+    }
+  });
+});
+
 describe('weather condition keys', () => {
   // Every WMO code the provider can see, including the buckets' edges and the
   // gaps between them that fall through to the default.
