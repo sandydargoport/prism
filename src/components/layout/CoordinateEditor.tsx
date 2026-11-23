@@ -153,7 +153,9 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
                       <button
                         type="button"
                         onClick={() => handleRemoveWidget(widgetId)}
-                        className="shrink-0 rounded px-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                        // The glyph stays small; the target is 44px by touch, 28px with a mouse, as the settings below.
+                        className="-my-2 flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-xs text-muted-foreground hover:bg-muted hover:text-foreground pointer-fine:-my-1 pointer-fine:h-8 pointer-fine:w-8"
+                        data-widget-hide
                         aria-label={`Hide ${label}`}
                         title="Hide it"
                       >

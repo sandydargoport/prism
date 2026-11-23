@@ -146,6 +146,7 @@ test.describe('canvas editor (#1265)', () => {
       settingsText: minFont(document.querySelector('[data-widget-settings]')),
       tabsText: minFont(document.querySelector('[data-editor-panels] nav')),
       shortestControl: Math.min(...buttons),
+      shortestHide: Math.min(...[...document.querySelectorAll('[data-widget-hide]')].map((b) => Math.min(b.getBoundingClientRect().height, b.getBoundingClientRect().width))),
       cancel: document.querySelector('[data-editor-cancel]')!.getBoundingClientRect().height,
       pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
     };
@@ -186,6 +187,7 @@ test.describe('canvas editor (#1265)', () => {
       const sizes = await panelSizes(page);
       expect(sizes.settingsText, 'no word smaller than the panel tabs').toBeGreaterThanOrEqual(sizes.tabsText);
       expect(sizes.shortestControl, 'every control as tall as Cancel').toBeGreaterThanOrEqual(sizes.cancel - 0.5);
+      expect(sizes.shortestHide, "each row's Hide is as big a target as Cancel").toBeGreaterThanOrEqual(sizes.cancel - 0.5);
 
       // A choice is kept on the widget; Close lets it go.
       await settings.getByLabel('Glass fill').click();
@@ -228,6 +230,7 @@ test.describe('canvas editor (#1265)', () => {
       expect(sizes.pageOverflow, 'no sideways scroll').toBeLessThanOrEqual(0);
       expect(sizes.settingsText).toBeGreaterThanOrEqual(sizes.tabsText);
       expect(sizes.shortestControl).toBeGreaterThanOrEqual(sizes.cancel - 0.5);
+      expect(sizes.shortestHide, "each row's Hide is as big a target as Cancel").toBeGreaterThanOrEqual(sizes.cancel - 0.5);
     } finally { await cleanup(); }
   });
 
