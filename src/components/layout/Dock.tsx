@@ -81,7 +81,7 @@ function PageScreenJobs({ narrow, editHref, close }: { narrow: boolean; editHref
   const router = useRouter();
   const edit = async () => {
     close();
-    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
+    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.", { parentsOnly: true });
     if (!user || user.role !== 'parent') return;
     router.push(editHref);
   };

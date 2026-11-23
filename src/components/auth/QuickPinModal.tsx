@@ -67,6 +67,11 @@ export interface QuickPinModalProps {
   preSelectedMember?: QuickPinMember | null;
   /** Lock to pre-selected member (cannot switch users) */
   lockToMember?: boolean;
+  /**
+   * Only a parent can go on (#1330): the list offers the parents alone, as
+   * Settings' own PIN prompt does.
+   */
+  parentsOnly?: boolean;
 }
 
 /**
@@ -80,12 +85,13 @@ export function QuickPinModal({
   onAuthenticated,
   preSelectedMember,
   lockToMember = false,
+  parentsOnly = false,
 }: QuickPinModalProps) {
   const titleId = React.useId();
   const descriptionId = React.useId();
   // Family members from context
   const { members: contextMembers, loading: loadingMembers } = useFamily();
-  const members: QuickPinMember[] = contextMembers.filter(m => m.name).map(m => ({
+  const members: QuickPinMember[] = contextMembers.filter(m => m.name && (!parentsOnly || m.role === 'parent')).map(m => ({
     id: m.id,
     loginIndex: m.loginIndex,
     name: m.name,

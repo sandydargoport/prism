@@ -97,7 +97,8 @@ describe('the More panel (#1257)', () => {
     requireAuth.mockResolvedValueOnce({ role: 'child' });
     const panel = openMore();
     await act(async () => { fireEvent.click(job(panel, 'edit')!); });
-    expect(requireAuth).toHaveBeenCalled();
+    // Only a parent can go on, so the sign-in list offers parents alone (#1330).
+    expect(requireAuth).toHaveBeenCalledWith('Sign in to edit', expect.any(String), { parentsOnly: true });
     expect(push).not.toHaveBeenCalled();
   });
 

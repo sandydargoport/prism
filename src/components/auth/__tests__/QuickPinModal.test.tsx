@@ -12,7 +12,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 jest.mock('@/components/providers', () => ({
   useFamily: () => ({
     loading: false,
-    members: [{ id: 'm1', loginIndex: 0, name: 'Alex', color: '#3b82f6', role: 'parent', pinLength: 4 }],
+    members: [
+      { id: 'm1', loginIndex: 0, name: 'Alex', color: '#3b82f6', role: 'parent', pinLength: 4 },
+      { id: 'm2', loginIndex: 1, name: 'Sam', color: '#10b981', role: 'child', pinLength: 4 },
+    ],
   }),
 }));
 
@@ -45,5 +48,19 @@ describe('QuickPinModal (#834)', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onOpenChange).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('a prompt only a parent can answer (#1330)', () => {
+  it('lists the parents alone', () => {
+    open({ parentsOnly: true });
+    expect(screen.getByRole('button', { name: /Alex/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Sam/ })).toBeNull();
+  });
+
+  it('any other prompt lists everyone', () => {
+    open();
+    expect(screen.getByRole('button', { name: /Alex/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Sam/ })).toBeTruthy();
   });
 });

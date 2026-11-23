@@ -197,7 +197,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     // Auth gate: only parents can edit. Signed out, the PIN box opens and
     // editing starts once a parent signs in; a non-parent is quietly
     // blocked (their edit button is already hidden, so this is a safety net).
-    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
+    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.", { parentsOnly: true });
     if (!user || user.role !== 'parent') return;
     if (activeLayout && editsOnCanvas()) {
       router.push(editorLink(activeLayout.id));

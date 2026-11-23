@@ -188,6 +188,7 @@ export function BabysitterView() {
         onOpenChange={setShowPinModal}
         title="Unlock Sensitive Info"
         description="Enter a parent PIN to view sensitive information"
+        parentsOnly
         onAuthenticated={(user) => {
           // Unlock all sensitive items for this session
           const sensitiveIds = items.filter((i) => i.isSensitive).map((i) => i.id);

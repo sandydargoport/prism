@@ -64,7 +64,7 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
   // Undo in the toast. The event stays in its source calendar.
   const handleHide = async (scope: 'event' | 'series') => {
     // Not signed in: the usual sign-in box, then the hide (#1048).
-    const who = activeUser ?? await requireAuth(t('event.hideSignInTitle'), t('event.hideSignInBody'));
+    const who = activeUser ?? await requireAuth(t('event.hideSignInTitle'), t('event.hideSignInBody'), { parentsOnly: true });
     if (!who) return;
     if (who.role !== 'parent') {
       toast({ title: t('event.hideParentsOnly'), variant: 'destructive' });
