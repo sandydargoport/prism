@@ -179,22 +179,26 @@ export function WidgetsSheet({
   const selected = selectedWidgetId ? widgets.find((w) => w.i === selectedWidgetId && w.visible !== false) : undefined;
   return (
     <div className="flex flex-col gap-6">
-      {selected ? (
-        <WidgetStylePanel
-          widget={selected}
-          onChange={(next) => change(widgets.map((w) => (w.i === next.i ? next : w)))}
-          onClose={onSelectedWidgetChange ? () => onSelectedWidgetChange(null) : undefined}
-          hideEmptyByDefault={hideEmptyByDefault}
-          idleToggles={idleToggles}
-        />
-      ) : (
-        <p className="m-0 text-body text-muted-foreground" data-widget-settings-hint>
-          Select a widget on the screen to change its fill, outline and text here.
-        </p>
-      )}
       <section>
         <h3 className={section}>On this dashboard</h3>
-        <CoordinateEditor widgets={widgets} onWidgetsChange={change} mode={mode} onFocusedWidgetChange={onFocusedWidgetChange} />
+        <CoordinateEditor widgets={widgets} onWidgetsChange={change} mode={mode} onFocusedWidgetChange={onFocusedWidgetChange}
+          selectedWidgetId={selected?.i ?? null} onSelectWidget={onSelectedWidgetChange} />
+      </section>
+      {/* The selected widget's own settings, under the list, following the selection (#1323). */}
+      <section data-widget-settings-section>
+        {selected ? (
+          <WidgetStylePanel
+            widget={selected}
+            onChange={(next) => change(widgets.map((w) => (w.i === next.i ? next : w)))}
+            onClose={onSelectedWidgetChange ? () => onSelectedWidgetChange(null) : undefined}
+            hideEmptyByDefault={hideEmptyByDefault}
+            idleToggles={idleToggles}
+          />
+        ) : (
+          <p className="m-0 text-body text-muted-foreground" data-widget-settings-hint>
+            Pick a widget above to change its fill, outline and text.
+          </p>
+        )}
       </section>
       <section>
         <h3 className={section}>Start from a template</h3>

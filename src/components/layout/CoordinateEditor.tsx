@@ -12,9 +12,12 @@ interface CoordinateEditorProps {
   onWidgetsChange: (widgets: WidgetConfig[]) => void;
   mode: 'dashboard' | 'screensaver';
   onFocusedWidgetChange?: (widgetId: string | null) => void;
+  /** The widget selected on the canvas or here (#1323): its row is marked, and a tap on a row selects it. */
+  selectedWidgetId?: string | null;
+  onSelectWidget?: (widgetId: string | null) => void;
 }
 
-export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidgetChange }: CoordinateEditorProps) {
+export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidgetChange, selectedWidgetId = null, onSelectWidget }: CoordinateEditorProps) {
   const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const addRef = useRef<HTMLDivElement>(null);
@@ -118,26 +121,46 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
             const reg = WIDGET_REGISTRY[widgetId];
             const color = WIDGET_COLORS[widgetId] || '#6B7280';
             const isFocused = focusedWidget === widgetId;
+            const isSelected = selectedWidgetId === widgetId;
+            const label = reg?.label || widgetId;
 
             return (
               <tr
                 key={widgetId}
+                aria-selected={isSelected}
                 className={`border-b border-border/50 transition-colors ${
-                  isFocused ? 'bg-primary/5' : ''
+                  isSelected ? 'bg-primary/15' : isFocused ? 'bg-primary/5' : ''
                 }`}
+                data-widget-row={widgetId}
               >
                 <td className="py-1 px-1">
-                  <button
-                    onClick={() => handleRemoveWidget(widgetId)}
-                    className="w-full text-left text-xs px-1.5 py-0.5 rounded transition-colors whitespace-nowrap text-white"
-                    style={{
-                      backgroundColor: color,
-                      border: `1px solid ${color}`,
-                    }}
-                    title="Click to hide"
-                  >
-                    {reg?.label || widgetId}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* A tap on the name selects it, as on the canvas (#1323); its settings are below the list. */}
+                    <button
+                      type="button"
+                      onClick={() => onSelectWidget ? onSelectWidget(widgetId) : handleRemoveWidget(widgetId)}
+                      aria-pressed={onSelectWidget ? isSelected : undefined}
+                      className={`min-w-0 flex-1 text-left text-xs px-1.5 py-0.5 rounded transition-colors whitespace-nowrap text-white ${isSelected ? 'ring-2 ring-foreground ring-offset-1 ring-offset-card' : ''}`}
+                      style={{
+                        backgroundColor: color,
+                        border: `1px solid ${color}`,
+                      }}
+                      title={onSelectWidget ? 'Tap to change its settings, below' : 'Click to hide'}
+                    >
+                      {label}
+                    </button>
+                    {onSelectWidget && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveWidget(widgetId)}
+                        className="shrink-0 rounded px-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label={`Hide ${label}`}
+                        title="Hide it"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="py-1 px-0.5">
                   <CoordInput

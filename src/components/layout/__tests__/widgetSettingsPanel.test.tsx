@@ -85,10 +85,52 @@ describe("a selected widget's settings in the Widgets panel (#1323)", () => {
     const { unmount } = render(<Sheet selected={null} />);
     expect(document.querySelector('[data-widget-settings]')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Fill' })).toBeNull();
-    expect(screen.getByText(/Select a widget on the screen/)).toBeTruthy();
+    // The settings keep their place under the list, as one line and no swatches.
+    const empty = document.querySelector('[data-widget-settings-section]') as HTMLElement;
+    expect(empty.textContent).toBe('Pick a widget above to change its fill, outline and text.');
+    expect(empty.querySelector('button')).toBeNull();
     unmount();
     render(<Sheet selected="weather" />);
     expect(document.querySelector('[data-widget-settings]')).toBeNull();
+  });
+
+  it("lists the widgets first, then the selected one's settings, then the templates", () => {
+    render(<Sheet selected="tasks" />);
+    const list = document.querySelector('[data-widget-row="clock"]')!;
+    const settings = document.querySelector('[data-widget-settings="tasks"]')!;
+    const templates = screen.getByRole('heading', { name: 'Start from a template' });
+    expect(list.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(settings.compareDocumentPosition(templates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('a tap on a row in the list selects that widget, marks its row, and the settings follow', () => {
+    function Selecting() {
+      const [selected, setSelected] = useState<string | null>(null);
+      return <Sheet selected={selected} onSelect={setSelected} />;
+    }
+    render(<Selecting />);
+    const row = (id: string) => document.querySelector(`[data-widget-row="${id}"]`) as HTMLElement;
+    expect(row('clock').getAttribute('aria-selected')).toBe('false');
+    fireEvent.click(within(row('clock')).getByRole('button', { name: 'Clock' }));
+    // Selected, not hidden as a tap on the name used to do.
+    expect(row('clock')).not.toBeNull();
+    expect(row('clock').getAttribute('aria-selected')).toBe('true');
+    expect(row('clock').className).toMatch(/bg-primary/);
+    expect(document.querySelector('[data-widget-settings="clock"]')).not.toBeNull();
+
+    fireEvent.click(within(row('tasks')).getByRole('button', { name: 'Tasks' }));
+    expect(row('tasks').getAttribute('aria-selected')).toBe('true');
+    expect(row('clock').getAttribute('aria-selected')).toBe('false');
+    expect(document.querySelector('[data-widget-settings="tasks"]')).not.toBeNull();
+    expect(document.querySelector('[data-widget-settings="clock"]')).toBeNull();
+  });
+
+  it("a widget selected on the canvas has its row marked, and the row's Hide still hides it", () => {
+    const onChange = jest.fn();
+    render(<Sheet selected="tasks" onChange={onChange} onSelect={() => {}} />);
+    expect(document.querySelector('[data-widget-row="tasks"]')!.getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Clock' }));
+    expect(widget(onChange, 'clock').visible).toBe(false);
   });
 
   it('Glass changes the layout, says what it is, and leaves the other widgets be', () => {

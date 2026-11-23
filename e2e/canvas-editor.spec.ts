@@ -191,9 +191,20 @@ test.describe('canvas editor (#1265)', () => {
       await settings.getByLabel('Glass fill').click();
       await expect(settings.getByLabel('Glass fill')).toHaveAttribute('aria-pressed', 'true');
       await expect(settings.locator('[data-fill-name]')).toHaveText(/^Glass/);
+      // The list comes first, its row for the selected widget marked; the settings are under it.
+      const clockRow = page.locator('[data-editor-sheet="widgets"] [data-widget-row="clock"]');
+      await expect(clockRow).toHaveAttribute('aria-selected', 'true');
+      expect((await rect(page, '[data-widget-settings="clock"]')).top).toBeGreaterThanOrEqual((await rect(page, '[data-widget-row="clock"]')).bottom);
       await settings.getByRole('button', { name: "Close Clock's settings" }).click();
       await expect(page.locator('[data-widget-settings]')).toHaveCount(0);
+      await expect(page.locator('[data-widget-settings-hint]')).toHaveText('Pick a widget above to change its fill, outline and text.');
       await expect(frame.locator('[data-editor-widget="clock"]')).not.toHaveClass(/ring-blue-500/);
+
+      // A tap on a row in the list selects that widget, on the canvas too.
+      await page.locator('[data-widget-row="tasks"]').getByRole('button', { name: 'Tasks' }).click();
+      await expect(page.locator('[data-widget-row="tasks"]')).toHaveAttribute('aria-selected', 'true');
+      await expect(page.locator('[data-editor-sheet="widgets"] [data-widget-settings="tasks"]')).toBeVisible();
+      await expect(frame.locator('[data-editor-widget="tasks"]')).toHaveClass(/ring-blue-500/);
     } finally { await cleanup(); }
   });
 

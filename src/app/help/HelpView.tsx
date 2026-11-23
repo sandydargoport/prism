@@ -309,7 +309,7 @@ function DashboardHelp() {
       <H2>Arranging Widgets</H2>
       <Ul>
         <Li><strong>Drag</strong> a widget to move it. Tap it again for resize mode, then drag its corner handles</Li>
-        <Li>Select a widget and its own settings show in the <strong>Widgets</strong> panel (More &gt; Edit layout &gt; Widgets), which comes forward if another panel is open: <strong>Fill</strong> and <strong>Outline</strong> colour and opacity, <strong>Text</strong> colour, size and, for the clock and weather, <strong>Align</strong>, the calendar&apos;s <strong>Grid</strong>, <strong>Hide when empty</strong> (hidden while it has nothing to show) and <strong>Hide first on a small screen</strong>. The canvas shows only the screen</Li>
+        <Li>Pick a widget on the screen or in the list in the <strong>Widgets</strong> panel (More &gt; Edit layout &gt; Widgets); its settings are below the list, and Widgets comes forward if another panel is open. The &times; beside a name in the list hides that widget. The settings are <strong>Fill</strong> and <strong>Outline</strong> colour and opacity, <strong>Text</strong> colour, size and, for the clock and weather, <strong>Align</strong>, the calendar&apos;s <strong>Grid</strong>, <strong>Hide when empty</strong> (hidden while it has nothing to show) and <strong>Hide first on a small screen</strong>. The canvas shows only the screen</Li>
         <Li>With a widget selected, <strong>Delete</strong> or <strong>Backspace</strong> removes it (the toast has Undo), and the arrow keys move it, or resize it in resize mode</Li>
       </Ul>
 
