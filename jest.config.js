@@ -3,7 +3,8 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/jest.setup.js'],
-  roots: ['<rootDir>/src'],
+  // collector/: the install counter's Worker, tested against real SQLite (#1311).
+  roots: ['<rootDir>/src', '<rootDir>/collector'],
   moduleNameMapper: {
     // next-intl ships ESM ts-jest won't transpile; use a lightweight mock in tests.
     '^next-intl$': '<rootDir>/src/test-utils/nextIntlMock.tsx',
@@ -18,6 +19,11 @@ module.exports = {
         moduleResolution: 'node',
         esModuleInterop: true,
       },
+      diagnostics: false,
+    }],
+    // The Worker is plain ES-module JavaScript; its tests import it as CommonJS.
+    '^.+/collector/[^/]+\\.js$': ['ts-jest', {
+      tsconfig: { allowJs: true, module: 'commonjs' },
       diagnostics: false,
     }],
   },

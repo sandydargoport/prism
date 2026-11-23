@@ -5,14 +5,19 @@
  * a D1 table de-duplicated by the random install id, and replies with the
  * latest published version so the install can show an "update available" line.
  *
+ * It also takes feedback votes (#1311): one answer per install per question,
+ * sent through the same switch as the check-in.
+ *
  * Privacy contract (must match src/lib/telemetry/constants.ts on the app side):
  *   - The ONLY fields stored are {id, version, deployment, arch, first_seen,
- *     last_seen}. The client IP is never read, never logged, never stored.
+ *     last_seen} per install, and {id, referendum, answer, updated_at} per
+ *     vote. The client IP is never read, never logged, never stored.
  *   - No cookies, no fingerprinting, no cross-request linking beyond the id the
  *     install generated for itself.
  *
  * Endpoints:
  *   POST /            → record a check-in, return { latestVersion }.
+ *   POST /vote        → record or replace an install's answer to a question.
  *   GET  /stats?token=…  → aggregate counts (maintainer only, STATS_TOKEN gated).
  *   GET  /health      → "ok".
  */
@@ -38,6 +43,9 @@ export default {
 
     if (request.method === 'POST' && (url.pathname === '/' || url.pathname === '/v1/checkin')) {
       return handleCheckIn(request, env);
+    }
+    if (request.method === 'POST' && (url.pathname === '/vote' || url.pathname === '/v1/vote')) {
+      return handleVote(request, env);
     }
     if (request.method === 'GET' && url.pathname === '/stats') {
       return handleStats(url, env);
@@ -82,6 +90,66 @@ async function handleCheckIn(request, env) {
   return json({ ok: true, latestVersion });
 }
 
+/** A slug the app sends (question or answer id): lower case, digits, dashes. Anything else is refused. */
+const slug = (v) => (typeof v === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(v) ? v : null);
+
+/**
+ * A feedback vote (#1311): {schema, id, referendum, answer}. One row per
+ * install per question, so a second vote replaces the first. The app checks
+ * the question and answer against its own definition; here they only have to
+ * be slugs.
+ */
+async function handleVote(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'invalid json' }, 400);
+  }
+
+  const id = typeof body?.id === 'string' ? body.id.slice(0, 64) : null;
+  if (!id) return json({ error: 'missing id' }, 400);
+  const referendum = slug(body.referendum);
+  const answer = slug(body.answer);
+  if (!referendum || !answer) return json({ error: 'invalid vote' }, 400);
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO votes (id, referendum, answer, updated_at)
+     VALUES (?1, ?2, ?3, ?4)
+     ON CONFLICT(id, referendum) DO UPDATE SET
+       answer = ?3, updated_at = ?4`,
+  )
+    .bind(id, referendum, answer, now)
+    .run();
+
+  return json({ ok: true });
+}
+
+/**
+ * Per question: how many installs answered, and how many chose each answer.
+ * Before the votes table exists (schema.sql not yet run) this is empty rather
+ * than taking the install counts down with it.
+ */
+async function voteTotals(env) {
+  let results;
+  try {
+    ({ results } = await env.DB.prepare(
+      `SELECT referendum, answer, COUNT(*) AS n FROM votes
+       GROUP BY referendum, answer ORDER BY referendum, n DESC, answer`,
+    ).all());
+  } catch {
+    return {};
+  }
+  const totals = {};
+  for (const row of results) {
+    const r = (totals[row.referendum] ??= { total: 0, answers: {} });
+    r.answers[row.answer] = row.n;
+    r.total += row.n;
+  }
+  return totals;
+}
+
 /** Latest release tag from GitHub, cached at the edge for 1 hour. */
 async function getLatestVersion(env) {
   const repo = env.GITHUB_REPO || 'sandydargoport/prism';
@@ -119,7 +187,7 @@ async function handleStats(url, env) {
 
   const q = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
 
-  const [total, active7, active30, new7, new30, byVersion, byDeployment, byArch, newInstallsByWeek] =
+  const [total, active7, active30, new7, new30, byVersion, byDeployment, byArch, newInstallsByWeek, votes] =
     await Promise.all([
       env.DB.prepare('SELECT COUNT(*) AS n FROM checkins').first('n'),
       env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-7 days')`).first('n'),
@@ -130,6 +198,7 @@ async function handleStats(url, env) {
       q(`SELECT deployment, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY deployment ORDER BY n DESC`),
       q(`SELECT COALESCE(arch,'unknown') AS arch, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY COALESCE(arch,'unknown') ORDER BY n DESC`),
       q(`SELECT strftime('%Y-%W', first_seen) AS week, COUNT(*) AS n FROM checkins GROUP BY week ORDER BY week`),
+      voteTotals(env),
     ]);
 
   return json({
@@ -142,6 +211,7 @@ async function handleStats(url, env) {
     byDeployment,
     byArch,
     newInstallsByWeek,
+    votes,
     generatedAt: new Date().toISOString(),
   });
 }
