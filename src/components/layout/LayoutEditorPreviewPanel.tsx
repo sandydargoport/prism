@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { LayoutPreview } from './LayoutPreview';
-import { DevicePreviewGallery } from './DevicePreviewGallery';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 
@@ -60,15 +59,9 @@ export function LayoutEditorPreviewPanel({
         />
       </div>
 
-      {/* REFERENCE — how the one design looks on each screen. Not editable;
-          delineated (bordered, muted background) so it reads as a preview. */}
-      <div className="rounded-md border border-border/60 bg-muted/40 p-2">
-        <p className="text-3xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
-          Preview — each screen <span className="normal-case font-normal opacity-60">(reference)</span>
-        </p>
-        <DevicePreviewGallery widgets={previewWidgets} highlightWidget={focusedWidget} />
-      </div>
-
+      {/* No per-device thumbnails (#1324): the dashboard stretches to fill its
+          screen, so they all looked alike. Shown at, on the canvas, shows any
+          screen's size full size. */}
       {validation.errors.length > 0 && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-md p-2">
           <p className="text-xs font-medium text-destructive mb-0.5">
