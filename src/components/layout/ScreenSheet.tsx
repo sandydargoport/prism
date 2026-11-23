@@ -216,7 +216,6 @@ export function ScreenSheet({
   /** A dashboard to switch to: the first that is not the one the screen shows. */
   const another = allDashboards.find((d) => d.id !== shownId) ?? allDashboards[0];
   const full = switches.length >= MAX_SWITCHES || !another;
-  const hasBus = switches.some((sw) => sw.when === 'bus');
   /** Adds a switch, open, so its choices are in front of the person who added it. */
   const add = (sw: ScreenSwitch) => {
     saveSwitches([...switches, sw]);
@@ -227,7 +226,9 @@ export function ScreenSheet({
     if (another) add({ when: 'times', days: [...EVERY_DAY], from: hhmm(from), to: hhmm(from + 60), dashboardId: another.id });
   };
   const addBus = () => { if (another) add({ when: 'bus', dashboardId: another.id }); };
-  const busRoutes = useBusRoutes(hasBus);
+  // Read for every screen: a bus switch is offered only once a bus route is set up.
+  const busRoutes = useBusRoutes(!!plan);
+  const busSetUp = (busRoutes?.length ?? 0) > 0;
   /** Turns a route on or off for a bus switch; with every route on, it follows every route, ones added later too. */
   const toggleRoute = (i: number, sw: BusSwitch, id: string) => {
     const all = (busRoutes ?? []).map((r) => r.id);
@@ -445,9 +446,12 @@ export function ScreenSheet({
           {switches.map(switchRow)}
           {switches.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button type="button" className={chip(false)} onClick={addBus} disabled={full} data-switch-add="bus">
-              <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at bus time
-            </button>
+            {/* Only with bus tracking set up; a bus switch made before still shows above. */}
+            {busSetUp && (
+              <button type="button" className={chip(false)} onClick={addBus} disabled={full} data-switch-add="bus">
+                <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at bus time
+              </button>
+            )}
             <button type="button" className={chip(false)} onClick={addTimes} disabled={full} data-switch-add="times">
               <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at set times
             </button>

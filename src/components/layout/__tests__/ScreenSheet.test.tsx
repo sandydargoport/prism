@@ -317,6 +317,26 @@ describe('a screen\'s dashboard and switches, on the Screen tab (#1282, #1326)',
   const windows = () => busRow().querySelector('[data-bus-windows]')!.textContent;
   const BUS_PLAN: ScreenPlan = { dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] };
 
+  it('+ Switch at bus time is offered only with bus tracking set up; set times always', async () => {
+    server([]);
+    await show();
+    expect(screen.queryByRole('button', { name: 'Switch at bus time' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Switch at set times' })).toBeTruthy();
+  });
+
+  it('with a bus route set up, + Switch at bus time is there', async () => {
+    await show();
+    expect(screen.getByRole('button', { name: 'Switch at bus time' })).toBeTruthy();
+  });
+
+  it('a bus switch made before still shows with no route set up, never hidden', async () => {
+    server([]);
+    await show({ plan: BUS_PLAN });
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]!.getAttribute('data-switch')).toBe('bus');
+    expect(screen.queryByRole('button', { name: 'Switch at bus time' })).toBeNull();
+  });
+
   it('a bus switch follows the routes picked on its row, and every route again with all of them on (#1291)', async () => {
     await show({ plan: BUS_PLAN });
     unfold(busRow());

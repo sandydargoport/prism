@@ -98,8 +98,11 @@ export function useBusRoutes(wanted: boolean): BusRoute[] | null {
     if (!wanted || routes) return;
     let live = true;
     void (async () => {
-      const res = await fetch('/api/bus-tracking/status').catch(() => null);
-      const data = res?.ok ? await res.json().catch(() => null) : null;
+      let data: { routes?: unknown } | null = null;
+      try {
+        const res = await fetch('/api/bus-tracking/status');
+        data = res.ok ? await res.json() : null;
+      } catch { /* no answer: no routes */ }
       if (!live) return;
       setRoutes(((data?.routes ?? []) as Array<Partial<BusRoute>>)
         .flatMap((r) => (typeof r.id === 'string' && typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays)

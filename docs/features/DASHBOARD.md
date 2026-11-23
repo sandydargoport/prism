@@ -117,7 +117,7 @@ A named screen shows one dashboard, and can switch to another for a while. Both 
   - A screen can have more than one bus switch, for example the morning route to one dashboard and the afternoon route to another.
 - **At set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
 
-**+ Switch at bus time** and **+ Switch at set times** add one; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
+**+ Switch at set times** and, if bus tracking is set up (at least one route in *Settings > Bus*), **+ Switch at bus time** add one; a bus switch made before keeps its row either way; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
 
 A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Screen** > **Name this device**.
 
