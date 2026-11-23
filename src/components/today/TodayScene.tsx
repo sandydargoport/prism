@@ -65,6 +65,7 @@ export function TodayScene({
   household,
   idle = false,
   topOffset = 0,
+  bottomOffset = 0,
   drift = false,
   night = false,
 }: {
@@ -90,6 +91,8 @@ export function TodayScene({
   idle?: boolean;
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
+  /** Room kept below the scene for a dock that stays on screen (#1232). */
+  bottomOffset?: number;
   /**
    * Burn-in drift while idle: the same slow 4px figure eight the grid's
    * widgets make, on everything the scene draws, so the clock, weather and
@@ -138,7 +141,7 @@ export function TodayScene({
       data-today-scene
       className={`relative w-full overflow-hidden ${idle ? 'pointer-events-none' : ''}`}
       style={{
-        height: `calc(100dvh - ${topOffset}px)`,
+        height: `calc(100dvh - ${topOffset + bottomOffset}px)`,
         textShadow: 'var(--ds-idle-text-shadow)',
         color: night ? 'rgb(255 226 190)' : 'white',
       }}

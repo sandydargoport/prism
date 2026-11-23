@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { waitForQuiet } from './helpers/network';
 import { getSeededParentId } from './helpers/auth';
-import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
+import { TODAY_TEMPLATE, DEFAULT_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
 import { onCanvas } from './helpers/canvasEditor';
 
@@ -17,13 +17,74 @@ test.describe('the dock on the wall', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
   test.setTimeout(90_000);
 
-  async function openToday(page: Page) {
+  // This screen's Auto-hide navigation (#1232): on, the dock tucks behind the
+  // Menu tab; off, it stays on screen. Set before the page loads.
+  async function autoHide(page: Page, on: boolean) {
+    await page.addInitScript((v) => window.localStorage.setItem('prism:auto-hide-ui', v), String(on));
+  }
+
+  async function openToday(page: Page, opts: { autoHide?: boolean } = {}) {
+    await autoHide(page, opts.autoHide ?? true);
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Dock e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
     await page.goto(`/d/${layout.slug}`);
     await page.locator('[data-today-clock]').waitFor({ timeout: 60_000 });
     return layout as { id: string };
+  }
+
+  async function openGrid(page: Page) {
+    await autoHide(page, false);
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Dock grid e2e ${Date.now()}`, widgets: DEFAULT_TEMPLATE.widgets } })).json();
+    await page.goto(`/d/${layout.slug}`);
+    await page.locator('.widget-cell[data-widget="shopping"]').waitFor({ timeout: 60_000 });
+    return layout as { id: string };
+  }
+
+  /** The dock's top edge, and the lowest edge of what is in `selector`. */
+  async function dockAndFoot(page: Page, selector: string) {
+    return page.evaluate((sel) => {
+      const dock = document.querySelector('[data-dock]')!.getBoundingClientRect();
+      const foot = Math.max(...[...document.querySelectorAll(sel)].map((el) => el.getBoundingClientRect().bottom));
+      return { dockTop: dock.top, dockBottom: dock.bottom, foot };
+    }, selector);
+  }
+
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 800 }]) {
+    test(`Auto-hide navigation off: the dock stays on Glance, and the scene ends above it, at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.clock.install();
+      const layout = await openToday(page, { autoHide: false });
+      try {
+        await expect(page.locator('[data-dock-menu]')).toHaveCount(0);
+        await expect(page.locator('[data-dock]')).toHaveAttribute('data-dock-mode', 'page');
+        await page.mouse.click(viewport.width / 2, viewport.height / 2);
+        await page.clock.runFor(11_000);
+        await expect(page.locator('[data-dock]')).not.toHaveAttribute('aria-hidden', 'true');
+        const m = await dockAndFoot(page, '[data-today-scene]');
+        expect(m.dockBottom, 'the dock is on screen').toBeLessThanOrEqual(viewport.height);
+        expect(m.foot, 'the scene ends above the dock').toBeLessThanOrEqual(m.dockTop + 0.5);
+        expect(m.dockTop - m.foot, 'and does not leave a band of empty screen').toBeLessThanOrEqual(24);
+      } finally {
+        await deleteLayout(page, layout.id);
+      }
+    });
+
+    test(`Auto-hide navigation off: the dock stays on a grid dashboard, and the widgets end above it, at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.clock.install();
+      const layout = await openGrid(page);
+      try {
+        await page.clock.runFor(11_000);
+        await expect(page.locator('[data-dock]')).not.toHaveAttribute('aria-hidden', 'true');
+        const m = await dockAndFoot(page, '.widget-cell');
+        expect(m.foot, 'the lowest widget ends above the dock').toBeLessThanOrEqual(m.dockTop + 0.5);
+      } finally {
+        await deleteLayout(page, layout.id);
+      }
+    });
   }
 
   for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 800 }]) {

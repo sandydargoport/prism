@@ -5,7 +5,7 @@ import { Suspense, lazy, useState, useCallback, useEffect, useMemo, useRef } fro
 
 const VISIBLE_WIDGETS_KEY = 'prism-visible-widgets';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell, usePageDockRoomPx } from '@/components/layout/AppShell';
 import { DashboardLayout, DashboardHeader, ScreenJobs } from '@/components/layout/DashboardGrid';
 import { LayoutGridEditor, SCREENSAVER_THEME } from '@/components/layout/LayoutGridEditor';
 import { useAuth, useFamily } from '@/components/providers';
@@ -220,10 +220,12 @@ export function Dashboard({
   const isMobile = useIsMobile();
   // The wall's dock replaces the rail and top bar (#922, #924).
   const wallDock = !isMobile && !layout.isEditing;
-  const { uiHidden } = useAutoHideUI();
-  // Nothing is fixed at the foot of the wall any more: the portrait bar is
-  // gone and the dock is drawn over the page (#924).
-  const bottomOffset = 0;
+  const { uiHidden, wallDockTucked } = useAutoHideUI();
+  // The wall's dock is drawn over the page (#924), so nothing is kept clear
+  // for it, unless this screen's Auto-hide navigation is off: then the dock
+  // stays on screen and the dashboard keeps its room (#1232).
+  const dockRoom = usePageDockRoomPx();
+  const bottomOffset = wallDock && !wallDockTucked ? dockRoom : 0;
 
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
@@ -488,6 +490,7 @@ export function Dashboard({
         onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
       }}
       topOffset={uiHidden || wallDock || layout.isEditing ? 0 : 56}
+      bottomOffset={bottomOffset}
     />
   );
   // The dashboard the canvas shows instead of this one, if any (#1294).

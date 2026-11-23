@@ -154,7 +154,7 @@ Next to it, a **device preview gallery** shows how your one design looks on each
 
 Click **Preview** in the right toolbar, or press **Ctrl+Shift+M**, to hide the editor controls for a moment and see the board as it will really look. Click **Exit Preview** to go back. The **Show Nav / Hide Nav** toggle lets you check it with and without the navigation sidebar, which helps when tuning a layout for a wall display.
 
-To keep the screen clean all the time, turn on **Auto-Hide Navigation** in *Settings → Appearance*. The nav and toolbar then hide after a while without use and come back on a click or a key press.
+Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigation**, in the editor's **Look** panel under **This screen**. On, the dock tucks behind a small **Menu** tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.
 
 ### Screensaver layout
 
