@@ -459,7 +459,7 @@ function ChoresHelp() {
     <>
       <P>Family chores with an approval workflow and point system.</P>
       <H2>What to Do</H2>
-      <P>The Chores page opens on what to do: <strong>Due today</strong> (late ones included), <strong>Tomorrow</strong> and <strong>Later this week</strong>, each with the person&apos;s dot. Tap a chore to tick it; it leaves the list, and the toast has <strong>Undo</strong>. A chore waiting for a parent shows on one line with <strong>Approve</strong>.</P>
+      <P>The Chores page opens on what to do: <strong>Due today</strong> (late ones and those with no due date included), <strong>Tomorrow</strong> and <strong>Later this week</strong>, each with the person&apos;s dot. Tap a chore to tick it; it leaves the list, and the toast has <strong>Undo</strong>. A chore waiting for a parent shows on one line with <strong>Approve</strong>.</P>
       <P>Setting chores up is under <strong>Manage</strong>: every chore with its switch, points and category, the filters, and Group by Person. <strong>Done</strong> goes back to the list.</P>
       <H2>How It Works</H2>
       <Ul>

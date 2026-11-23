@@ -289,7 +289,8 @@ export function useChoresViewData() {
 
   const enabledCount = chores.filter((c) => c.enabled).length;
   const dueCount = chores.filter(
-    (c) => c.enabled && c.nextDue && isPast(parseISO(c.nextDue))
+    // No due date is due now (#1329).
+    (c) => c.enabled && (!c.nextDue || isPast(parseISO(c.nextDue)))
   ).length;
 
   const handleRefreshChores = useCallback(async () => {

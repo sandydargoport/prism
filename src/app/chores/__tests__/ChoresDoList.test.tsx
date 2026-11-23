@@ -43,6 +43,16 @@ describe('petTickLine', () => {
   });
 });
 
+describe('a chore with no due date (#1329)', () => {
+  it('is due now: listed under Due today, not left out', () => {
+    const undated = chore({ id: 'plants', title: 'Water the plants', frequency: 'weekly', nextDue: undefined });
+    render(<ChoresDoList chores={[undated]} today={today} onTick={jest.fn()} onApprove={jest.fn()} canApprove />);
+    const due = document.querySelector('[data-chores-section="today"]') as HTMLElement;
+    expect(within(due).getByText('Water the plants')).toBeTruthy();
+    expect(screen.queryByText('Nothing to do this week.')).toBeNull();
+  });
+});
+
 describe('the Do list with pets (#856)', () => {
   it('keeps a pet chore done today, and only a pet chore', () => {
     const g = choreGroups([fedOnce, dishes], today);

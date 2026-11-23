@@ -112,6 +112,7 @@ All notable changes to Prism are documented in this file.
 
 ### Fixed
 - **An Immich server on the home network can be added and synced.** A shared-album link on a home-network or VPN address is accepted; the server's own machine and link-local addresses are still refused. **Sync now** says why when a sync fails, and adding a photo source needs a parent, as editing and deleting one already did. ([#1286](https://github.com/sandydargoport/prism/issues/1286))
+- **A chore with no due date is listed under Due today on the Chores page**, as it was already counted there and shown on the dashboard. It also counts in Glance's chores left. ([#1329](https://github.com/sandydargoport/prism/issues/1329))
 - **Not now on Today's birthday nudge is kept as a one-way digest** of the birthday and its date, so the screen's browser storage holds neither. One put off before still holds. ([#1296](https://github.com/sandydargoport/prism/pull/1296))
 - **Editing a screen from another device no longer asks for a PIN when already signed in.** A page that asked for sign-in as it opened did so before the session had been checked. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
 - **A short stretch at the end of the Through the day line stays on the line** in a narrow panel, instead of running past its end. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
