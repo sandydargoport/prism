@@ -142,11 +142,17 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       let sheet = page.locator('[data-editor-sheet="screen"]');
       // The tab says which screen it is (#1326).
       await expect(sheet.getByLabel('Screen', { exact: true })).toHaveValue(screen.id);
-      await expect(sheet.getByLabel('Name of screen')).toHaveValue(`Hall ${tag}`);
-      await expect(sheet.getByLabel('Dashboard it shows')).toHaveValue(kitchen.id);
-      // Name of screen saves on Enter, at once: the heading and the drop-down follow.
-      await sheet.getByLabel('Name of screen').fill(`Front hall ${tag}`);
-      await sheet.getByLabel('Name of screen').press('Enter');
+      await expect(sheet.getByLabel('Base dashboard')).toHaveValue(kitchen.id);
+      // The pencil renames it in place: Esc keeps the name, Enter saves at
+      // once, and the heading and the drop-down follow.
+      await sheet.getByRole('button', { name: `Rename Hall ${tag}` }).click();
+      await expect(sheet.getByLabel('Name of this screen')).toBeFocused();
+      await sheet.getByLabel('Name of this screen').fill('Nope');
+      await sheet.getByLabel('Name of this screen').press('Escape');
+      await expect(sheet.getByLabel('Name of this screen')).toHaveCount(0);
+      await sheet.getByRole('button', { name: `Rename Hall ${tag}` }).click();
+      await sheet.getByLabel('Name of this screen').fill(`Front hall ${tag}`);
+      await sheet.getByLabel('Name of this screen').press('Enter');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Editing Front hall ${tag}`);
       await expect(sheet.getByLabel('Screen', { exact: true }).locator(`option[value="${screen.id}"]`)).toHaveText(`Front hall ${tag}`);
       await expect.poll(async () => (await stored()).name).toBe(`Front hall ${tag}`);

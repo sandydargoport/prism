@@ -58,8 +58,7 @@ describe('Help after the new look (#1308)', () => {
     for (const direction of [
       'More > Edit layout > Through the day',
       'More > Edit layout > Screen',
-      'Name of screen',
-      'Dashboard it shows',
+      'Base dashboard',
       'When nobody is using it',
       'More > Edit layout > Widgets',
       'More > This screen > Away mode',
@@ -83,6 +82,8 @@ describe('Help after the new look (#1308)', () => {
       'Through the day > Shows',
       'Screen > Shows',
       'Other screens',
+      'Name of screen',
+      'Dashboard it shows',
       'go to Through the day',
     ]) expect(text).not.toContain(gone);
   });

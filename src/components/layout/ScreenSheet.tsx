@@ -5,9 +5,9 @@
  * edited, as a device of its own.
  *
  * First a Screen drop-down of every named screen, set to the one edited:
- * picking another opens its editor. Then the Name of screen, saved on Enter or
- * on leaving the field, as Settings > Screens saves it; the Dashboard it
- * shows; its Switches to other dashboards for a while (#1282), at bus time or
+ * picking another opens its editor, and a pencil beside it renames it in
+ * place, saved on Enter or on leaving the field as Settings > Screens saves
+ * it. Then the Base dashboard; its Switches to other dashboards for a while (#1282), at bus time or
  * at set times, a bus switch with its routes and minutes (#1291); and, When
  * nobody is using it, how long until it rests and how dark it goes at night.
  * They belong to the screen, not the dashboard: two screens can show one
@@ -18,8 +18,8 @@
  * with no screen says so.
  */
 import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { ArrowUp, Plus, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowUp, ChevronDown, Pencil, Plus, X } from 'lucide-react';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim';
@@ -42,6 +42,22 @@ const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 /** The day chips, Monday first as a week is read. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const NAME_MAX = 60;
+/**
+ * Every field of this sheet, select or text, one height, one inset and one
+ * font, so their words start at one x down the column.
+ */
+const INPUT = 'h-[44px] w-full min-w-0 rounded-lg border border-border bg-background px-3 text-body leading-normal text-foreground pointer-fine:h-9';
+
+/** A select drawn as the text fields are: its own arrow, the browser's inset gone. */
+function Select({ className, children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <select className={cn(INPUT, 'appearance-none pr-8', className)} {...rest}>{children}</select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+    </div>
+  );
+}
+
 /** A section's heading, as the editor's other sheets have them. */
 const HEADING = 'm-0 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
 
@@ -153,8 +169,11 @@ export function ScreenSheet({
   const [openRow, setOpenRow] = useState<number | null>(openSwitch);
   const toggle = (row: number) => setOpenRow((o) => (o === row ? null : row));
   const [screens, setScreens] = useScreens();
-  /** The name as typed, until it is saved; null shows the saved one. */
+  /** The name as typed while renaming; null shows the drop-down. */
   const [draft, setDraft] = useState<string | null>(null);
+  // Whether a rename is still open to save: Esc, or a save under way, closes
+  // it, so the blur as the field goes does not save again.
+  const renameOpen = useRef(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -331,10 +350,13 @@ export function ScreenSheet({
   );
 
   const name = screenId ? screens?.find((s) => s.id === screenId)?.name ?? null : null;
-  /** Saves the name typed, on Enter or on leaving the field; an empty one goes back. */
+  const startRename = () => { renameOpen.current = true; setProblem(null); setDraft(name ?? ''); };
+  const cancelRename = () => { renameOpen.current = false; setProblem(null); setDraft(null); };
+  /** Saves the name typed, on Enter or on leaving the field; an unchanged or empty one goes back. */
   const rename = async () => {
-    const next = draft?.trim();
-    if (!screenId || draft === null) return;
+    if (!screenId || draft === null || !renameOpen.current) return;
+    renameOpen.current = false;
+    const next = draft.trim();
     if (!next || next === name) { setDraft(null); return; }
     setBusy(true);
     setProblem(null);
@@ -345,7 +367,12 @@ export function ScreenSheet({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: next }),
       }).catch(() => null);
-      if (!res?.ok) { setProblem(res ? await problemFrom(res) : 'That did not work. Try again.'); return; }
+      if (!res?.ok) {
+        // The field stays, with why, to try again or Esc.
+        renameOpen.current = true;
+        setProblem(res ? await problemFrom(res) : 'That did not work. Try again.');
+        return;
+      }
       setScreens((list) => list?.map((s) => (s.id === screenId ? { ...s, name: next } : s)) ?? list);
       setDraft(null);
       onRenamed?.(next);
@@ -353,40 +380,52 @@ export function ScreenSheet({
       setBusy(false);
     }
   };
-  const control = cn(field, 'w-full min-w-0');
   const fieldId = (key: string) => `screen-sheet-${key}`;
 
   return (
     <div className="flex flex-col gap-6 pointer-fine:gap-5" data-screen-sheet>
       <section className="flex flex-col gap-3" aria-label="This screen" data-screen-top>
-        <Field label="Screen" htmlFor={fieldId('pick')}>
-          <select id={fieldId('pick')} className={control} value={screenId ?? ''} data-screen-pick
-            onChange={(e) => { if (e.target.value && e.target.value !== screenId) onPickScreen?.(e.target.value); }}>
-            {!screenId && <option value="">{deviceNamed ? 'No screen' : 'This device (not named)'}</option>}
-            {screenId && !screens?.some((s) => s.id === screenId) && <option value={screenId}>{name ?? '…'}</option>}
-            {(screens ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </Field>
-        {screenId ? (
-          <Field label="Name of screen" htmlFor={fieldId('name')}
-            after={problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}>
+        <Field label="Screen" htmlFor={fieldId(draft === null ? 'pick' : 'name')}
+          after={problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}>
+          {draft === null ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <Select id={fieldId('pick')} value={screenId ?? ''} data-screen-pick
+                onChange={(e) => { if (e.target.value && e.target.value !== screenId) onPickScreen?.(e.target.value); }}>
+                {!screenId && <option value="">{deviceNamed ? 'No screen' : 'This device (not named)'}</option>}
+                {screenId && !screens?.some((s) => s.id === screenId) && <option value={screenId}>{name ?? '…'}</option>}
+                {(screens ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </Select>
+              {screenId && name !== null && (
+                <button type="button" aria-label={`Rename ${name}`} onClick={startRename} data-screen-rename
+                  className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-fine:h-9 pointer-fine:w-9">
+                  <Pencil className="h-4 w-4" aria-hidden />
+                </button>
+              )}
+            </div>
+          ) : (
             <form onSubmit={(e) => { e.preventDefault(); void rename(); }}>
-              <input id={fieldId('name')} className={control} maxLength={NAME_MAX} disabled={name === null || busy}
-                value={draft ?? name ?? ''} onChange={(e) => setDraft(e.target.value)} onBlur={() => void rename()} data-screen-name />
+              <input id={fieldId('name')} className={INPUT} maxLength={NAME_MAX} disabled={busy} autoFocus
+                aria-label="Name of this screen" value={draft} data-screen-name
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelRename(); } }}
+                onBlur={() => void rename()} />
             </form>
-          </Field>
-        ) : (
+          )}
+        </Field>
+        {!screenId && (
           <p className="m-0 text-body text-muted-foreground" data-no-screen>
             No screen is being edited, so this edits {dashboardName(currentDashboardId)} on its own.
           </p>
         )}
         {plan && (
-          <Field label="Dashboard it shows" htmlFor={fieldId('dashboard')}>
+          <Field label="Base dashboard" htmlFor={fieldId('dashboard')}
+            after={<span className={note}>Shown except while a switch is on.</span>}>
             <div className="flex min-w-0 items-center gap-2">
-              <select id={fieldId('dashboard')} className={control} value={shownId} data-screen-dashboard
+              <Select id={fieldId('dashboard')} value={shownId} data-screen-dashboard
                 onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value })}>
                 {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
+              </Select>
               {openButton(shownId)}
             </div>
           </Field>
@@ -423,15 +462,15 @@ export function ScreenSheet({
         <section className="flex flex-col gap-3" aria-labelledby={fieldId('idle')} data-screen-own>
           <h3 id={fieldId('idle')} className={HEADING} data-screen-heading>When nobody is using it</h3>
           <Field label="Rest after" htmlFor={fieldId('rest')} after={<span className={note}>of nobody touching it</span>}>
-            <select id={fieldId('rest')} className={control} value={timeout} onChange={(e) => { setTimeout(Number(e.target.value)); onSettingChange?.(); }}>
+            <Select id={fieldId('rest')} value={timeout} onChange={(e) => { setTimeout(Number(e.target.value)); onSettingChange?.(); }}>
               {SCREENSAVER_TIMEOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.value === 0 ? 'Never rests' : o.label}</option>)}
-            </select>
+            </Select>
           </Field>
           {night !== 'off' && (
             <Field label="How dark" htmlFor={fieldId('dark')} after={<span className={note}>at night</span>}>
-              <select id={fieldId('dark')} className={control} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
+              <Select id={fieldId('dark')} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
                 {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.raw === '0' ? 'Not dimmed' : l.label}</option>)}
-              </select>
+              </Select>
             </Field>
           )}
         </section>

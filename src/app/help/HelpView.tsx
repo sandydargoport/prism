@@ -247,9 +247,8 @@ function ScreensHelp() {
       <H2>Screen</H2>
       <P>More &gt; Edit layout &gt; Screen, the first tab, is the screen being edited.</P>
       <Ul>
-        <Li><strong>Screen</strong>: every named screen, set to the one being edited. Pick another to edit it instead. With changes not saved, the editor asks first</Li>
-        <Li><strong>Name of screen</strong>: type a new name; it is saved when you press Enter or leave the field</Li>
-        <Li><strong>Dashboard it shows</strong>: the dashboard this screen shows</Li>
+        <Li><strong>Screen</strong>: every named screen, set to the one being edited. Pick another to edit it instead. With changes not saved, the editor asks first. The pencil beside it renames the screen: type the name and press Enter (Esc keeps the old one)</Li>
+        <Li><strong>Base dashboard</strong>: the dashboard this screen shows, except while a switch is on</Li>
         <Li><strong>Switches</strong> &gt; <strong>Switch at bus time</strong>: shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
         <Li><strong>Switches</strong> &gt; <strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
         <Li><strong>When nobody is using it</strong>: <strong>Rest after</strong>, how long nobody touches the screen before it rests, and <strong>How dark</strong>, how far it dims at night</Li>
@@ -349,7 +348,7 @@ function DashboardHelp() {
         <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default with <strong>Dashboard &gt; Make the default</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
         <Li>Each has independent widget layout, resting layout, and orientation (landscape/portrait)</Li>
-        <Li>Each named screen picks the dashboard it shows (Screen &gt; Dashboard it shows, or Settings &gt; Screens)</Li>
+        <Li>Each named screen picks the dashboard it shows (Screen &gt; Base dashboard, or Settings &gt; Screens)</Li>
       </Ul>
 
       <H2>Orientation</H2>

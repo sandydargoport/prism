@@ -125,7 +125,7 @@ describe('the Screen tab (#1326)', () => {
     expect(document.querySelector('[data-editor-sheet]')!.getAttribute('aria-label')).toBe('Screen');
   });
 
-  it('starts with a Screen drop-down set to the one edited, then its name, dashboard, switches, and When nobody is using it', async () => {
+  it('starts with a Screen drop-down set to the one edited, then its base dashboard, switches, and When nobody is using it', async () => {
     await show({ plan: { dashboardId: BUS, switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: HOME }] } });
     const sheet = document.querySelector('[data-screen-sheet]')!;
     // The drop-down is the first control on the sheet, listing every named screen.
@@ -133,18 +133,24 @@ describe('the Screen tab (#1326)', () => {
     expect(sheet.querySelector('select, input, button')).toBe(pickScreen);
     expect(pickScreen.value).toBe('kitchen');
     expect(Array.from(pickScreen.options).map((o) => o.textContent)).toEqual(['Kitchen', 'Hall']);
-    expect((screen.getByLabelText('Name of screen') as HTMLInputElement).value).toBe('Kitchen');
-    expect((screen.getByLabelText('Dashboard it shows') as HTMLSelectElement).value).toBe(BUS);
+    // No row of its own for the name: a pencil beside the drop-down renames it.
+    expect(screen.queryByLabelText('Name of screen')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rename Kitchen' })).toBeTruthy();
+    expect((screen.getByLabelText('Base dashboard') as HTMLSelectElement).value).toBe(BUS);
+    expect(screen.getByText('Shown except while a switch is on.')).toBeTruthy();
     expect(Array.from(sheet.querySelectorAll('[data-field-label]')).map((n) => n.textContent))
-      .toEqual(['Screen', 'Name of screen', 'Dashboard it shows', 'Rest after', 'How dark']);
+      .toEqual(['Screen', 'Base dashboard', 'Rest after', 'How dark']);
     expect(Array.from(sheet.querySelectorAll('[data-screen-heading]')).map((n) => n.textContent))
       .toEqual(['Switches', 'When nobody is using it']);
+    // In this order: the Screen row (drop-down and pencil), Base dashboard, Switches, When nobody is using it.
+    expect(Array.from(sheet.querySelectorAll('[data-field-label], [data-screen-heading], [data-screen-rename]'))
+      .map((n) => n.textContent || n.getAttribute('aria-label')))
+      .toEqual(['Screen', 'Rename Kitchen', 'Base dashboard', 'Switches', 'When nobody is using it', 'Rest after', 'How dark']);
     // The switch rows and the add buttons sit under Switches.
     const switchesSection = sheet.querySelector('[data-screen-plan]')!;
     expect(switchesSection.querySelector('[data-screen-heading]')!.textContent).toBe('Switches');
     expect(switchesSection.querySelectorAll('[data-switch-row], [data-switch-add]')).toHaveLength(3);
-    // No Rename button, and no picker at the bottom.
-    expect(screen.queryByRole('button', { name: 'Rename' })).toBeNull();
+    // No picker at the bottom.
     expect(screen.queryByLabelText('Edit another screen')).toBeNull();
     expect(sheet.querySelector('[data-screen-own]')!.textContent).toContain('at night');
     fireEvent.change(screen.getByLabelText('Rest after'), { target: { value: '3600' } });
@@ -159,39 +165,73 @@ describe('the Screen tab (#1326)', () => {
     expect(screen.queryByLabelText('How dark at night')).toBeNull();
   });
 
-  const nameField = () => screen.getByLabelText('Name of screen') as HTMLInputElement;
+  const nameField = () => screen.getByLabelText('Name of this screen') as HTMLInputElement;
+  const pencil = () => fireEvent.click(screen.getByRole('button', { name: /^Rename / }));
+  const pickScreen = () => document.querySelector<HTMLSelectElement>('[data-screen-pick]');
 
-  it('Name of screen saves on Enter, as Settings > Screens renames one, and the drop-down follows', async () => {
+  it('the pencil swaps the drop-down for the name, focused and selected; Enter saves it and the drop-down comes back with it', async () => {
     await show();
+    pencil();
+    expect(pickScreen()).toBeNull();
+    expect(nameField().value).toBe('Kitchen');
+    expect(document.activeElement).toBe(nameField());
+    expect([nameField().selectionStart, nameField().selectionEnd]).toEqual([0, 'Kitchen'.length]);
     fireEvent.change(nameField(), { target: { value: 'Kitchen wall' } });
     expect(patched).toEqual([]);
     await act(async () => { fireEvent.submit(nameField().closest('form')!); });
     expect(patched).toEqual([{ url: '/api/displays/kitchen', body: { name: 'Kitchen wall' } }]);
-    expect(nameField().value).toBe('Kitchen wall');
-    expect(Array.from((screen.getByLabelText('Screen') as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(['Kitchen wall', 'Hall']);
+    expect(screen.queryByLabelText('Name of this screen')).toBeNull();
+    expect(pickScreen()!.value).toBe('kitchen');
+    expect(Array.from(pickScreen()!.options).map((o) => o.textContent)).toEqual(['Kitchen wall', 'Hall']);
+    expect(screen.getByRole('button', { name: 'Rename Kitchen wall' })).toBeTruthy();
     expect(renamed).toHaveBeenCalledWith('Kitchen wall');
   });
 
-  it('Name of screen saves on leaving the field; an unchanged or empty one sends nothing', async () => {
+  it('Esc cancels a rename: nothing is sent, and the drop-down comes back', async () => {
     await show();
+    pencil();
+    fireEvent.change(nameField(), { target: { value: 'Den' } });
+    await act(async () => { fireEvent.keyDown(nameField(), { key: 'Escape' }); });
+    expect(screen.queryByLabelText('Name of this screen')).toBeNull();
+    expect(pickScreen()!.options[pickScreen()!.selectedIndex]!.textContent).toBe('Kitchen');
+    expect(patched).toEqual([]);
+    expect(renamed).not.toHaveBeenCalled();
+  });
+
+  it('leaving the field saves the name; an unchanged or empty one sends nothing', async () => {
+    await show();
+    pencil();
     await act(async () => { fireEvent.blur(nameField()); });
+    expect(pickScreen()).not.toBeNull();
+    pencil();
     fireEvent.change(nameField(), { target: { value: '  ' } });
     await act(async () => { fireEvent.blur(nameField()); });
     expect(patched).toEqual([]);
-    expect(nameField().value).toBe('Kitchen');
+    pencil();
     fireEvent.change(nameField(), { target: { value: 'Den' } });
     await act(async () => { fireEvent.blur(nameField()); });
     expect(patched).toEqual([{ url: '/api/displays/kitchen', body: { name: 'Den' } }]);
     expect(renamed).toHaveBeenCalledWith('Den');
   });
 
-  it('a rename the server refuses says why', async () => {
+  it('a rename the server refuses says why, and keeps the field to try again', async () => {
     await show();
     global.fetch = jest.fn(async () => ({ ok: false, status: 403, json: async () => ({}) })) as never;
+    pencil();
     fireEvent.change(nameField(), { target: { value: 'Den' } });
     await act(async () => { fireEvent.submit(nameField().closest('form')!); });
     expect(screen.getByRole('alert').textContent).toBe('Only a parent can rename a screen.');
+    expect(nameField().value).toBe('Den');
     expect(renamed).not.toHaveBeenCalled();
+  });
+
+  it('there is no pencil with no screen or on a device not named', async () => {
+    const { unmount } = render(<Harness screenId={null} forScreen={false} plan={null} />);
+    await act(async () => {});
+    expect(screen.queryByRole('button', { name: /^Rename/ })).toBeNull();
+    unmount();
+    await show({ screenId: null, forScreen: false, plan: null, deviceNamed: false });
+    expect(screen.queryByRole('button', { name: /^Rename/ })).toBeNull();
   });
 
   it('picking another screen in the drop-down edits it', async () => {
@@ -342,16 +382,16 @@ describe('a screen\'s dashboard and switches, on the Screen tab (#1282, #1326)',
     expect(rows()[1]!.getAttribute('data-open')).toBe('false');
   });
 
-  it('Shows is the dashboard the screen shows, and a switch\'s Open opens its dashboard on this tab', async () => {
+  it('Base dashboard is the dashboard the screen shows, and a switch\'s Open opens its dashboard on this tab', async () => {
     await show({ plan: BUS_PLAN });
     // None set: the default.
-    expect((screen.getByLabelText('Dashboard it shows') as HTMLSelectElement).value).toBe(HOME);
+    expect((screen.getByLabelText('Base dashboard') as HTMLSelectElement).value).toBe(HOME);
     unfold(rows()[0]!);
     fireEvent.click(rows()[0]!.querySelector<HTMLElement>(`[data-dashboard-open="${BUS}"]`)!);
     expect(switched).toHaveBeenCalledWith('bus');
     // The editor that opens on it opens on Screen.
     expect(JSON.parse(sessionStorage.getItem('prism:canvas-panel-next')!)).toEqual({ panel: 'screen', dashboardId: BUS });
-    pick('Dashboard it shows', BUS);
+    pick('Base dashboard', BUS);
     expect(seen.plan!.dashboardId).toBe(BUS);
   });
 
@@ -393,7 +433,7 @@ describe('a screen\'s dashboard and switches, on the Screen tab (#1282, #1326)',
     const sent = jest.fn(async () => ({ ok: true, json: async () => ({}) }));
     global.fetch = sent as never;
     press('Switch at set times');
-    pick('Dashboard it shows', BUS);
+    pick('Base dashboard', BUS);
     expect(sent).not.toHaveBeenCalled();
     expect(seen.plan).toMatchObject({ dashboardId: BUS });
   });
