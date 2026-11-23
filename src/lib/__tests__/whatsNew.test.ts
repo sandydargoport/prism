@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { WHATS_NEW, WHATS_NEW_SEEN_KEY, markWhatsNewSeen, whatsNewUnseen } from '../whatsNew';
+import { WHATS_NEW, WHATS_NEW_SEEN_KEY, markWhatsNewSeen, whatsNewRuns, whatsNewUnseen } from '../whatsNew';
 
 describe("What's new (#1032)", () => {
   beforeEach(() => localStorage.clear());
@@ -18,7 +18,18 @@ describe("What's new (#1032)", () => {
     expect(whatsNewUnseen()).toBe(true);
   });
 
-  it('says where each thing went, in a sentence', () => {
-    for (const i of WHATS_NEW.items) expect(i.where).toMatch(/\.$/);
+  it('says each thing in sentences', () => {
+    for (const i of WHATS_NEW.items) expect(i).toMatch(/\.$/);
+  });
+
+  it('draws the words between ** bold, and leaves no marker in the text', () => {
+    expect(whatsNewRuns('**Chores for pets**, and **subtasks** too.')).toEqual([
+      { text: 'Chores for pets', bold: true },
+      { text: ', and ', bold: false },
+      { text: 'subtasks', bold: true },
+      { text: ' too.', bold: false },
+    ]);
+    // Every item has its markers in pairs.
+    for (const i of WHATS_NEW.items) expect(i.split('**').length % 2).toBe(1);
   });
 });
