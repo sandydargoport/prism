@@ -91,7 +91,7 @@ Each member has a wish list, and others can claim an item in secret. Gift-givers
 
 ### [Photos](features/PHOTOS.md)
 
-Upload photos directly or sync them from OneDrive, choosing folders with a folder picker. The location stored in each photo feeds the Travel Map photo strip. The screensaver, the dashboard wallpaper and the slideshow widget all use these photos. On the wallpaper and the screensaver, each photo crossfades into the next and zooms slowly, and a small line can say when and where it was taken.
+Upload photos directly or sync them from OneDrive, choosing folders with a folder picker. The location stored in each photo feeds the Travel Map photo strip. The screensaver, the dashboard wallpaper and the slideshow widget all use these photos. On the wallpaper and the screensaver, each photo crossfades into the next with a slow Ken Burns zoom, and a small line can say when and where it was taken.
 
 ### [Travel Map](features/TRAVEL.md)
 

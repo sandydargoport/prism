@@ -601,7 +601,7 @@ function PhotosHelp() {
       <P>Photo gallery with local uploads plus OneDrive and Immich sync.</P>
       <Ul>
         <Li><strong>Gallery</strong>: Browse all photos with lightbox view; filter to <strong>Favorites</strong></Li>
-        <Li><strong>Slideshow</strong>: Auto-rotating display for the resting screen and away mode. Each photo fades into the next and slowly zooms</Li>
+        <Li><strong>Slideshow</strong>: Auto-rotating display for the resting screen and away mode. Each photo fades into the next with a slow Ken Burns zoom</Li>
         <Li><strong>Sources</strong>: Local uploads, OneDrive, or Immich. Synced sources refresh automatically about every 30 minutes</Li>
         <Li><strong>Tag for:</strong> In the lightbox, toggle where each photo may appear: <strong>Wallpaper</strong>, <strong>Gallery</strong>, and/or <strong>Screensaver</strong></Li>
         <Li><strong>Bulk select</strong> (desktop): Select many photos to show in / remove from Prism at once</Li>
