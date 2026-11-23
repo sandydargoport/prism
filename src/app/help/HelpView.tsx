@@ -1,6 +1,7 @@
 'use client';
 
 import { WhatsNewChangelogLink, WhatsNewList } from '@/components/layout/WhatsNew';
+import { FeedbackCard } from '@/components/feedback/FeedbackCard';
 import { useState, useMemo } from 'react';
 import { HelpCircle, Search, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -170,6 +171,8 @@ function WhatsNewHelp() {
     <>
       <WhatsNewList />
       <P><WhatsNewChangelogLink /></P>
+      {/* The open question (#1311), as at the foot of More. It hides itself when none is open. */}
+      <FeedbackCard />
     </>
   );
 }

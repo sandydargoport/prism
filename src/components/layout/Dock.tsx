@@ -13,7 +13,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { HelpCircle, LogIn, LogOut, MoreHorizontal } from 'lucide-react';
+import { HelpCircle, LogIn, LogOut, MoreHorizontal, Vote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ALL_NAV_ITEMS, type NavItem } from '@/lib/constants/navItems';
 import { dockLayout, DOCK_SIZE_NARROW, MORE_TILE } from '@/lib/constants/dock';
@@ -26,6 +26,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { ScreenJobs } from './DashboardGrid';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { FeedbackCard } from '@/components/feedback/FeedbackCard';
+import { isReferendumOpen } from '@/lib/feedback/referendum';
 
 /** How long the wall's dock stays after the last touch. */
 export const DOCK_WALL_MS = 10_000;
@@ -38,6 +40,16 @@ const SWIPE_MS = 700;
 /** The More panel's groups, in order (#1257): this screen first on a wall, last on a phone. */
 const GROUPS_WALL = ['screen', 'pages', 'prism'] as const;
 const GROUPS_NARROW = ['pages', 'prism', 'screen'] as const;
+/**
+ * Each group in More is a panel of its own, so the three read apart at a
+ * glance: this screen's jobs on a faint tint of the accent (they act on the
+ * screen in hand), the pages on a faint grey, Prism's own on a plain border.
+ */
+const GROUP_PANEL: Record<(typeof GROUPS_WALL)[number], string> = {
+  screen: 'border-primary/25 bg-primary/[0.06]',
+  pages: 'border-border bg-muted/50',
+  prism: 'border-border',
+};
 
 export interface DockProps {
   /** 'wall': hidden at rest behind a Menu word; 'page': always on screen. */
@@ -92,6 +104,8 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const narrow = useIsMobile();
   const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
+  // The open question (#1311) asks in a window of its own, from Feedback beside Help.
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
   // In More, Settings sits with Help and Sign in under Prism (#1257); the rest are pages.
   const settingsItem = more.find((i) => i.href === '/settings');
   const pages = more.filter((i) => i.href !== '/settings');
@@ -269,13 +283,13 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
             return (
               <section
                 key={group}
-                className="flex flex-col gap-2"
+                className={cn('flex flex-col gap-2 rounded-2xl border p-3', GROUP_PANEL[group])}
                 data-dock-more-group={group}
                 data-dock-screen-jobs={group === 'screen' || undefined}
                 data-dock-pages={group === 'pages' || undefined}
                 data-dock-prism={group === 'prism' || undefined}
               >
-                <p className="m-0 text-caption font-medium text-muted-foreground">{title}</p>
+                <p className="m-0 px-1 text-caption font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
                 {/* Five a row on a wall (#1006). */}
                 <div
                   className="grid grid-cols-3 gap-2 sm:grid-cols-5"
@@ -293,6 +307,18 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
                         <HelpCircle className="h-5 w-5" />
                         <span className="whitespace-nowrap">{t('nav.help', { defaultValue: 'Help' })}</span>
                       </Link>
+                      {/* Beside Help while a question is open (#1311): asked on a tap, never in the way. */}
+                      {isReferendumOpen() && (
+                        <button
+                          type="button"
+                          onClick={() => { setMoreOpen(false); setFeedbackOpen(true); }}
+                          className={MORE_TILE}
+                          data-dock-feedback
+                        >
+                          <Vote className="h-5 w-5" />
+                          <span className="whitespace-nowrap">{t('nav.feedback', { defaultValue: 'Feedback' })}</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => { setMoreOpen(false); (user ? onLogout : onLogin)?.(); }}
@@ -309,6 +335,13 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
               </section>
             );
           })}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent className="max-w-md" data-feedback-dialog>
+          <DialogTitle>{t('nav.feedback', { defaultValue: 'Feedback' })}</DialogTitle>
+          <FeedbackCard showHeading={false} />
         </DialogContent>
       </Dialog>
     </>

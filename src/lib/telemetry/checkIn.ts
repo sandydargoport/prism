@@ -10,6 +10,7 @@ import {
   TELEMETRY_SCHEMA_VERSION,
   TELEMETRY_SETTING_KEYS,
   getTelemetryEndpoint,
+  type TelemetryOffReason,
   type TelemetryPayload,
 } from './constants';
 import { getOrCreateInstanceId } from './instanceId';
@@ -27,6 +28,33 @@ export async function isTelemetryEnabled(): Promise<boolean> {
   if (process.env.PRISM_DISABLE_TELEMETRY === 'true') return false;
   const setting = await readSetting<boolean>(TELEMETRY_SETTING_KEYS.enabled);
   return setting !== false;
+}
+
+/**
+ * Why nothing may be sent right now, or null when sending is allowed. The
+ * same switches as the check-in, so one switch stops both it and feedback
+ * votes (#1311).
+ */
+export async function telemetryOffReason(): Promise<TelemetryOffReason | null> {
+  if (process.env.PRISM_DISABLE_TELEMETRY === 'true') return 'hard-disabled';
+  if (!(await isTelemetryEnabled())) return 'disabled';
+  if (!getTelemetryEndpoint()) return 'no-endpoint';
+  return null;
+}
+
+/**
+ * POST one JSON payload to the collector. The one place Prism sends anything
+ * out for the counter, shared by the check-in and feedback votes. Throws on a
+ * network failure or timeout; the caller decides what that means.
+ */
+export function postToCollector(url: string, payload: unknown): Promise<Response> {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    // Don't let a slow/hanging collector stall the caller.
+    signal: AbortSignal.timeout(10_000),
+  });
 }
 
 /** Build the exact anonymous payload that will be sent. */
@@ -59,13 +87,7 @@ export async function runCheckIn(): Promise<CheckInResult> {
 
     const payload = await buildPayload();
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      // Don't let a slow/hanging collector stall the cron tick.
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await postToCollector(endpoint, payload);
 
     if (!res.ok) return { sent: false, reason: `http-${res.status}` };
 

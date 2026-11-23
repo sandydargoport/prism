@@ -3,7 +3,9 @@
 A tiny [Cloudflare Worker](https://developers.cloudflare.com/workers/) + [D1](https://developers.cloudflare.com/d1/)
 database that receives Prism's weekly anonymous check-in, counts **active
 installs** (de-duplicated by a random install id), and replies with the latest
-published version so installs can show an "update available" line.
+published version so installs can show an "update available" line. It also
+takes the feedback votes from the card in More (one answer per install per
+question).
 
 It is the maintainer-side half of the opt-out update check in
 `src/lib/telemetry/`. Runs comfortably inside Cloudflare's free tier.
@@ -20,8 +22,17 @@ One row per install, and nothing else:
 | `arch` | `x64` / `arm64` | CPU architecture |
 | `first_seen` / `last_seen` | ISO timestamps | for active-install windows |
 
+A second table, `votes`, holds one row per install per question:
+
+| column | example | notes |
+|---|---|---|
+| `id` | `9f2c…` | the same random install id as `checkins.id` |
+| `referendum` | `2026-11-navigation` | question id, from `src/lib/feedback/referendum.ts` |
+| `answer` | `bottom-bar` | answer id; a second vote from the install replaces it |
+| `updated_at` | ISO timestamp | when the answer was last set |
+
 **No IP address, no cookies, no fingerprint, no usage data.** The Worker never
-reads the client address. The id is meaningless outside this table.
+reads the client address. The id is meaningless outside these tables.
 
 ## Deploy
 
@@ -43,6 +54,23 @@ wrangler deploy
 
 `wrangler deploy` prints the Worker URL, e.g.
 `https://prism-telemetry.<you>.workers.dev`.
+
+## Update a running collector for feedback votes
+
+A collector deployed before votes existed needs the `votes` table, then the new
+Worker. Every statement in `schema.sql` is `IF NOT EXISTS`, so running it again
+adds the new table and leaves `checkins` and its rows as they are. Table first,
+then the Worker:
+
+```bash
+cd collector
+wrangler d1 execute prism-telemetry --remote --file=schema.sql
+wrangler deploy
+```
+
+Votes arrive at `POST /vote` (or `/v1/vote`) on the same Worker as the check-in;
+the app works the address out from its check-in endpoint, so nothing in Prism's
+settings changes.
 
 ## Point Prism at it
 
@@ -70,9 +98,15 @@ curl "https://prism-telemetry.<you>.workers.dev/stats?token=<STATS_TOKEN>"
     { "deployment": "docker",   "n": 240 },
     { "deployment": "ha",       "n": 88  },
     { "deployment": "pikapods", "n": 60  }
-  ]
+  ],
+  "votes": {
+    "2026-11-navigation": { "total": 57, "answers": { "bottom-bar": 41, "sidebar": 16 } }
+  }
 }
 ```
+
+`votes` has one entry per question: how many installs answered, and how many
+chose each answer, each install counted once at its latest answer.
 
 `activeInstalls7d` is the honest "how many live installs" number — de-duplicated
 and free of the CI/re-pull inflation that makes registry pull counts unreliable.

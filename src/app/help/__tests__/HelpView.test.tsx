@@ -16,6 +16,11 @@ jest.mock('@/components/layout', () => ({
   SubpageHeader: ({ title, actions }: { title: React.ReactNode; actions?: React.ReactNode }) => <header><h1>{title}</h1>{actions}</header>,
 }));
 
+// The Feedback card fetches its question; here only where it sits matters (#1311).
+jest.mock('@/components/feedback/FeedbackCard', () => ({
+  FeedbackCard: () => <section data-feedback-card>The open question</section>,
+}));
+
 import { HelpView } from '../HelpView';
 
 const topics = () => screen.getAllByRole('button').map((b) => b.textContent ?? '');
@@ -50,6 +55,13 @@ describe('Help after the new look (#1308)', () => {
     const link = screen.getByRole('link', { name: 'See everything that changed' });
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toMatch(/\bnoopener\b/);
+  });
+
+  it("What's new also asks the open question, as More does (#1311)", () => {
+    const { container } = render(<HelpView />);
+    expect(container.querySelector('[data-feedback-card]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: "What's new" }));
+    expect(container.querySelector('[data-feedback-card]')).not.toBeNull();
   });
 
   it('gives directions the way the app has them, and none to controls that are gone', () => {
