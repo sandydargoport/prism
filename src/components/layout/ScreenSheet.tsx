@@ -99,7 +99,7 @@ export async function openOtherScreen(id: string, { unsaved, confirm, go }: {
 export function ScreenSheet({
   idleBackground, allDashboards = [], currentDashboardId, onSwitchDashboard,
   screenPlan = null, onScreenPlanChange, screenId = null, forScreen = true, deviceNamed = true, onDeviceNamed,
-  openSwitch = null, onPickScreen, onRenamed,
+  openSwitch = null, onPickScreen, onRenamed, onSettingChange,
 }: {
   idleBackground?: IdleBackground;
   allDashboards?: DashboardInfo[];
@@ -122,6 +122,8 @@ export function ScreenSheet({
   onPickScreen?: (id: string) => void;
   /** The screen was renamed, to this. */
   onRenamed?: (name: string) => void;
+  /** Rest after or How dark changed, so the tab's unsaved dot can show. */
+  onSettingChange?: () => void;
 }) {
   const { timeFormat } = useTimeFormat();
   const clock = (t: string) => formatTimeOfDay(t, timeFormat);
@@ -389,14 +391,14 @@ export function ScreenSheet({
         // with its other settings.
         <section className="flex flex-col gap-2 border-t border-border pt-4 pointer-fine:gap-1.5 pointer-fine:pt-3" aria-label="On this screen" data-screen-own>
           <Row name="Rest after">
-            <select className={field} value={timeout} onChange={(e) => setTimeout(Number(e.target.value))} aria-label="Rest after">
+            <select className={field} value={timeout} onChange={(e) => { setTimeout(Number(e.target.value)); onSettingChange?.(); }} aria-label="Rest after">
               {SCREENSAVER_TIMEOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.value === 0 ? 'Never rests' : o.label}</option>)}
             </select>
             <span className={note}>of nobody touching it</span>
           </Row>
           {night !== 'off' && (
             <Row name="How dark">
-              <select className={field} value={dim} onChange={(e) => setDim(e.target.value)} aria-label="How dark at night">
+              <select className={field} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
                 {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.raw === '0' ? 'Not dimmed' : l.label}</option>)}
               </select>
               <span className={note}>at night</span>

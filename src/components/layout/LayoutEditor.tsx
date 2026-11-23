@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, useReducer } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
@@ -126,6 +126,10 @@ export function LayoutEditor({
     setSheet('screen');
     setOpenSwitch(index);
   }, [setSheet]);
+  // Screen's dot: its dashboard, switches or own settings differ from when the
+  // editor page opened (#1326). A setting changed on the sheet redraws this.
+  const [, screenSettingChanged] = useReducer((n: number) => n + 1, 0);
+  const screenDirty = !!remoteEditHost()?.unsaved?.();
   const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
@@ -257,6 +261,7 @@ export function LayoutEditor({
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
             openSwitch={openSwitch}
+            onSettingChange={screenSettingChanged}
             onRenamed={(name) => remoteEditHost()?.onRenamed?.(name)}
             onPickScreen={(id) => {
               // Changes not yet saved with Done are asked about first, as they would be lost.
@@ -368,7 +373,7 @@ export function LayoutEditor({
         open={sheet}
         onOpenChange={setSheet}
         sheet={sheetContent}
-        dirty={{ widgets: dashboardDirty, day: idleDirty }}
+        dirty={{ screen: screenDirty, widgets: dashboardDirty, day: idleDirty }}
         doneLabel={state.saveFeedback || 'Done'}
         doneBlocked={saveBlocked}
         onDone={state.handleSave}

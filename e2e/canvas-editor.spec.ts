@@ -42,6 +42,20 @@ const frameSize = async (page: Page) => {
   return frame.evaluate(() => [window.innerWidth, window.innerHeight]);
 };
 
+/**
+ * The editor's six tabs (#1326): each label on one line, and how far the row
+ * runs past its width (it scrolls sideways where they do not all fit).
+ */
+async function tabRow(page: Page) {
+  return page.locator('[data-editor-tabs]').evaluate((nav) => ({
+    overflow: nav.scrollWidth - nav.clientWidth,
+    wrapped: [...nav.querySelectorAll('[data-editor-open]')].filter((b) => {
+      const label = b.querySelector('span:not([aria-label])')!;
+      return label.getBoundingClientRect().height > parseFloat(getComputedStyle(label).lineHeight) + 1;
+    }).map((b) => b.getAttribute('data-editor-open')),
+  }));
+}
+
 test.describe('canvas editor (#1265)', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(240_000);
@@ -71,6 +85,8 @@ test.describe('canvas editor (#1265)', () => {
       expect(panels.left).toBeGreaterThanOrEqual(picture.right);
       expect(panels.right).toBeLessThanOrEqual(1440);
       expect(panels.width).toBeGreaterThan(320);
+      // All six tabs on one line each, and all in view (#1326).
+      expect(await tabRow(page)).toEqual({ overflow: 0, wrapped: [] });
 
       // Opening each panel leaves the canvas exactly where it was.
       for (const id of ['screen', 'dashboard', 'widgets', 'day', 'look', 'more'] as const) {
@@ -127,6 +143,9 @@ test.describe('canvas editor (#1265)', () => {
       const panels = await rect(page, '[data-editor-panels]');
       expect(panels.top).toBeGreaterThanOrEqual(picture.bottom);
       expect(panels.right).toBeLessThanOrEqual(390);
+      // No tab label wraps; a row too narrow for all six scrolls instead (#1326).
+      expect((await tabRow(page)).wrapped).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'the page itself does not scroll sideways').toBeLessThanOrEqual(0);
       for (const id of ['screen', 'dashboard', 'day', 'look'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
