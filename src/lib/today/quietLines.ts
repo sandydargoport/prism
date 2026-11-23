@@ -13,11 +13,12 @@ export interface ChoreLike {
 }
 
 /**
- * Chores left today: enabled, due today or earlier, and not already waiting
- * for a parent. A done chore has moved its next due date on, so it drops out.
+ * Chores left today: enabled, due today or earlier (no due date is due now,
+ * #1329), and not already waiting for a parent. A done chore has moved its
+ * next due date on, so it drops out.
  */
 export function choresLeft<T extends ChoreLike>(chores: T[], todayKey: string): T[] {
-  return chores.filter((c) => c.enabled && !c.pendingApproval && !!c.nextDue && c.nextDue.slice(0, 10) <= todayKey);
+  return chores.filter((c) => c.enabled && !c.pendingApproval && (!c.nextDue || c.nextDue.slice(0, 10) <= todayKey));
 }
 
 export interface BirthdayLike {

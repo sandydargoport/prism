@@ -23,7 +23,7 @@ Household jobs that come round again: empty the dishwasher, feed the pets, take 
 
 The page opens on what to do, as a list:
 
-- **Due today**: everything due today, and anything overdue.
+- **Due today**: everything due today, anything overdue, and a chore with no due date.
 - **Tomorrow**
 - **Later this week**
 

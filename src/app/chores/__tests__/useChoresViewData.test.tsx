@@ -69,6 +69,16 @@ describe('useChoresViewData', () => {
     expect(mockUseChores).toHaveBeenCalledWith({ showDisabled: true, includeFuture: true });
     expect(result.current.filteredChores.map((c) => c.id)).toEqual(['c1', 'c2']);
   });
+
+  it('counts a chore with no due date as due (#1329)', () => {
+    mockUseChores.mockReturnValue({
+      chores: [{ ...dueTomorrow, id: 'c3', title: 'Water the plants', nextDue: null }],
+      loading: false, error: null, refresh: jest.fn(), approveChore: jest.fn(),
+    });
+    const { result } = renderHook(() => useChoresViewData());
+    expect(result.current.enabledCount).toBe(1);
+    expect(result.current.dueCount).toBe(1);
+  });
 });
 
 // What the page receives, through the real hook: the API leaves out a chore
