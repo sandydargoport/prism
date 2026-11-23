@@ -184,8 +184,9 @@ export function SettingsView() {
 
   // Keep the return token in the URL across the paths that rewrite the query
   // without it: cross-section deep links inside Settings. Sidebar and mobile
-  // section switching is React state and never touches the URL, so the token
-  // survives normal browsing on its own; this only heals the rewriting paths.
+  // section switching changes only `section` and keeps every other param, so
+  // the token survives normal browsing on its own; this only heals the
+  // rewriting paths.
   // A full-page OAuth round trip loses it unavoidably, and the calendars bounce
   // leaves Settings entirely, so both are left alone.
   const returnSlugRef = React.useRef<string | null>(null);
@@ -210,16 +211,37 @@ export function SettingsView() {
   // — SettingsView only read the search param at first mount.
   //
   // Deps are [urlSection] only. Including activeSection here breaks sidebar
-  // clicks: clicking a different section in the nav updates activeSection
-  // but leaves urlSection unchanged, so on the next render the effect would
-  // see (urlSection !== activeSection) and snap activeSection back to the
-  // stale URL value. (This is the "stuck on bus tracking after Gmail auth"
-  // bug.) Only the URL changing should trigger a sync. Done during render, so
-  // the old section is never painted for the new URL.
+  // clicks: a click in the nav sets activeSection at once and the URL a
+  // moment later, so for a render the two differ, and a sync comparing them
+  // would snap activeSection back to the old URL value. (This is the "stuck
+  // on bus tracking after Gmail auth" bug.) Only the URL changing should
+  // trigger a sync. Done during render, so the old section is never painted
+  // for the new URL.
   const urlSection = searchParams.get('section');
   useResetOn(urlSection, () => {
     if (urlSection) setActiveSection(normalizeSection(urlSection));
   });
+
+  // Show a section and name it in the address bar. The sidebar and the
+  // phone dropdown both switch sections through here, so the URL always says
+  // which section is on screen. That is what makes a link to
+  // /settings?section=<id> work from another section: the URL changes, and
+  // the sync above opens it. Had only the state changed, the URL could still
+  // name the target section, and a link to it would change nothing.
+  //
+  // The URL is replaced, not pushed: sections work like tabs, so Back leaves
+  // Settings instead of stepping through every section visited. Next wires
+  // the History API into useSearchParams, with no trip to the server. The
+  // state argument is null on purpose: Next skips that wiring for a state
+  // carrying its own markers, as window.history.state does. Every other
+  // query param, such as the ?from= return token, is kept. The hash is
+  // dropped, since it points inside the section being left.
+  const showSection = React.useCallback((id: string) => {
+    setActiveSection(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('section', id);
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  }, []);
 
   const sections = [
     { id: 'account', label: 'Account & Profile', icon: User },
@@ -280,7 +302,7 @@ export function SettingsView() {
                 return (
                   <button
                     key={section.id}
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => showSection(section.id)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2 rounded-md text-left',
                       'hover:bg-accent/50 transition-colors',
@@ -313,7 +335,7 @@ export function SettingsView() {
               <select
                 id="settings-section-select"
                 value={activeSection}
-                onChange={(e) => setActiveSection(e.target.value)}
+                onChange={(e) => showSection(e.target.value)}
                 className="w-full rounded-md border border-border bg-card px-3 py-2 text-base focus:outline-hidden focus:ring-2 focus:ring-primary"
               >
                 {sections.map((section) => (

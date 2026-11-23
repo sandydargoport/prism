@@ -158,6 +158,7 @@ All notable changes to Prism are documented in this file.
 - **Bus card no longer shows "0 of 2" stops before the route starts.** The stop count appears once the bus provider sends it, instead of counting only your stop and the school.
 - **Chores due tomorrow or later show on the Chores page**, under **Tomorrow** or **Later this week**, and **Manage** lists and counts them. They were left out. ([#1132](https://github.com/sandydargoport/prism/issues/1132), [#1155](https://github.com/sandydargoport/prism/pull/1155))
 - **A wall display gets fresh data on every request.** API answers are sent with `Cache-Control: no-store`, so a browser set to answer from its cache even when it is out of date (Fully Kiosk's "Use cache even if expired") no longer shows its first answer over and over. Photos, recipe images and avatars are still cached. ([#822](https://github.com/sandydargoport/prism/pull/822))
+- **A link to a Settings section always opens it.** Picking a section in the sidebar or the phone menu names it in the address bar, so the Manage and Photos settings links on the Integrations page open Photos instead of doing nothing. ([#1252](https://github.com/sandydargoport/prism/issues/1252))
 
 ## [1.31.0] – 2026-10-27
 
