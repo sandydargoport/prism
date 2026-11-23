@@ -69,6 +69,9 @@ describe('Help after the new look (#1308)', () => {
     const text = allTopicText();
     for (const direction of [
       'More > Edit layout > Through the day',
+      'More > Edit layout > Screen',
+      'Base dashboard',
+      'When nobody is using it',
       'More > Edit layout > Widgets',
       'More > This screen > Away mode',
       'Settings > Security > Require the PIN for every change',
@@ -86,6 +89,14 @@ describe('Help after the new look (#1308)', () => {
       'Read-only for creates and edits',
       'read-only API token',
       '—',
+      // A screen's name, dashboard and switches moved to the Screen tab (#1326).
+      'Through the day > Name this device',
+      'Through the day > Shows',
+      'Screen > Shows',
+      'Other screens',
+      'Name of screen',
+      'Dashboard it shows',
+      'go to Through the day',
     ]) expect(text).not.toContain(gone);
   });
 

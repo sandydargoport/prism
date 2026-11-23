@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * The editor's controls (#1151): Dashboard | Widgets | Through the day | Look
- * | More, the same on the built-in Today and on a family's own dashboards;
- * only what is inside Widgets differs.
+ * The editor's controls (#1151): Screen | Dashboard | Widgets | Through the
+ * day | Look | More, the same on the built-in Today and on a family's own
+ * dashboards; only what is inside Widgets differs. Screen comes first (#1326):
+ * the screen being edited, its name, the dashboard it shows and its switches.
  *
  * Every device edits on a canvas (#1265, #1280), so they are a panel in a
  * column beside it (below it on a phone): Cancel and Done at its top right,
@@ -12,12 +13,13 @@
  * with sheets rising from it, went with editing in place (#1283).
  */
 import * as React from 'react';
-import { LayoutDashboard, MoreHorizontal, Palette, Shapes, SunMoon, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Monitor, MoreHorizontal, Palette, Shapes, SunMoon, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type EditorSheet = 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
+export type EditorSheet = 'screen' | 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
 
 const SHEETS: Array<{ id: EditorSheet; label: string; Icon: LucideIcon }> = [
+  { id: 'screen', label: 'Screen', Icon: Monitor },
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'widgets', label: 'Widgets', Icon: Shapes },
   { id: 'day', label: 'Through the day', Icon: SunMoon },
@@ -49,8 +51,18 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
+  // Where the six tabs do not fit on one line (a 1024px laptop's panel, a
+  // phone under 390px) the row scrolls sideways; the open one is kept in view.
+  const navRef = React.useRef<HTMLElement>(null);
+  React.useEffect(() => {
+    const nav = navRef.current;
+    const tab = nav?.querySelector<HTMLElement>(`[data-editor-open="${open}"]`);
+    if (!nav || !tab) return;
+    if (tab.offsetLeft < nav.scrollLeft) nav.scrollLeft = tab.offsetLeft;
+    else if (tab.offsetLeft + tab.offsetWidth > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = tab.offsetLeft + tab.offsetWidth - nav.clientWidth;
+  }, [open]);
   // A panel on a light page, as a desktop app has it: Cancel and Done at the
-  // top right, and the five sheets as tabs along the top of the panel they
+  // top right, and the six sheets as tabs along the top of the panel they
   // open, so nothing dark sits beside the picture. With a mouse a tab is one
   // line of words; a finger keeps 44px or more and the icons.
   return (
@@ -83,7 +95,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
         </div>
       )}
       <div className="flex flex-col rounded-[1.4rem] bg-card text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl lg:min-h-0 lg:flex-1">
-        <nav aria-label="Edit" className="flex shrink-0 border-b border-border px-2 pointer-fine:px-1.5">
+        <nav ref={navRef} aria-label="Edit" className="flex shrink-0 overflow-x-auto border-b border-border px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-editor-tabs>
           {SHEETS.map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -91,15 +103,18 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
               onClick={() => onOpenChange(id)}
               aria-pressed={open === id}
               className={cn(
-                'relative -mb-px flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 border-b-2 px-1 text-center text-caption font-medium leading-tight transition-colors',
-                'pointer-fine:min-h-10 pointer-fine:flex-auto pointer-fine:whitespace-nowrap pointer-fine:px-2',
+                // Six tabs (#1326): each as wide as its one-line label, the room
+                // left shared out, and a narrow gap: one line each at a phone's
+                // 390px and a laptop's panel; narrower, the row scrolls.
+                'relative flex min-h-[56px] flex-auto flex-col items-center justify-center gap-1 whitespace-nowrap border-b-2 px-0.5 text-center text-caption font-medium leading-tight transition-colors',
+                'pointer-fine:min-h-10 pointer-fine:px-1.5',
                 open === id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
               data-editor-open={id}
             >
               <Icon className="h-5 w-5 pointer-fine:hidden" aria-hidden />
               <span>{label}</span>
-              {dirty[id] && <span aria-label="unsaved changes" className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-primary" />}
+              {dirty[id] && <span aria-label="unsaved changes" className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-primary pointer-fine:right-0 pointer-fine:top-1" />}
             </button>
           ))}
         </nav>

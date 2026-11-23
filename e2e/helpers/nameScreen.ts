@@ -2,15 +2,15 @@ import { expect, type Page } from '@playwright/test';
 
 /**
  * Names this browser as a screen, or makes it a screen named before, from its
- * own editor's Through the day sheet (#1267): Settings > Screens is only the
+ * own editor's Screen sheet (#1267, #1326): Settings > Screens is only the
  * list. A device nobody named edits on the canvas (#1280), and once named it
  * opens its own screen's editor (#1282). Leaves the editor and returns once
  * the server has it as this browser's screen.
  */
 export async function nameThisScreen(page: Page, name: string, how: 'new' | 'existing' = 'new'): Promise<void> {
   await page.goto('/?edit=1');
-  await page.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
-  const sheet = page.locator('[data-editor-sheet="day"]');
+  await page.locator('[data-editor-open="screen"]').click({ timeout: 90_000 });
+  const sheet = page.locator('[data-editor-sheet="screen"]');
   await sheet.locator('[data-name-device-open]').click();
   if (how === 'existing') {
     await sheet.getByLabel('Existing screen').selectOption({ label: name });

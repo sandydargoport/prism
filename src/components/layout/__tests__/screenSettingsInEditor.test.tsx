@@ -11,10 +11,9 @@ import React, { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import { SCREEN_SETTING_KEYS, type ScreenSettingKey } from '@/lib/displays/screenSettings';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
-import type { IdleBackground } from '@/lib/idleBackground';
-import type { EditTab, IdleHalf } from '@/components/dashboard/useDashboardLayout';
+import type { ScreenPlan } from '@/lib/screenSwitches';
 import { LookSheet, MoreSheet } from '../EditorSheets';
-import { ThroughTheDaySheet } from '../ThroughTheDaySheet';
+import { ScreenSheet } from '../ScreenSheet';
 
 jest.mock('@/components/providers/TimeFormatProvider', () => ({
   useTimeFormat: () => ({ timeFormat: '24h', householdTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
@@ -29,11 +28,11 @@ jest.mock('@/lib/displays/displaySettingsSync', () => ({
 }));
 
 /** The editor's places a setting can be set. */
-type Place = 'Look' | 'Screensaver motion' | 'Through the day, resting' | 'Through the day, night' | 'More, notices';
+type Place = 'Look' | 'Screensaver motion' | 'Screen' | 'More, notices';
 
 /** Where each setting is set, by the label of its control; or why it has none. */
 const CONTROLS: Record<ScreenSettingKey, { on: Place; label: RegExp } | { none: string }> = {
-  'prism-screensaver-timeout': { on: 'Through the day, resting', label: /^Rest after/ },
+  'prism-screensaver-timeout': { on: 'Screen', label: /^Rest after/ },
   'prism-screensaver-interval': { on: 'Screensaver motion', label: /^Change photo every/ },
   'prism-screensaver-motion': { on: 'Screensaver motion', label: /^Transition effect/ },
   'prism-screensaver-motion-v2': { on: 'Screensaver motion', label: /^Transition effect/ },
@@ -47,7 +46,7 @@ const CONTROLS: Record<ScreenSettingKey, { on: Place; label: RegExp } | { none: 
   'prism-screensaver-wobble': { on: 'Screensaver motion', label: /^Surface wobble/ },
   'prism-screensaver-speed': { on: 'Screensaver motion', label: /^Transition length/ },
   'prism-screensaver-water-clear': { on: 'Screensaver motion', label: /^Keep text clear of the waterline/ },
-  'prism-screensaver-dim': { on: 'Through the day, night', label: /^How dark at night/ },
+  'prism-screensaver-dim': { on: 'Screen', label: /^How dark at night/ },
   'prism-perf-mode': { on: 'Look', label: /^Performance$/ },
   'prism:keyboard-on-this-device': { on: 'Look', label: /^On-screen keyboard$/ },
   'prism-orientation-override': { on: 'Look', label: /^Orientation$/ },
@@ -59,17 +58,13 @@ const CONTROLS: Record<ScreenSettingKey, { on: Place; label: RegExp } | { none: 
   'prism:screen-safe-zones': { none: 'set by hand; no control anywhere' },
 };
 
-/** Through the day for a screen: its resting and night rows are always in sight (#1281). */
-function Day() {
-  const [value, setValue] = useState<IdleBackground>({ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
-  const [half, setHalf] = useState<IdleHalf>('day');
-  const [tab, setTab] = useState<EditTab>('dashboard');
+/** The Screen sheet for a screen: its own Rest after and How dark (#1326). */
+function Screen() {
+  const [plan, setPlan] = useState<ScreenPlan | null>({ dashboardId: null, switches: [] });
   return (
-    <ThroughTheDaySheet
-      idleBackground={value} onIdleBackgroundChange={setValue}
-      idleHalf={half} onIdleHalfChange={setHalf}
-      editTab={tab} onEditTabChange={setTab}
-      idleCheck={{}}
+    <ScreenSheet
+      idleBackground={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }}
+      screenId="kitchen" forScreen screenPlan={plan} onScreenPlanChange={setPlan}
     />
   );
 }
@@ -77,8 +72,7 @@ function Day() {
 const PLACES: Record<Place, () => React.ReactElement> = {
   'Look': () => <LookSheet orientation="landscape" onMeasure={() => {}} />,
   'Screensaver motion': () => <ScreensaverSettingsPanel open onClose={() => {}} />,
-  'Through the day, resting': () => <Day />,
-  'Through the day, night': () => <Day />,
+  'Screen': () => <Screen />,
   'More, notices': () => (
     <MoreSheet builtIn={false} editingScreensaver={false} hasIdleLayout={false} idleTab={false} exportFeedback=""
       onExport={() => {}} onImportOpen={() => {}} onShareOpen={() => {}} onReset={() => {}} />

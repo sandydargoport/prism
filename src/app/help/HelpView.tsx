@@ -242,24 +242,30 @@ function ScreensHelp() {
       <P>A screen is a device with a name, such as Kitchen. Each screen shows one dashboard, can switch to another for a while, and keeps its own settings. Everything about a screen is set in its editor.</P>
 
       <H2>Naming a screen</H2>
-      <P>On the device itself, open More &gt; Edit layout &gt; Through the day and choose <strong>Name this device</strong>. If it had a name before (after a browser reset, say), pick it under <strong>Or it is</strong> to take back its name and settings. A device nobody named shows the default dashboard.</P>
+      <P>On the device itself, open More &gt; Edit layout &gt; Screen and choose <strong>Name this device</strong>. If it had a name before (after a browser reset, say), pick it under <strong>Or it is</strong> to take back its name and settings. A device nobody named shows the default dashboard.</P>
 
       <H2>Settings &gt; Screens</H2>
       <P>Lists every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> and <strong>Remove</strong> are here. <strong>Edit</strong> opens that screen&apos;s editor, from the screen or from a phone, with a live picture of the screen. <strong>Done</strong> sends the changes, and a screen that is on shows them in a few seconds.</P>
 
-      <H2>Through the day</H2>
-      <P>More &gt; Edit layout &gt; Through the day sets what the screen shows over the day.</P>
+      <H2>Screen</H2>
+      <P>More &gt; Edit layout &gt; Screen, the first tab, is the screen being edited.</P>
       <Ul>
-        <Li><strong>The day&apos;s line</strong> has a dot wherever what the screen shows changes: night starting and ending, and each switch. Tap a dot, or step with ◀ ▶, to see the screen at that moment</Li>
-        <Li><strong>Shows</strong>: the dashboard this screen shows</Li>
-        <Li><strong>Switch at bus time</strong>: shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
-        <Li><strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
+        <Li><strong>Screen</strong>: every named screen, set to the one being edited. Pick another to edit it instead. With changes not saved, the editor asks first. The pencil beside it renames the screen: type the name and press Enter (Esc keeps the old one)</Li>
+        <Li><strong>Base dashboard</strong>: the dashboard this screen shows, except while a switch is on</Li>
+        <Li><strong>Switches</strong> &gt; <strong>Switch at bus time</strong>, if bus tracking is set up (Settings &gt; Bus): shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
+        <Li><strong>Switches</strong> &gt; <strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
+        <Li><strong>When nobody is using it</strong>: <strong>Rest after</strong>, how long nobody touches the screen before it rests, and <strong>How dark</strong>, how far it dims at night</Li>
+      </Ul>
+      <P>These belong to the screen. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the Screen drop-down says <strong>No screen</strong> (or <strong>This device (not named)</strong>, with <strong>Name this device</strong> below it) and lists the screens.</P>
+
+      <H2>Through the day</H2>
+      <P>More &gt; Edit layout &gt; Through the day sets how the dashboard rests and sleeps.</P>
+      <Ul>
+        <Li><strong>The day&apos;s line</strong> has a dot wherever what the screen shows changes: night starting and ending, and each of the screen&apos;s switches. Tap a dot, or step with ◀ ▶, to see the screen at that moment. Tapping a switch&apos;s dot opens it in Screen</Li>
         <Li><strong>Resting</strong>: what shows when nobody is using the screen: <strong>This dashboard</strong>, <strong>Photos</strong> or <strong>Night sky</strong>. <strong>See it</strong> shows it on the canvas</Li>
         <Li><strong>At night</strong>: <strong>Dim this dashboard</strong>, <strong>Night sky</strong>, <strong>Photos</strong> or <strong>Screen off</strong>. Night runs from dusk to dawn, moved earlier or later if you like, or at set times</Li>
-        <Li><strong>Rest after</strong>: how long nobody touches the screen before it rests</Li>
-        <Li><strong>How dark</strong>: how far the screen dims at night</Li>
       </Ul>
-      <P>Resting and At night belong to the dashboard, so every screen showing it rests and sleeps the same way. Shows, the switches, Rest after and How dark belong to the screen.</P>
+      <P>Resting and At night belong to the dashboard, so every screen showing it rests and sleeps the same way.</P>
       <P><strong>Notices</strong>, small cards at the side of the screen when something is close, are in the editor&apos;s <strong>More</strong>.</P>
     </>
   );
@@ -299,11 +305,12 @@ function DashboardHelp() {
       <P>Clock, Weather, Calendar, Tasks, Chores, Shopping, Meals, Messages, Photos, Points/Goals, Birthdays, Wishes, and Bus Tracker.</P>
 
       <H2>Opening the Editor</H2>
-      <P>Open More &gt; Edit layout (parents only). The editor shows the dashboard on a canvas, with a panel beside it and five tabs:</P>
+      <P>Open More &gt; Edit layout (parents only). The editor shows the dashboard on a canvas, with a panel beside it and six tabs:</P>
       <Ul>
+        <Li><strong>Screen</strong>: the screen being edited: its name, the dashboard it shows, its switches, <strong>Rest after</strong> and <strong>How dark</strong>, and the other screens, to edit one instead (see the Screens &amp; Through the Day help section)</Li>
         <Li><strong>Dashboard</strong>: every dashboard, to open another; <strong>New dashboard</strong>, <strong>Make a copy</strong>, <strong>Rename</strong>, <strong>Make the default</strong> and <strong>Delete</strong></Li>
         <Li><strong>Widgets</strong>: show or hide each widget and set its place; <strong>Start from a template</strong>; <strong>Browse the community gallery</strong></Li>
-        <Li><strong>Through the day</strong>: what the screen shows when resting and at night, and when it switches (see the Screens &amp; Through the Day help section)</Li>
+        <Li><strong>Through the day</strong>: what the dashboard shows when resting and at night, and the day&apos;s line</Li>
         <Li><strong>Look</strong>: the <strong>Screen shape</strong>, <strong>See it at a screen size</strong>, and this screen&apos;s own settings under <strong>This screen</strong></Li>
         <Li><strong>More</strong>: the <strong>Overview</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong> and <strong>Reset this layout</strong></Li>
       </Ul>
@@ -327,7 +334,7 @@ function DashboardHelp() {
       <P>Each screen chooses how the bar behaves on a dashboard with <strong>Auto-hide navigation</strong>, in Look under <strong>This screen</strong>. On, the bar hides behind a small <strong>Menu</strong> tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.</P>
 
       <H2>Resting Layout</H2>
-      <P>Each dashboard has its own layout for when the screen rests over photos or the night sky. In Through the day, set <strong>Resting</strong> to Photos or Night sky, press <strong>See it</strong>, then open <strong>Widgets</strong> to arrange what shows over it; step to night on the day&apos;s line to arrange the night. <strong>Rest after</strong>, in the same sheet, sets how long the screen waits. The resting templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
+      <P>Each dashboard has its own layout for when the screen rests over photos or the night sky. In Through the day, set <strong>Resting</strong> to Photos or Night sky, press <strong>See it</strong>, then open <strong>Widgets</strong> to arrange what shows over it; step to night on the day&apos;s line to arrange the night. <strong>Rest after</strong>, in Screen, sets how long the screen waits. The resting templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
 
       <H2>Import, Export &amp; Community Layouts</H2>
       <Ul>
@@ -344,7 +351,7 @@ function DashboardHelp() {
         <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default with <strong>Dashboard &gt; Make the default</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
         <Li>Each has independent widget layout, resting layout, and orientation (landscape/portrait)</Li>
-        <Li>Each named screen picks the dashboard it shows (Through the day &gt; Shows, or Settings &gt; Screens)</Li>
+        <Li>Each named screen picks the dashboard it shows (Screen &gt; Base dashboard, or Settings &gt; Screens)</Li>
       </Ul>
 
       <H2>Orientation</H2>
@@ -648,14 +655,14 @@ function ScreensaverHelp() {
     <>
       <P>When nobody touches a screen for a while, it rests. What it shows resting and at night is set in More &gt; Edit layout &gt; Through the day.</P>
       <Ul>
-        <Li><strong>Rest after</strong>: How long the screen waits: 30 seconds, 1 minute, 2 minutes (the default), 10 minutes, 1 hour, or Never rests</Li>
+        <Li><strong>Rest after</strong>: in Screen, how long the screen waits: 30 seconds, 1 minute, 2 minutes (the default), 10 minutes, 1 hour, or Never rests</Li>
         <Li><strong>Resting</strong>: This dashboard, Photos, or a <strong>Night sky</strong> (the stars, Milky Way and moon as they are outside now, naming one constellation at a time)</Li>
         <Li><strong>At night</strong>: Dim this dashboard, Night sky, Photos or Screen off, from dusk to dawn or at set times</Li>
         <Li><strong>Motion and photo rotation</strong>: Through the day &gt; More &gt; <strong>Screensaver motion</strong> has the transition effect and how often the photo changes</Li>
         <Li><strong>Arranging it</strong>: Resting &gt; See it, then Widgets</Li>
         <Li><strong>Aurora</strong>: Settings &gt; Appearance &gt; <strong>Night sky</strong> can say when aurora may be visible, on every screen</Li>
       </Ul>
-      <P>A phone never rests. An app installed on a wall screen (added to its home screen) rests only once it has a name: Through the day &gt; <strong>Name this device</strong>.</P>
+      <P>A phone never rests. An app installed on a wall screen (added to its home screen) rests only once it has a name: More &gt; Edit layout &gt; Screen &gt; <strong>Name this device</strong>.</P>
       <H2>Palettes</H2>
       <P>
         <strong>Settings &gt; Appearance &gt; Palette</strong> changes the colours. The
@@ -712,7 +719,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
         </>
       )}
       <H3>Screens</H3>
-      <P>Every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor, also from a phone, with a live picture of it. To name a device, open the editor on it and go to Through the day. A named screen keeps its settings with its name, so a reset browser can take them back. A browser nobody named works as before.</P>
+      <P>Every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor, also from a phone, with a live picture of it. To name a device, open the editor on it and go to Screen. A named screen keeps its settings with its name, so a reset browser can take them back. A browser nobody named works as before.</P>
       <H3>This Screen</H3>
       <P>More &gt; Edit layout &gt; Look &gt; <strong>This screen</strong> holds the screen&apos;s own settings:</P>
       <Ul>

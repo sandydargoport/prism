@@ -22,7 +22,7 @@ import { switchInWords, type ScreenSwitch } from '@/lib/screenSwitches';
  * whether it is on, the dashboard it shows (#1282) and Edit, which opens its
  * editor: on the screen itself, or from any other device over a live picture
  * of it. Everything about a screen is set in its editor, naming the device in
- * use included (Through the day); here a screen is only renamed or removed.
+ * use included (Screen, #1326); here a screen is only renamed or removed.
  */
 
 type DisplayEntry = {
@@ -140,7 +140,7 @@ export function DisplaysSection() {
         <p className="text-muted-foreground">
           Every named screen in the house, whether it is on, and the dashboard it shows. Edit
           opens a screen&apos;s editor over a live picture of it. A device nobody named shows
-          the default dashboard; to name one, open the editor on it and go to Through the day.
+          the default dashboard; to name one, open the editor on it and go to Screen.
         </p>
         {loaded && !current && (
           <p className="mt-2 text-sm text-muted-foreground" data-unnamed-here>

@@ -60,7 +60,7 @@ When the chore is done, its next due date moves on by its frequency (or to its r
 - **On**: every tick asks who you are and for your PIN, as it always has.
 - **Off** (the default on new installs): anyone at the wall can tick a chore without a PIN. The tick goes to the person it is assigned to. A chore for anyone asks *Who did it?* and offers the family to choose from. **Undo** appears for a short while in case of a wrong tap, and takes back only that wall's own tick.
 
-With the switch off, a tick without a PIN works only on a screen Prism knows: one that has been named (in its editor, **Through the day > Name this device**, and then listed in *Settings > Screens*), or a device a parent trusted. On a wall that is not named yet, sign in to tick, or name the screen first.
+With the switch off, a tick without a PIN works only on a screen Prism knows: one that has been named (in its editor, **Screen > Name this device**, and then listed in *Settings > Screens*), or a device a parent trusted. On a wall that is not named yet, sign in to tick, or name the screen first.
 
 Ticks made this way are written to the activity log, and the household's walls can make up to 60 of them a minute between them. The wall can never approve a chore: on one that requires approval, its tick waits for a parent like any other. Approving, editing and settings always need a parent.
 

@@ -8,48 +8,35 @@
  * shows changes (night's start and end, each switch's start and end today),
  * and ◀ ▶ to step from one to the next. The canvas shows the screen then: a
  * switch's dashboard during the switch, the night look at night, its own
- * dashboard otherwise. The slider only shows; tapping a dot opens its row.
- *
- * In a screen's editor: the dashboard the screen shows, and the dashboards it
- * switches to for a while (#1282), at bus time or at set times. A bus switch
- * picks its routes and how long before and after (#1291). They belong to the
- * screen, and Done sends them to it with its settings. On a device nobody
- * named, the sheet offers to name it instead (#1267).
+ * dashboard otherwise. The slider only shows; tapping a dot opens its row:
+ * night's here, a switch's on the Screen sheet, where the screen's switches
+ * are set (#1326).
  *
  * Then the dashboard's own day: what it shows while resting, with See it to
  * arrange what shows over the photos or the sky, and At night, a row shaped
  * like a switch: its look, when night is, tonight's times and the offsets. It
  * belongs to the dashboard, so every screen showing it rests and sleeps the
- * same way, and Done saves it with the dashboard. How long until the screen
- * rests and how dark it goes are the screen's own, shown only when the editor
- * is for a screen.
- *
- * Each switch and At night fold to one line that says what it does, and open
- * on a tap, one at a time: all folded when the editor opens, a switch just
- * added open. Every row has its name in one column and its choices in the
- * next, so they line up and wrap within their own column.
+ * same way, and Done saves it with the dashboard. At night folds to one line
+ * that says what it does, and opens on a tap. Every row has its name in one
+ * column and its choices in the next, so they line up and wrap within their
+ * own column.
  */
 import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { ArrowUp, ChevronRight, Plus, X } from 'lucide-react';
+import { useState } from 'react';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
 import { useSkyLocation } from '@/components/screensaver/useIdleBackground';
-import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim';
-import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useIdleDimSetting } from '@/components/screensaver/idleDim';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, type ScreenState } from '@/lib/throughTheDay';
-import {
-  BUS_MINUTE_CHOICES, busWindowOf, daysShort, EVERY_DAY, MAX_SWITCHES, routesOf,
-  type BusSwitch, type BusWindow, type ScreenPlan, type ScreenSwitch,
-} from '@/lib/screenSwitches';
+import type { ScreenPlan } from '@/lib/screenSwitches';
 import { dayStops, nightSpans, sceneAt, switchSpans, type Scene, type Stop } from '@/lib/dayWaypoints';
 import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
 import { OffsetInput } from './IdleBackgroundBar';
-import { NameThisDevice } from './NameThisDevice';
-import { DaySlider, Swatch } from './DaySlider';
+import { DaySlider } from './DaySlider';
+import { chip, field, Fold, hhmm, note, Row, useBusRoutes } from './sheetRows';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { cn } from '@/lib/utils';
@@ -67,42 +54,8 @@ const NIGHT_LOOKS: { value: IdleSource; label: string }[] = [
 ];
 const SET_TIMES: IdleSwitch = { by: 'clock', from: '21:00', to: '06:30' };
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-/** The day chips, Monday first as a week is read. */
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
-const DAY_MINUTES = 24 * 60;
-
-// Each control is a 44px target for a finger on the wall, and 32px with a
-// mouse, where editing is done (the laptop), so the panel stays light beside
-// the canvas. With a mouse every control's words are one size, 12px, and
-// sentences and fields 14px.
-const chip = (on: boolean) => cn(
-  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-2.5 pointer-fine:text-caption pointer-fine:font-medium',
-  on ? 'border-foreground bg-foreground text-background' : 'border-foreground/30 hover:bg-muted',
-);
-/** A day: a 44px circle by touch; with a mouse the seven share their row in equal widths, so Mon and Wed fit like the rest. */
-const dayChip = (on: boolean) => cn(
-  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100 pointer-fine:h-8 pointer-fine:w-auto pointer-fine:min-w-0 pointer-fine:flex-1',
-  // Both with a border, so on and off share a row in equal widths.
-  on ? 'border border-foreground bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
-);
-const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
-/** The column of row names: wide enough for a fold's arrow and "At set times" at the desk's 14px. */
-const NAME_COLUMN = 'grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-body';
-/** Every row is a box of one inset, so the names of plain rows and folds line up. */
-const ROW_BOX = 'rounded-xl border px-3 pointer-fine:px-2';
-/** A small round button beside a row (move up, remove). */
-const iconButton = 'flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 pointer-fine:h-8 pointer-fine:w-8';
-const note = 'm-0 text-caption text-muted-foreground';
-
 /** "HH:MM" for a time on the display's own clock. */
 const clockOf = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-/** "HH:MM" for a minute of the day, wrapping past midnight. */
-const hhmm = (minute: number) => {
-  const m = ((minute % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-};
 
 /**
  * Back to the plainest form that means the same: one background when it is
@@ -115,111 +68,17 @@ export function simplest(pair: { day: IdleSource; night: IdleSource; switch: Idl
   return pair;
 }
 
-/** A switch without the keys an edit cleared, so it is stored as plainly as it reads. */
-function withoutUnset(sw: ScreenSwitch): ScreenSwitch {
-  return Object.fromEntries(Object.entries(sw).filter(([, v]) => v !== undefined)) as ScreenSwitch;
-}
+/** Kept here too, where it was first. */
+export { busWindowsInWords } from './sheetRows';
 
-/**
- * A row: its name in a column of its own, so the choices of every row start at
- * one edge, and wrap within their own column, never under the name.
- */
-function Row({ name, children, className, ...rest }: { name: string; children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn(NAME_COLUMN, ROW_BOX, 'border-transparent', className)} {...rest}>
-      {/* An arrow's width in front, as a fold's name has. */}
-      <span className="self-start pl-5 pt-2.5 font-medium pointer-fine:pt-2" data-row-name>{name}</span>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5" data-row-choices>{children}</div>
-    </div>
-  );
-}
-
-/**
- * A row that folds to one line saying what it does, and opens on a tap to
- * the choices that make it.
- */
-function Fold({ name, summary, colorIndex, open, onToggle, children, ...rest }: {
-  name: string;
-  summary: string;
-  /** Its colour on the day's line, as a dot in front of the summary: a switch's place, or -1 for night. */
-  colorIndex: number;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-} & React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn(ROW_BOX, 'border-border', open ? 'bg-muted/40' : 'bg-muted/20')} data-open={open} {...rest}>
-      <button type="button" aria-expanded={open} onClick={onToggle} title={open ? undefined : summary}
-        className={cn(NAME_COLUMN, 'min-h-[48px] w-full text-left pointer-fine:min-h-9')} data-fold-toggle>
-        <span className="flex items-center gap-1 font-medium" data-row-name>
-          <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')} aria-hidden />
-          {name}
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5">
-          <Swatch index={colorIndex} />
-          <span className="truncate text-muted-foreground" data-fold-summary>{summary}</span>
-        </span>
-      </button>
-      {open && <div className="flex flex-col gap-2 pb-3 pl-5 pointer-fine:gap-1.5 pointer-fine:pb-2" data-fold-body>{children}</div>}
-    </div>
-  );
-}
-
-/** A bus route as a bus switch's row shows it. */
-type BusRoute = { id: string; label: string; scheduledTime: string; activeDays: number[] };
-
-/** The bus routes, once read, for a screen with a bus switch; null before. */
-function useBusRoutes(wanted: boolean): BusRoute[] | null {
-  const [routes, setRoutes] = useState<BusRoute[] | null>(null);
-  useEffect(() => {
-    if (!wanted || routes) return;
-    let live = true;
-    void (async () => {
-      const res = await fetch('/api/bus-tracking/status').catch(() => null);
-      const data = res?.ok ? await res.json().catch(() => null) : null;
-      if (!live) return;
-      setRoutes(((data?.routes ?? []) as Array<Partial<BusRoute>>)
-        .flatMap((r) => (typeof r.id === 'string' && typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays)
-          ? [{ id: r.id, label: r.label || 'Bus', scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : [])));
-    })();
-    return () => { live = false; };
-  }, [wanted, routes]);
-  return routes;
-}
-
-/**
- * The windows bus routes switch a screen for, grouped by their days and in
- * time order: "Mon–Fri 7:15 am to 8:00 am, 3:00 pm to 3:45 pm". From 30
- * minutes before each route's time to 15 after, unless `window` says otherwise.
- */
-export function busWindowsInWords(
-  routes: Array<{ scheduledTime: string; activeDays: number[] }>,
-  clock: (hhmm: string) => string,
-  window: BusWindow = busWindowOf({}),
-): string {
-  const minute = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  const byDays = new Map<string, number[]>();
-  for (const r of routes) {
-    const days = daysShort(r.activeDays);
-    const due = minute(r.scheduledTime);
-    const at = byDays.get(days) ?? [];
-    if (!at.includes(due)) at.push(due);
-    byDays.set(days, at);
-  }
-  return [...byDays.entries()]
-    .map(([days, dues]) => `${days} ${dues.sort((a, b) => a - b)
-      .map((due) => `${clock(hhmm(due - window.before))} to ${clock(hhmm(due + window.after))}`).join(', ')}`)
-    .join('; ');
-}
-
-/** Which row is open: a switch by its place, or At night; one at a time. */
-type OpenRow = number | 'night' | null;
+/** Whether At night is open. */
+type OpenRow = 'night' | null;
 
 export function ThroughTheDaySheet({
   idleBackground, onIdleBackgroundChange, idleHalf, onIdleHalfChange, editTab, onEditTabChange, idleCheck,
-  allDashboards = [], currentDashboardId, onSwitchDashboard,
-  screenPlan = null, onScreenPlanChange, screenId = null, forScreen = true, deviceNamed = true, onDeviceNamed,
-  previewDashboardId = null, onPreviewDashboardChange, onOpenLook,
+  allDashboards = [], currentDashboardId,
+  screenPlan = null, screenId = null, forScreen = true,
+  previewDashboardId = null, onPreviewDashboardChange, onOpenLook, onOpenSwitch,
 }: {
   idleBackground?: IdleBackground;
   onIdleBackgroundChange?: (bg: IdleBackground) => void;
@@ -230,32 +89,27 @@ export function ThroughTheDaySheet({
   idleCheck: IdleSwitchCheck;
   allDashboards?: DashboardInfo[];
   currentDashboardId?: string;
-  onSwitchDashboard?: (slug: string) => void;
-  /** In a screen's editor, the dashboard it shows and its switches; null hides them. */
+  /** In a screen's editor, the dashboard it shows and its switches, for the line; they are set on the Screen sheet. */
   screenPlan?: ScreenPlan | null;
-  onScreenPlanChange?: (plan: ScreenPlan) => void;
   /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
-  /** The editor is for a screen (this one, or one edited from here), so its own settings show. */
+  /** The editor is for a screen (this one, or one edited from here): a dimmed night turns its dimming on. */
   forScreen?: boolean;
-  /** The device in use has a name; one that has none is offered one here. */
-  deviceNamed?: boolean;
-  /** The device in use was just named, as this screen. */
-  onDeviceNamed?: (displayId: string) => void;
   /** Another dashboard the canvas shows as it is saved, for a stop in its switch; null is this one. */
   previewDashboardId?: string | null;
   onPreviewDashboardChange?: (id: string | null) => void;
   /** Opens the editor's Look panel, where screen fit and performance are. */
   onOpenLook?: () => void;
+  /** Opens the Screen sheet at a switch, by its place: its dot was tapped. */
+  onOpenSwitch?: (index: number) => void;
 }) {
   const { timeFormat, householdTimezone } = useTimeFormat();
   const [moreOpen, setMoreOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
-  const { timeout, setTimeout } = useScreensaverTimeout();
   const { level: dim, setLevel: setDim } = useIdleDimSetting();
-  // Every row folded when the editor opens.
+  // Folded when the editor opens.
   const [openRow, setOpenRow] = useState<OpenRow>(null);
-  const toggle = (row: Exclude<OpenRow, null>) => setOpenRow((o) => (o === row ? null : row));
+  const toggle = () => setOpenRow((o) => (o === 'night' ? null : 'night'));
   // The day the slider shows: today, as it was when the sheet opened, so its
   // stops stay put while they are stepped through.
   const [today] = useState(() => new Date());
@@ -287,55 +141,7 @@ export function ThroughTheDaySheet({
   const defaultId = allDashboards.find((d) => d.isDefault)?.id ?? currentDashboardId ?? '';
   const shownId = plan?.dashboardId && exists(plan.dashboardId) ? plan.dashboardId : defaultId;
   const editedId = currentDashboardId ?? shownId;
-  /** Open another dashboard in the editor, when it is not the one open. */
-  const openButton = (id: string) => {
-    const target = allDashboards.find((d) => d.id === id);
-    if (!target?.slug || target.id === currentDashboardId) return null;
-    return (
-      <button type="button" className={chip(false)} onClick={() => onSwitchDashboard?.(target.slug!)} data-dashboard-open={target.id}>
-        Open
-      </button>
-    );
-  };
-
-  // The screen's switches, kept on the editor page until Done.
-  const saveSwitches = (next: ScreenSwitch[]) => { if (plan) onScreenPlanChange?.({ ...plan, switches: next }); };
-  const editSwitch = (i: number, patch: Partial<ScreenSwitch>) =>
-    saveSwitches(switches.map((sw, j) => (j === i ? withoutUnset({ ...sw, ...patch } as ScreenSwitch) : sw)));
-  /** Moves a switch up the order that decides which wins an overlap; an open one stays open. */
-  const moveUp = (i: number) => {
-    const next = [...switches];
-    const [sw] = next.splice(i, 1);
-    next.splice(i - 1, 0, sw!);
-    saveSwitches(next);
-    setOpenRow((o) => (o === i ? i - 1 : o === i - 1 ? i : o));
-  };
-  const remove = (i: number) => {
-    saveSwitches(switches.filter((_, j) => j !== i));
-    setOpenRow(null);
-  };
-  /** A dashboard to switch to: the first that is not the one the screen shows. */
-  const another = allDashboards.find((d) => d.id !== shownId) ?? allDashboards[0];
-  const full = switches.length >= MAX_SWITCHES || !another;
-  const hasBus = switches.some((sw) => sw.when === 'bus');
-  /** Adds a switch, open, so its choices are in front of the person who added it. */
-  const add = (sw: ScreenSwitch) => {
-    saveSwitches([...switches, sw]);
-    setOpenRow(switches.length);
-  };
-  const addTimes = () => {
-    const from = Math.floor((new Date().getHours() * 60 + new Date().getMinutes()) / 15) * 15;
-    if (another) add({ when: 'times', days: [...EVERY_DAY], from: hhmm(from), to: hhmm(from + 60), dashboardId: another.id });
-  };
-  const addBus = () => { if (another) add({ when: 'bus', dashboardId: another.id }); };
-  const busRoutes = useBusRoutes(hasBus);
-  /** Turns a route on or off for a bus switch; with every route on, it follows every route, ones added later too. */
-  const toggleRoute = (i: number, sw: BusSwitch, id: string) => {
-    const all = (busRoutes ?? []).map((r) => r.id);
-    const on = routesOf(sw, busRoutes ?? []).map((r) => r.id);
-    const next = on.includes(id) ? on.filter((x) => x !== id) : all.filter((x) => x === id || on.includes(x));
-    editSwitch(i, { routeIds: next.length === all.length ? undefined : next });
-  };
+  const busRoutes = useBusRoutes(switches.some((sw) => sw.when === 'bus'));
 
   // The day slider: its stops today, and what the screen shows at each.
   const minuteNow = today.getHours() * 60 + today.getMinutes();
@@ -361,9 +167,11 @@ export function ThroughTheDaySheet({
       onPreviewDashboardChange?.(sc.dashboardId === editedId ? null : sc.dashboardId);
       show('active');
     }
-    // A tapped dot opens the row that makes it.
+    // A tapped dot opens the row that makes it: a switch's is on the Screen sheet.
     const mark = stops[i]!.marks.find((m) => m.kind !== 'now');
-    if (tapped && mark) setOpenRow(mark.switchIndex ?? 'night');
+    if (!tapped || !mark) return;
+    if (typeof mark.switchIndex === 'number') onOpenSwitch?.(mark.switchIndex);
+    else setOpenRow('night');
   };
   const stopInWords = (stop: Stop) => {
     const at = clock(hhmm(stop.minute));
@@ -383,123 +191,11 @@ export function ThroughTheDaySheet({
     return sc.dashboardId === editedId ? `Shows ${name} in use` : `Shows ${name} as it is saved`;
   };
 
-  /** A bus switch's windows today, short, for its folded line. */
-  const busInShort = (sw: BusSwitch) => {
-    if (!busRoutes) return 'Bus routes';
-    if (busRoutes.length === 0) return 'No bus route set up yet';
-    const followed = routesOf(sw, busRoutes);
-    if (followed.length === 0) return 'None of its routes is set up';
-    const window = busWindowOf(sw);
-    const due = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-    return followed.map((r) => `${r.label} ${clock(hhmm(due(r.scheduledTime) - window.before))}–${clock(hhmm(due(r.scheduledTime) + window.after))}`).join(', ');
-  };
-  /** When first, as that is what tells two switches apart, then the dashboard. */
-  const switchInShort = (sw: ScreenSwitch) => `${sw.when === 'bus' ? busInShort(sw)
-    : `${sw.days.length === 7 ? '' : `${daysShort(sw.days)} `}${clock(sw.from)}–${clock(sw.to)}`} · ${dashboardName(sw.dashboardId)}`;
   const nightInShort = () => {
     const look = NIGHT_LOOKS.find((o) => o.value === pair.night)?.label ?? 'Dim this dashboard';
     if (rule.by === 'clock') return `${look} · ${clock(rule.from)}–${clock(rule.to)}`;
     return `${look} · dusk to dawn${night ? `, tonight ${time(night.start)}–${time(night.end)}` : ''}`;
   };
-
-  /** A bus switch's routes and minutes, and the windows they make. */
-  const busDetails = (sw: BusSwitch, i: number) => {
-    const window = busWindowOf(sw);
-    const followed = routesOf(sw, busRoutes ?? []);
-    const minutes = (edge: 'before' | 'after', label: string) => (
-      <select className={field} value={window[edge]} aria-label={label} data-bus-minutes={edge}
-        onChange={(e) => editSwitch(i, { [edge]: Number(e.target.value) })}>
-        {/* A window stored by hand with other minutes keeps them as a choice. */}
-        {[...new Set([...BUS_MINUTE_CHOICES, window[edge]])].sort((a, b) => a - b)
-          .map((m) => <option key={m} value={m}>{m} min</option>)}
-      </select>
-    );
-    return (
-      <>
-        {/* With one route there is nothing to choose, unless the switch follows none of those there are. */}
-        {busRoutes && busRoutes.length > 0 && (busRoutes.length > 1 || followed.length === 0) && (
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Bus routes" data-bus-routes>
-            {busRoutes.map((r) => {
-              const on = followed.some((f) => f.id === r.id);
-              return (
-                // One always stays on; Remove takes the switch away.
-                <button key={r.id} type="button" aria-pressed={on} disabled={on && followed.length === 1}
-                  className={cn(chip(on), 'disabled:opacity-100')} onClick={() => toggleRoute(i, sw, r.id)} data-bus-route={r.id}>
-                  {r.label} {clock(r.scheduledTime)}
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {/* The card's whole width, so before and after stay on one line in a narrow panel. */}
-        <span className="flex flex-wrap items-center gap-2 text-body" data-bus-window>
-          From {minutes('before', 'Minutes before the bus')} before to {minutes('after', 'Minutes after the bus')} after
-        </span>
-        <p className={note} data-bus-windows>
-          {!busRoutes ? `From ${window.before} minutes before each bus route's time at the stop to ${window.after} minutes after, on its days.`
-            : busRoutes.length === 0 ? 'No bus route is set up yet, so this never switches. Add one in Settings > Bus.'
-              : followed.length === 0 ? 'None of its routes is set up any more, so this never switches. Pick one above.'
-                : busWindowsInWords(followed, clock, window)}
-        </p>
-      </>
-    );
-  };
-
-  const switchRow = (sw: ScreenSwitch, i: number) => (
-    <Fold key={i} name={sw.when === 'bus' ? 'At bus time' : 'At set times'} summary={switchInShort(sw)} colorIndex={i}
-      open={openRow === i} onToggle={() => toggle(i)} data-switch-row={i} data-switch={sw.when}>
-      <span className="flex flex-wrap items-center gap-2 text-body">
-        Shows
-        <select className={cn(field, 'min-w-0 max-w-full')} value={sw.dashboardId} aria-label="Switches to" onChange={(e) => editSwitch(i, { dashboardId: e.target.value })}>
-          {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
-      </span>
-      {sw.when === 'bus' ? busDetails(sw, i) : (
-        <>
-          {/* The card's whole width, so from and to stay on one line in a narrow panel. */}
-          <span className="flex flex-wrap items-center gap-2 text-body">
-            From
-            <input type="time" className={field} value={sw.from} aria-label="Switch starts"
-              onChange={(e) => e.target.value && editSwitch(i, { from: e.target.value })} />
-            to
-            <input type="time" className={field} value={sw.to} aria-label="Switch ends"
-              onChange={(e) => e.target.value && editSwitch(i, { to: e.target.value })} />
-          </span>
-          <div className="flex flex-wrap items-center gap-1 pointer-fine:flex-nowrap" role="group" aria-label="Switch days">
-            {WEEK_ORDER.map((d) => {
-              const on = sw.days.includes(d);
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  aria-label={DAY_FULL[d]}
-                  aria-pressed={on}
-                  // A switch keeps at least one day; Remove takes it away.
-                  disabled={on && sw.days.length === 1}
-                  onClick={() => editSwitch(i, { days: on ? sw.days.filter((x) => x !== d) : [...sw.days, d].sort() })}
-                  className={dayChip(on)}
-                  data-day-chip={d}
-                >
-                  {DAY_NAMES[d]}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        {openButton(sw.dashboardId)}
-        {i > 0 && (
-          <button type="button" className={iconButton} onClick={() => moveUp(i)} aria-label="Move up: wins an overlap" data-switch-up>
-            <ArrowUp className="h-4 w-4" aria-hidden />
-          </button>
-        )}
-        <button type="button" className={cn(chip(false), 'ml-auto')} data-switch-remove onClick={() => remove(i)}>
-          <X className="mr-1 h-4 w-4" aria-hidden />Remove
-        </button>
-      </div>
-    </Fold>
-  );
 
   const lookName = dashboardName(currentDashboardId);
 
@@ -524,35 +220,6 @@ export function ThroughTheDaySheet({
         />
       </section>
 
-      {plan && (
-        // What the screen shows, and when it switches to another, as rows.
-        <section className="flex flex-col gap-2 border-b border-border pb-5 pointer-fine:gap-1.5 pointer-fine:pb-4" aria-label="What this screen shows" data-screen-plan>
-          <Row name="Shows">
-            <select className={cn(field, 'min-w-0 max-w-full')} value={shownId} aria-label="Dashboard this screen shows" data-screen-dashboard
-              onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value })}>
-              {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            {openButton(shownId)}
-          </Row>
-          {switches.map(switchRow)}
-          {switches.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button type="button" className={chip(false)} onClick={addBus} disabled={full} data-switch-add="bus">
-              <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at bus time
-            </button>
-            <button type="button" className={chip(false)} onClick={addTimes} disabled={full} data-switch-add="times">
-              <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at set times
-            </button>
-          </div>
-          <p className={note}>Done saves these to this screen. Times are in the household time zone.</p>
-        </section>
-      )}
-      {!screenId && !deviceNamed && onDeviceNamed && (
-        <section className="border-b border-border pb-5 pointer-fine:pb-4" aria-label="Name this device">
-          <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} />
-        </section>
-      )}
-
       {/* The dashboard's own day: what it shows resting and at night, and when night is. */}
       <section className="flex flex-col gap-2 pointer-fine:gap-1.5" aria-label="Resting and night" data-day-look>
         <Row name="Resting">
@@ -566,7 +233,7 @@ export function ThroughTheDaySheet({
             See it
           </button>
         </Row>
-        <Fold name="At night" summary={nightInShort()} colorIndex={-1} open={openRow === 'night'} onToggle={() => toggle('night')} data-night-row>
+        <Fold name="At night" summary={nightInShort()} colorIndex={-1} open={openRow === 'night'} onToggle={() => toggle()} data-night-row>
           <span className="flex flex-wrap items-center gap-2">
             <select className={field} value={pair.night} aria-label="Night look" data-night-look
               onChange={(e) => {
@@ -624,28 +291,6 @@ export function ThroughTheDaySheet({
           Every screen showing {lookName} rests and sleeps this way. Done saves it with the dashboard.
         </p>
       </section>
-
-      {forScreen && (
-        // How soon it rests and how dark it goes are the screen's own, kept
-        // with its other settings.
-        <section className="flex flex-col gap-2 border-t border-border pt-4 pointer-fine:gap-1.5 pointer-fine:pt-3" aria-label="On this screen" data-day-screen>
-          <p className={cn(note, 'font-medium')}>On this screen</p>
-          <Row name="Rest after">
-            <select className={field} value={timeout} onChange={(e) => setTimeout(Number(e.target.value))} aria-label="Rest after">
-              {SCREENSAVER_TIMEOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.value === 0 ? 'Never rests' : o.label}</option>)}
-            </select>
-            <span className={note}>of nobody touching it</span>
-          </Row>
-          {pair.night !== 'off' && (
-            <Row name="How dark">
-              <select className={field} value={dim} onChange={(e) => setDim(e.target.value)} aria-label="How dark at night">
-                {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.raw === '0' ? 'Not dimmed' : l.label}</option>)}
-              </select>
-              <span className={note}>at night</span>
-            </Row>
-          )}
-        </section>
-      )}
 
       <section>
         <button type="button" className={chip(moreOpen)} onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} data-day-more>

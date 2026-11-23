@@ -36,7 +36,7 @@ async function openEditor(page: Page, widget?: string): Promise<FrameLocator> {
 }
 
 /** The editor's panels (#1151), by their tabs. */
-async function openSheet(page: Page, id: 'dashboard' | 'widgets' | 'day' | 'look' | 'more') {
+async function openSheet(page: Page, id: 'screen' | 'dashboard' | 'widgets' | 'day' | 'look' | 'more') {
   await page.locator(`[data-editor-open="${id}"]`).click();
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
 }
@@ -988,7 +988,7 @@ test.describe('idle background picker', () => {
   // find a way around, so each is a row. #1294: the rows fold to a line each,
   // and a slider above them only shows.
   test('the slider first, then rows whose names line up, each fold one line, all inside the panel', async ({ page }) => {
-    // As a screen's editor, so its own rows come after the dashboard's.
+    // As a screen's editor: its own rows are on Screen (#1326), so only the dashboard's are here.
     const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }, true);
     try {
       const sheet = page.locator('[data-editor-sheet="day"]');
@@ -1027,7 +1027,7 @@ test.describe('idle background picker', () => {
       // A folded row is one line.
       expect(g.summary.height).toBeLessThanOrEqual(g.lineHeight + 1);
       // One column of names, plain rows and folds alike.
-      expect(g.names.map((n) => n.name)).toEqual(['Shows', 'Resting', 'At night', 'Rest after', 'How dark']);
+      expect(g.names.map((n) => n.name)).toEqual(['Resting', 'At night']);
       for (const n of g.names) expect(Math.abs(n.box.left - g.names[0]!.box.left), `${n.name} in the name column`).toBeLessThanOrEqual(0.5);
     } finally {
       await layout.removeScreen();
@@ -1097,14 +1097,12 @@ test.describe('dim when idle', () => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
     await withNightDashboard(page, async (slug, id) => {
-      // How dark is the screen's own, in its editor's Through the day (#1159),
+      // How dark is the screen's own, on its editor's Screen tab (#1159, #1326),
       // so this browser is a screen showing the dashboard (#1283).
       const { removeScreen } = await editAsScreen(page, id);
       try {
-        await openSheet(page, 'day');
-        // Night, from its dot on the day's line (#1294).
-        await page.locator('[data-editor-sheet="day"] [data-waypoint="night-start"]').click();
-        await page.getByLabel('How dark at night').selectOption({ label: '50% darker' });
+        await openSheet(page, 'screen');
+        await page.locator('[data-editor-sheet="screen"]').getByLabel('How dark at night').selectOption({ label: '50% darker' });
         await done(page).click();
         // Done sends the screen its settings and leaves the editor; let it land first.
         await page.waitForURL((u) => !u.pathname.startsWith('/screens/'), { timeout: 60_000 });
