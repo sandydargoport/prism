@@ -470,5 +470,26 @@ test.describe('Visual regression', () => {
       await page.addStyleTag({ content: '[data-testid="pin-modal"] { background: #000 !important; }' });
       await expect(panel).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
+
+    // More's three groups each sit in a panel of their own, and Feedback
+    // sits beside Help (#1311). Same gate as the PIN modal: signed out, the
+    // panel offers Sign in, and the seeded install is what it shows.
+    test(`More panel - ${theme}`, async ({ page }) => {
+      test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a synthetic-seed DB');
+      await setClientFlags(page, { theme });
+      await page.goto('/');
+      await waitForQuiet(page);
+      const more = page.locator('[data-dock-more]');
+      if (!(await more.isVisible())) await page.locator('[data-dock-menu]').click();
+      await more.click();
+      const panel = page.locator('[data-dock-more-panel]');
+      await expect(panel).toBeVisible();
+      await expect(panel.locator('[data-dock-feedback]')).toBeVisible();
+      await page.waitForTimeout(400);
+      // Square corners, so nothing of the live dashboard behind the dialog
+      // shows at its edges (the same reason as the PIN modal above).
+      await page.addStyleTag({ content: '[data-dock-more-panel] { border-radius: 0 !important; }' });
+      await expect(panel).toHaveScreenshot(`more-panel-${theme}.png`, SCREENSHOT_OPTIONS);
+    });
   }
 });

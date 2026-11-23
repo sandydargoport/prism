@@ -5,7 +5,7 @@
  * first on a wall and last on a phone, and This screen on every page, with
  * Edit layout going to the screen's dashboard with the editor open.
  */
-import { render, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, fireEvent, act, waitFor, screen } from '@testing-library/react';
 
 let pathname = '/chores';
 let narrow = false;
@@ -128,7 +128,7 @@ describe('the More panel (#1257)', () => {
   });
 });
 
-describe('Feedback in More (#1311)', () => {
+describe('Feedback beside Help in More (#1311)', () => {
   const state = (over: Record<string, unknown> = {}) => ({
     referendum: '2026-11-navigation', open: true, answer: null, canSend: true, offReason: null, ha: false, ...over,
   });
@@ -139,22 +139,31 @@ describe('Feedback in More (#1311)', () => {
         ? { ok: post?.ok ?? true, json: async () => post?.body ?? {} }
         : { ok: true, json: async () => get });
   };
+  /** More, then Feedback: the question opens in a window of its own. */
   const openFeedback = async () => {
     const panel = openMore();
-    await waitFor(() => expect(panel.querySelector('[data-feedback-card]')).not.toBeNull());
-    return { panel, card: panel.querySelector<HTMLElement>('[data-feedback-card]')! };
+    const button = panel.querySelector<HTMLElement>('[data-dock-feedback]');
+    expect(button).not.toBeNull();
+    fireEvent.click(button!);
+    await waitFor(() => expect(document.querySelector('[data-feedback-dialog] [data-feedback-card]')).not.toBeNull());
+    const dialog = document.querySelector<HTMLElement>('[data-feedback-dialog]')!;
+    return { panel, dialog, card: dialog.querySelector<HTMLElement>('[data-feedback-card]')! };
   };
   const answers = (card: HTMLElement) => [...card.querySelectorAll<HTMLElement>('[data-feedback-answer]')];
   const pressed = (card: HTMLElement) => answers(card).filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent);
   const posts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST');
 
-  it.each([['a wall', false], ['a phone', true]])('on %s: last in More, under Feedback, the question and one button per answer', async (_name, isNarrow) => {
+  it.each([['a wall', false], ['a phone', true]])('on %s: Feedback sits right after Help, More itself asks nothing, and a tap opens the question', async (_name, isNarrow) => {
     narrow = isNarrow;
     serve(state());
-    const { panel, card } = await openFeedback();
-    const blocks = [...panel.querySelectorAll('[data-dock-more-group], [data-feedback-card]')];
-    expect(blocks.at(-1)).toBe(card);
-    expect(card.textContent).toContain('Feedback');
+    const more = openMore();
+    const help = more.querySelector('[data-dock-item="/help"]')!;
+    expect(help.nextElementSibling?.hasAttribute('data-dock-feedback')).toBe(true);
+    expect(more.querySelector('[data-dock-feedback]')!.textContent).toBe('Feedback');
+    expect(more.querySelector('[data-feedback-card]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    const { dialog, card } = await openFeedback();
+    expect(dialog.textContent).toContain('Feedback');
     expect(card.textContent).toContain('Navigation moved from the sidebar to the bar along the bottom. Which do you prefer?');
     expect(answers(card).map((b) => b.textContent)).toEqual(['Keep the bottom bar', 'Bring back the sidebar']);
     expect(pressed(card)).toEqual([]);
@@ -218,11 +227,15 @@ describe('Feedback in More (#1311)', () => {
     expect(card.querySelector('[data-feedback-thanks]')).toBeNull();
   });
 
-  it('is not there once the question has closed', async () => {
-    serve(state({ open: false }));
-    const panel = openMore();
-    await act(async () => {});
-    expect(fetchMock).toHaveBeenCalled();
-    expect(panel.querySelector('[data-feedback-card]')).toBeNull();
+  it('has no Feedback button once the question has closed', async () => {
+    REFERENDUM.openUntil = '2000-01-01';
+    try {
+      const panel = openMore();
+      await act(async () => {});
+      expect(panel.querySelector('[data-dock-feedback]')).toBeNull();
+      expect(document.querySelector('[data-feedback-card]')).toBeNull();
+    } finally {
+      delete REFERENDUM.openUntil;
+    }
   });
 });
