@@ -148,4 +148,10 @@ export interface LayoutGridEditorProps {
   enabledSizes?: string[];
   onScrollInfo?: (info: { scrollY: number; visibleRows: number; scrollX: number; visibleCols: number; totalRows: number; totalCols: number }) => void;
   scrollToRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
+  /**
+   * Edit mode: the selected widget, held by the editor so the Widgets panel
+   * shows its settings (#1323). Left out, the grid keeps its own.
+   */
+  selectedWidgetId?: string | null;
+  onSelectedWidgetChange?: (id: string | null) => void;
 }

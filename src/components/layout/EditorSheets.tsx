@@ -14,6 +14,7 @@ import { editLink } from '@/components/dashboard/useDashboardLayout';
 import { keepPanelFor } from './canvasPanel';
 import { CommunityGallery } from './CommunityGallery';
 import { CoordinateEditor } from './CoordinateEditor';
+import { WidgetStylePanel } from './WidgetStylePanel';
 import { LayoutEditorPreviewPanel } from './LayoutEditorPreviewPanel';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
@@ -146,6 +147,7 @@ function BuiltInMark() {
 
 export function WidgetsSheet({
   builtIn, editingScreensaver, orientation, widgets, onWidgetsChange, onScreensaverPreset, onScreensaverTemplate, onApplyCommunityLayout, onFocusedWidgetChange,
+  selectedWidgetId = null, onSelectedWidgetChange, hideEmptyByDefault = false, idleToggles = false,
 }: {
   builtIn: boolean;
   editingScreensaver: boolean;
@@ -156,6 +158,12 @@ export function WidgetsSheet({
   onScreensaverTemplate?: (w: WidgetConfig[]) => void;
   onApplyCommunityLayout: (widgets: WidgetConfig[], name: string) => void;
   onFocusedWidgetChange: (id: string | null) => void;
+  /** The widget selected on the canvas, whose own settings show first (#1323). */
+  selectedWidgetId?: string | null;
+  onSelectedWidgetChange?: (id: string | null) => void;
+  /** How the grid being edited draws it: see LayoutGridEditorProps. */
+  hideEmptyByDefault?: boolean;
+  idleToggles?: boolean;
 }) {
   const [community, setCommunity] = useState(false);
   const templates = useMemo(() => {
@@ -167,8 +175,23 @@ export function WidgetsSheet({
 
   const mode = editingScreensaver ? 'screensaver' : 'dashboard';
   const change = editingScreensaver && onScreensaverPreset ? onScreensaverPreset : onWidgetsChange;
+  // A widget hidden or removed is no longer selected, as on the canvas.
+  const selected = selectedWidgetId ? widgets.find((w) => w.i === selectedWidgetId && w.visible !== false) : undefined;
   return (
     <div className="flex flex-col gap-6">
+      {selected ? (
+        <WidgetStylePanel
+          widget={selected}
+          onChange={(next) => change(widgets.map((w) => (w.i === next.i ? next : w)))}
+          onClose={onSelectedWidgetChange ? () => onSelectedWidgetChange(null) : undefined}
+          hideEmptyByDefault={hideEmptyByDefault}
+          idleToggles={idleToggles}
+        />
+      ) : (
+        <p className="m-0 text-body text-muted-foreground" data-widget-settings-hint>
+          Select a widget on the screen to change its fill, outline and text here.
+        </p>
+      )}
       <section>
         <h3 className={section}>On this dashboard</h3>
         <CoordinateEditor widgets={widgets} onWidgetsChange={change} mode={mode} onFocusedWidgetChange={onFocusedWidgetChange} />

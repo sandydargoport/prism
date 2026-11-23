@@ -128,6 +128,98 @@ test.describe('canvas editor (#1265)', () => {
     } finally { await cleanup(); }
   });
 
+  /** The smallest words in each, and the shortest control in a widget's settings against Cancel's height. */
+  const panelSizes = (page: Page) => page.evaluate(() => {
+    const minFont = (root: Element | null) => {
+      let min = Infinity;
+      if (!root) return min;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const el = n.parentElement;
+        if (!el || !n.textContent?.trim() || el.getBoundingClientRect().width === 0) continue;
+        min = Math.min(min, parseFloat(getComputedStyle(el).fontSize));
+      }
+      return min;
+    };
+    const buttons = [...document.querySelectorAll('[data-widget-settings] button')].map((b) => b.getBoundingClientRect().height);
+    return {
+      settingsText: minFont(document.querySelector('[data-widget-settings]')),
+      tabsText: minFont(document.querySelector('[data-editor-panels] nav')),
+      shortestControl: Math.min(...buttons),
+      cancel: document.querySelector('[data-editor-cancel]')!.getBoundingClientRect().height,
+      pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+
+  test("on a laptop: a selected widget's settings are in the Widgets panel at its size, and the canvas shows only the screen (#1323)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const { layout, cleanup } = await dashboard(page);
+    try {
+      await openCanvas(page, layout.slug, layout.id);
+      const frame = page.frameLocator('[data-remote-frame]');
+      const picture = await rect(page, '[data-remote-picture]');
+      const tasksAt = () => frame.locator('[data-editor-widget="tasks"]').evaluate((el) => el.getBoundingClientRect().toJSON() as Rect);
+      const before = await tasksAt();
+      await expect(page.locator('[data-editor-sheet="widgets"] [data-widget-settings-hint]')).toBeVisible();
+
+      // With Look open, selecting the clock brings Widgets forward, with its settings.
+      await page.locator('[data-editor-open="look"]').click();
+      await frame.locator('[data-editor-widget="clock"]').click();
+      const settings = page.locator('[data-editor-sheet="widgets"] [data-widget-settings="clock"]');
+      await expect(settings).toBeVisible();
+      for (const name of ['Fill', 'Outline', 'Text', 'When it shows']) {
+        await expect(settings.getByRole('heading', { name })).toBeVisible();
+      }
+      await expect(settings.locator('[data-align-axis="x"]')).toBeVisible();
+
+      // Nothing is drawn over the canvas and nothing on it moved: the strip
+      // the settings used to be in pushed the grid down.
+      await expect(frame.locator('[data-widget-settings]')).toHaveCount(0);
+      await expect(frame.getByRole('button', { name: /^Fill/ })).toHaveCount(0);
+      expect(await tasksAt(), 'the widgets stay where they were').toEqual(before);
+      expect(await rect(page, '[data-remote-picture]')).toEqual(picture);
+
+      // Beside the canvas, inside the panel, at the panel's own sizes.
+      expect((await rect(page, '[data-widget-settings="clock"]')).left).toBeGreaterThanOrEqual(picture.right);
+      const sheet = page.locator('[data-editor-sheet="widgets"]');
+      expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
+      const sizes = await panelSizes(page);
+      expect(sizes.settingsText, 'no word smaller than the panel tabs').toBeGreaterThanOrEqual(sizes.tabsText);
+      expect(sizes.shortestControl, 'every control as tall as Cancel').toBeGreaterThanOrEqual(sizes.cancel - 0.5);
+
+      // A choice is kept on the widget; Close lets it go.
+      await settings.getByLabel('Glass fill').click();
+      await expect(settings.getByLabel('Glass fill')).toHaveAttribute('aria-pressed', 'true');
+      await expect(settings.locator('[data-fill-name]')).toHaveText(/^Glass/);
+      await settings.getByRole('button', { name: "Close Clock's settings" }).click();
+      await expect(page.locator('[data-widget-settings]')).toHaveCount(0);
+      await expect(frame.locator('[data-editor-widget="clock"]')).not.toHaveClass(/ring-blue-500/);
+    } finally { await cleanup(); }
+  });
+
+  test("on a phone: a selected widget's settings are in the panel below the canvas (#1323)", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const { layout, cleanup } = await dashboard(page);
+    try {
+      await openCanvas(page, layout.slug, layout.id);
+      const frame = page.frameLocator('[data-remote-frame]');
+      const picture = await rect(page, '[data-remote-picture]');
+      await page.locator('[data-editor-open="look"]').click();
+      await frame.locator('[data-editor-widget="clock"]').click();
+      await expect(page.locator('[data-editor-sheet="widgets"] [data-widget-settings="clock"]')).toBeVisible();
+      expect(await rect(page, '[data-remote-picture]'), 'the canvas stays put').toEqual(picture);
+      const s = await rect(page, '[data-widget-settings="clock"]');
+      expect(s.top).toBeGreaterThanOrEqual(picture.bottom);
+      expect(s.right).toBeLessThanOrEqual(390);
+      const sheet = page.locator('[data-editor-sheet="widgets"]');
+      expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
+      const sizes = await panelSizes(page);
+      expect(sizes.pageOverflow, 'no sideways scroll').toBeLessThanOrEqual(0);
+      expect(sizes.settingsText).toBeGreaterThanOrEqual(sizes.tabsText);
+      expect(sizes.shortestControl).toBeGreaterThanOrEqual(sizes.cancel - 0.5);
+    } finally { await cleanup(); }
+  });
+
   test('another dashboard picked on Dashboard opens there, still on Dashboard (#1278)', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const first = await dashboard(page);

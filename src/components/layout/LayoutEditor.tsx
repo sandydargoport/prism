@@ -89,6 +89,10 @@ export function LayoutEditor({
   onDeleteDashboard,
   view,
   onResetBuiltIn,
+  selectedWidgetId = null,
+  onSelectedWidgetChange,
+  hideEmptyByDefault = false,
+  idleToggles = false,
 }: LayoutEditorProps) {
   const { zones, allSizeNames } = useScreenSafeZones();
   const { confirm: confirmDelete, dialogProps: confirmDialogProps } = useConfirmDialog();
@@ -114,6 +118,14 @@ export function LayoutEditor({
     if (next !== 'day') onPreviewDashboardChange?.(null);
     if (next === 'dashboard') onEditTabChange?.('dashboard');
   }, [onEditTabChange, onPreviewDashboardChange]);
+  // A widget selected on the canvas brings Widgets forward, where its own
+  // settings are (#1323). Only a new selection does: another panel opened
+  // while it stays selected stays open.
+  const shownSelection = useRef<string | null>(null);
+  useEffect(() => {
+    if (selectedWidgetId && selectedWidgetId !== shownSelection.current) setSheet('widgets');
+    shownSelection.current = selectedWidgetId;
+  }, [selectedWidgetId, setSheet]);
   const backToInUse = useCallback(() => {
     onPreviewDashboardChange?.(null);
     onEditTabChange?.('dashboard');
@@ -263,6 +275,10 @@ export function LayoutEditor({
             onScreensaverTemplate={onSelectScreensaverTemplate}
             onApplyCommunityLayout={state.handleApplyCommunityLayout}
             onFocusedWidgetChange={setFocusedWidget}
+            selectedWidgetId={selectedWidgetId}
+            onSelectedWidgetChange={onSelectedWidgetChange}
+            hideEmptyByDefault={hideEmptyByDefault}
+            idleToggles={idleToggles}
           />
         );
       case 'day':
