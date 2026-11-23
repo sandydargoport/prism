@@ -31,10 +31,10 @@ export type Referendum = {
 
 export const REFERENDUM: Referendum = {
   id: '2026-11-navigation',
-  question: 'Navigation moved from the sidebar to the bar along the bottom. Which do you prefer?',
+  question: 'Where do you like the page buttons: in the bar along the bottom, or in a sidebar?',
   answers: [
-    { id: 'bottom-bar', label: 'Keep the bottom bar' },
-    { id: 'sidebar', label: 'Bring back the sidebar' },
+    { id: 'bottom-bar', label: 'The bar along the bottom' },
+    { id: 'sidebar', label: 'A sidebar' },
   ],
   // Set when the GitHub poll exists.
   pollUrl: '',

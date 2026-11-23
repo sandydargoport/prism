@@ -165,8 +165,8 @@ describe('Feedback beside Help in More (#1311)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     const { dialog, card } = await openFeedback();
     expect(dialog.textContent).toContain('Feedback');
-    expect(card.textContent).toContain('Navigation moved from the sidebar to the bar along the bottom. Which do you prefer?');
-    expect(answers(card).map((b) => b.textContent)).toEqual(['Keep the bottom bar', 'Bring back the sidebar']);
+    expect(card.textContent).toContain('Where do you like the page buttons: in the bar along the bottom, or in a sidebar?');
+    expect(answers(card).map((b) => b.textContent)).toEqual(['The bar along the bottom', 'A sidebar']);
     expect(pressed(card)).toEqual([]);
     expect(card.querySelector('[data-feedback-thanks]')).toBeNull();
   });
@@ -181,18 +181,18 @@ describe('Feedback beside Help in More (#1311)', () => {
     expect(url).toBe('/api/feedback');
     expect(JSON.parse(init.body)).toEqual({ referendumId: '2026-11-navigation', answer: 'sidebar' });
     expect(card.querySelector('[data-feedback-thanks]')?.textContent).toContain('Thanks, your vote is counted.');
-    expect(pressed(card)).toEqual(['Bring back the sidebar']);
+    expect(pressed(card)).toEqual(['A sidebar']);
 
     serve(state({ answer: 'sidebar' }), { ok: true, body: state({ answer: 'bottom-bar' }) });
     await act(async () => { fireEvent.click(card.querySelector('[data-feedback-answer="bottom-bar"]')!); });
     expect(JSON.parse(posts().at(-1)![1].body).answer).toBe('bottom-bar');
-    expect(pressed(card)).toEqual(['Keep the bottom bar']);
+    expect(pressed(card)).toEqual(['The bar along the bottom']);
   });
 
   it("on reopen, the install's answer is marked", async () => {
     serve(state({ answer: 'bottom-bar' }));
     const { card } = await openFeedback();
-    expect(pressed(card)).toEqual(['Keep the bottom bar']);
+    expect(pressed(card)).toEqual(['The bar along the bottom']);
     expect(card.querySelector('[data-feedback-thanks]')).not.toBeNull();
     expect(posts()).toHaveLength(0);
   });
