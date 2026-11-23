@@ -250,6 +250,10 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
       root: rootRef.current,
       onDashboard: (layoutId, isDefault) => { chosen.current = { id: layoutId, isDefault }; },
       onFinish: (saved) => { void finishRef.current(saved); },
+      unsaved: () => Object.keys(changedSettings(original.current, next.settings)).length > 0
+        || !samePlan(originalPlan.current, { dashboardId: next.dashboardId, switches: next.switches }),
+      // The heading says the new name at once.
+      onRenamed: (name) => setDisplays((list) => list?.map((d) => (d.id === next.displayId ? { ...d, name } : d)) ?? list),
     };
     (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL] = next;
     // A screen opens on the dashboard Edit was pressed on, or else on what

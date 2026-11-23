@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * The editor's controls (#1151): Dashboard | Widgets | Through the day | Look
- * | More, the same on the built-in Today and on a family's own dashboards;
- * only what is inside Widgets differs.
+ * The editor's controls (#1151): Screen | Dashboard | Widgets | Through the
+ * day | Look | More, the same on the built-in Today and on a family's own
+ * dashboards; only what is inside Widgets differs. Screen comes first (#1326):
+ * the screen being edited, its name, the dashboard it shows and its switches.
  *
  * Every device edits on a canvas (#1265, #1280), so they are a panel in a
  * column beside it (below it on a phone): Cancel and Done at its top right,
@@ -12,12 +13,13 @@
  * with sheets rising from it, went with editing in place (#1283).
  */
 import * as React from 'react';
-import { LayoutDashboard, MoreHorizontal, Palette, Shapes, SunMoon, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Monitor, MoreHorizontal, Palette, Shapes, SunMoon, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type EditorSheet = 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
+export type EditorSheet = 'screen' | 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
 
 const SHEETS: Array<{ id: EditorSheet; label: string; Icon: LucideIcon }> = [
+  { id: 'screen', label: 'Screen', Icon: Monitor },
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'widgets', label: 'Widgets', Icon: Shapes },
   { id: 'day', label: 'Through the day', Icon: SunMoon },
@@ -50,7 +52,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
   // A panel on a light page, as a desktop app has it: Cancel and Done at the
-  // top right, and the five sheets as tabs along the top of the panel they
+  // top right, and the six sheets as tabs along the top of the panel they
   // open, so nothing dark sits beside the picture. With a mouse a tab is one
   // line of words; a finger keeps 44px or more and the icons.
   return (

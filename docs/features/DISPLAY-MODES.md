@@ -18,9 +18,9 @@ The screensaver starts after the screen has been idle for a time you set. It sho
 
 Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitchen`) can have a big clock, the weather and a slow photo cycle, while the bedroom dashboard (`/d/bedroom`) has a smaller clock and tomorrow's calendar.
 
-A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
+A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. Tapping a switch's dot opens that switch in the **Screen** panel, where switches are set. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
 
-The panel is a few rows. In a screen's editor it starts with which dashboard the screen shows and the dashboards it switches to at bus time or at set times (see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)). Then come the dashboard's own rows: **Resting** (after how long, and what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it, and **How dark**. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. How soon the screen rests and how dark it goes are the screen's own, so they show only when the editor is for a screen.
+The panel is a few rows, all the dashboard's own: **Resting** (what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. Which dashboard a screen shows, its switches, how soon it rests and how dark it goes are the screen's own, in the editor's **Screen** panel (More > Edit layout > Screen; see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)).
 
 #### A calm dashboard is its own idle screen
 
@@ -60,7 +60,7 @@ All widgets move together, so the gaps between them stay as you designed them. T
 
 #### Dim at night
 
-At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night is the dashboard's own, set in the Through the day panel, and **How dark** there sets the darkness for this screen. Each screen sets its own. Dimming is off until you choose **Dim this dashboard** or a darkness.
+At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night is the dashboard's own, set in the Through the day panel, and **How dark**, in the Screen panel, sets the darkness for this screen. Each screen sets its own. Dimming is off until you choose **Dim this dashboard** or a darkness.
 
 A web page can't change the panel's own brightness or turn it off. On an OLED panel the black layer really does dim it. On an LCD the backlight stays on, though less light reaches the room. A screen that should go fully dark at night still needs the computer's own display sleep.
 
@@ -68,7 +68,7 @@ A web page can't change the panel's own brightness or turn it off. On an OLED pa
 
 A screen's own screensaver settings are in its editor, More > Edit layout. From a phone, **Edit** on the screen's row in *Settings > Screens* opens the same editor for that screen.
 
-In **Through the day**, under **On this screen**:
+In **Screen** (More > Edit layout > Screen):
 
 - **Rest after**: how long nobody touches the screen before it rests. 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests** (default 2 minutes).
 - **How dark**: **Not dimmed**, or 25%, 50% or 75% darker at night. Not dimmed by default. It isn't offered when the night look is **Screen off**.
@@ -286,10 +286,10 @@ If you need to give a babysitter or short-term guest the information they need, 
 
 #### Screensaver doesn't activate
 
-- Check **Rest after** in More > Edit layout > Through the day. **Never rests** turns the screensaver off.
+- Check **Rest after** in More > Edit layout > Screen. **Never rests** turns the screensaver off.
 - Check whether the layout editor is open, which stops the screensaver.
 - Check whether a modal is open, which also stops it.
-- In an installed app, the screensaver starts by itself only on a screen named in its editor (More > Edit layout > Through the day > **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
+- In an installed app, the screensaver starts by itself only on a screen named in its editor (More > Edit layout > Screen > **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
 
 #### Away mode won't exit
 

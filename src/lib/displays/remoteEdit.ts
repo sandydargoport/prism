@@ -53,6 +53,10 @@ export type RemoteEditHost = {
   onDashboard: (layoutId: string, isDefault: boolean) => void;
   /** Editing ended: saved with Done, or not. */
   onFinish: (saved: boolean) => void;
+  /** The screen's settings, dashboard or switches differ from when the page opened: Done has not sent them (#1326). */
+  unsaved?: () => boolean;
+  /** The screen was renamed from the editor's Screen sheet (#1326). */
+  onRenamed?: (name: string) => void;
 };
 
 type HostWindow = Window & { [REMOTE_EDIT_GLOBAL]?: RemoteEditHost };

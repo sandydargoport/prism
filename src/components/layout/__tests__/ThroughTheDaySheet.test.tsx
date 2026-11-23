@@ -3,14 +3,11 @@
  *
  * The Through the day sheet (#1152) as rows (#1281) that fold (#1294). First
  * a day slider that steps through the day's waypoints and shows the screen
- * then. For a screen: the dashboard it shows and the dashboards it switches to
- * at bus time or at set times (#1282), a row each, kept on the editor page
- * until Done. A device nobody named is offered a name (#1267). Then the
- * dashboard's own resting and night, saved with the dashboard: Resting with
- * See it, and At night as a row shaped like a switch. Each switch and At night
- * fold to one line, one open at a time. Rest after and How dark are the
- * screen's own, shown only when the editor is for a screen. A dashboard nobody
- * gave a night is stored as before.
+ * then, with a dot for each of the screen's switches; tapping one opens it on
+ * the Screen sheet, where the switches are set (#1326). Then the dashboard's
+ * own resting and night, saved with the dashboard: Resting with See it, and
+ * At night as a row shaped like a switch, folded to one line. A dashboard
+ * nobody gave a night is stored as before.
  */
 import React, { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -51,13 +48,13 @@ const ROUTES = [
 
 const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; plan?: ScreenPlan | null; preview?: string | null } = {};
 
-function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forScreen = true, current = HOME, deviceNamed = true }: {
-  initial: IdleBackground; dashboards?: typeof DASHBOARDS; plan?: ScreenPlan | null; screenId?: string | null; forScreen?: boolean; current?: string; deviceNamed?: boolean;
+function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forScreen = true, current = HOME }: {
+  initial: IdleBackground; dashboards?: typeof DASHBOARDS; plan?: ScreenPlan | null; screenId?: string | null; forScreen?: boolean; current?: string;
 }) {
   const [value, setValue] = useState(initial);
   const [half, setHalf] = useState<IdleHalf>('day');
   const [tab, setTab] = useState<EditTab>('dashboard');
-  const [screenPlan, setScreenPlan] = useState<ScreenPlan | null>(plan);
+  const [screenPlan] = useState<ScreenPlan | null>(plan);
   const [preview, setPreview] = useState<string | null>(null);
   React.useEffect(() => { seen.value = value; seen.half = half; seen.tab = tab; seen.plan = screenPlan; seen.preview = preview; });
   return (
@@ -68,28 +65,21 @@ function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forS
       idleCheck={{}}
       allDashboards={(dashboards ?? DASHBOARDS) as never}
       currentDashboardId={current}
-      onSwitchDashboard={switched}
       screenPlan={screenPlan}
-      onScreenPlanChange={setScreenPlan}
       screenId={screenId}
       forScreen={forScreen}
-      deviceNamed={deviceNamed}
-      onDeviceNamed={named}
       previewDashboardId={preview}
       onPreviewDashboardChange={setPreview}
       onOpenLook={lookOpened}
+      onOpenSwitch={switchOpened}
     />
   );
 }
-const named = jest.fn();
-const switched = jest.fn();
 const lookOpened = jest.fn();
+const switchOpened = jest.fn();
 
-afterEach(() => { localStorage.clear(); switched.mockReset(); named.mockReset(); lookOpened.mockReset(); });
+afterEach(() => { localStorage.clear(); lookOpened.mockReset(); switchOpened.mockReset(); });
 
-/** The switches the editor page holds now. */
-const kept = () => seen.plan!.switches;
-const rows = () => Array.from(document.querySelectorAll<HTMLElement>('[data-switch-row]'));
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 const pick = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const seeResting = () => fireEvent.click(document.querySelector<HTMLElement>('[data-see="resting"]')!);
@@ -108,9 +98,10 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-see-it]')).toBeNull();
       expect(document.querySelector('[data-day-sheet]')!.firstElementChild!.querySelector('[data-day-slider]')).toBeTruthy();
       expect((screen.getByLabelText('While resting') as HTMLSelectElement).value).toBe('photos');
-      // What the screen shows, the dashboard's rows, then the screen's own.
+      // Only the dashboard's own rows: what the screen shows, its switches,
+      // Rest after and How dark are on the Screen sheet (#1326).
       expect(Array.from(document.querySelectorAll('[data-row-name]')).map((n) => n.textContent))
-        .toEqual(['Shows', 'Resting', 'At night', 'Rest after', 'How dark']);
+        .toEqual(['Resting', 'At night']);
       // Night folds to one line that says what it does.
       expect(openRows()).toHaveLength(0);
       expect(screen.queryByLabelText('Night look')).toBeNull();
@@ -155,8 +146,6 @@ describe('ThroughTheDaySheet', () => {
       pick('Night look', 'off');
       expect(seen.value).toEqual({ day: 'photos', night: 'off', switch: DEFAULT_NIGHT });
       expect(seen.half).toBe('night');
-      // Nothing to dim on a screen that is off.
-      expect(screen.queryByLabelText('How dark at night')).toBeNull();
     });
 
     it('turns dimming on when Dim this dashboard is chosen on a screen that does not dim', () => {
@@ -191,18 +180,8 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-day-shared]')!.textContent).toMatch(/^Every screen showing Bus rests and sleeps this way\./);
     });
 
-    it('for a screen, Rest after and How dark are its own', () => {
-      render(<Harness initial={{ source: 'photos' }} />);
-      fireEvent.change(screen.getByLabelText('Rest after'), { target: { value: '3600' } });
-      expect(localStorage.getItem('prism-screensaver-timeout')).toBe('3600');
-      fireEvent.change(screen.getByLabelText('How dark at night'), { target: { value: '0.75' } });
-      expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.75');
-    });
-
-    it('for a dashboard alone, there is no screen to rest or dim, and nothing changes one', () => {
+    it('for a dashboard alone, there is no screen to dim, and nothing changes one', () => {
       render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} forScreen={false} screenId={null} />);
-      expect(screen.queryByLabelText('Rest after')).toBeNull();
-      expect(screen.queryByLabelText('How dark at night')).toBeNull();
       openNight();
       pick('Night look', 'dashboard');
       expect(seen.value).toEqual({ source: 'dashboard' });
@@ -219,176 +198,31 @@ describe('ThroughTheDaySheet', () => {
     });
   });
 
-  describe('a screen\'s dashboard and switches (#1282)', () => {
+  describe('a screen\'s switches are on the Screen sheet (#1326)', () => {
     beforeEach(() => {
-      // Only the date is faked: a new switch starts at this quarter hour.
-      jest.useFakeTimers({ now: new Date(2026, 10, 23, 7, 5), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick'] });
       global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES }) })) as never;
     });
-    afterEach(() => jest.useRealTimers());
 
-    it('+ Switch at set times adds a row on every day from this quarter hour, and its days and hours change in it', () => {
-      render(<Harness initial={{ source: 'dashboard' }} />);
-      press('Switch at set times');
-      expect(kept()).toEqual([{ when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '08:00', dashboardId: BUS }]);
-      expect(rows()).toHaveLength(1);
-      // Weekdays: Saturday and Sunday off.
-      const days = rows()[0]!.querySelector<HTMLElement>('[aria-label="Switch days"]')!;
-      fireEvent.click(days.querySelector<HTMLElement>('[aria-label="Saturday"]')!);
-      fireEvent.click(days.querySelector<HTMLElement>('[aria-label="Sunday"]')!);
-      expect(kept()[0]).toMatchObject({ days: [1, 2, 3, 4, 5] });
-      fireEvent.change(screen.getByLabelText('Switch ends'), { target: { value: '08:30' } });
-      expect(kept()[0]).toMatchObject({ to: '08:30' });
-      fireEvent.change(screen.getByLabelText('Switches to'), { target: { value: HOME } });
-      expect(kept()[0]!.dashboardId).toBe(HOME);
-
-      fireEvent.click(document.querySelector<HTMLElement>('[data-switch-remove]')!);
-      expect(kept()).toEqual([]);
-      expect(rows()).toHaveLength(0);
-    });
-
-    it('+ Switch at bus time adds one on every route, says when from the bus routes, and can add another', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} />);
-      await act(async () => { press('Switch at bus time'); });
-      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS }]);
-      expect(rows()[0]!.querySelector('[data-row-name]')!.textContent).toBe('At bus time');
-      expect(document.querySelector('[data-bus-windows]')!.textContent).toBe('Mon–Fri 07:15 to 08:00, 15:00 to 15:45');
-      // Another, say for the afternoon run to a dashboard of its own (#1291).
-      press('Switch at bus time');
-      expect(kept()).toHaveLength(2);
-    });
-
-    const busRow = () => rows()[0]!;
-    const route = (id: string) => busRow().querySelector<HTMLButtonElement>(`[data-bus-route="${id}"]`)!;
-    const windows = () => busRow().querySelector('[data-bus-windows]')!.textContent;
-
-    it('a bus switch follows the routes picked on its row, and every route again with all of them on (#1291)', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
-      await act(async () => {});
-      unfold(busRow());
-      expect(route(AM_ROUTE).textContent).toBe('Morning 07:45');
-      expect(route(AM_ROUTE).getAttribute('aria-pressed')).toBe('true');
-      expect(route(PM_ROUTE).getAttribute('aria-pressed')).toBe('true');
-      fireEvent.click(route(PM_ROUTE));
-      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS, routeIds: [AM_ROUTE] }]);
-      expect(windows()).toBe('Mon–Fri 07:15 to 08:00');
-      // The last route on stays on; Remove takes the switch away.
-      expect(route(AM_ROUTE).disabled).toBe(true);
-      // Both on again: it follows every route, ones added later too.
-      fireEvent.click(route(PM_ROUTE));
-      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS }]);
-    });
-
-    it('a bus switch\'s minutes before and after move its windows (#1291)', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
-      await act(async () => {});
-      unfold(busRow());
-      expect((screen.getByLabelText('Minutes before the bus') as HTMLSelectElement).value).toBe('30');
-      expect((screen.getByLabelText('Minutes after the bus') as HTMLSelectElement).value).toBe('15');
-      pick('Minutes before the bus', '10');
-      pick('Minutes after the bus', '5');
-      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS, before: 10, after: 5 }]);
-      expect(windows()).toBe('Mon–Fri 07:35 to 07:50, 15:20 to 15:35');
-    });
-
-    it('with one bus route there is no route to pick (#1291)', async () => {
-      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES.slice(0, 1) }) })) as never;
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
-      await act(async () => {});
-      unfold(busRow());
-      expect(busRow().querySelector('[data-bus-routes]')).toBeNull();
-      expect(windows()).toBe('Mon–Fri 07:15 to 08:00');
-    });
-
-    it('at bus time with no route set up, it says it never switches', async () => {
-      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [] }) })) as never;
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
-      await act(async () => {});
-      expect(summary(busRow())).toBe('No bus route set up yet · Bus');
-      unfold(busRow());
-      expect(document.querySelector('[data-bus-windows]')!.textContent).toMatch(/^No bus route is set up yet/);
-    });
-
-    it('a set-times switch keeps at least one day', () => {
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }} />);
-      unfold(rows()[0]!);
-      expect((rows()[0]!.querySelector<HTMLButtonElement>('[aria-label="Monday"]')!).disabled).toBe(true);
-    });
-
-    it('moves a switch up the order that decides an overlap', () => {
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [
-        { when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '09:00', dashboardId: HOME },
+    it('Through the day holds none of the screen\'s controls: what it shows, its switches, Rest after, How dark, naming', async () => {
+      render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} plan={{ dashboardId: BUS, switches: [
         { when: 'bus', dashboardId: BUS },
-      ] }} />);
-      expect(screen.getByText('If two overlap, the higher one wins.')).toBeTruthy();
-      unfold(rows()[0]!);
-      expect(rows()[0]!.querySelector('[data-switch-up]')).toBeNull();
-      unfold(rows()[1]!);
-      fireEvent.click(rows()[1]!.querySelector<HTMLElement>('[data-switch-up]')!);
-      expect(kept().map((sw) => sw.when)).toEqual(['bus', 'times']);
-      // The one moved stays open, now first.
-      expect(rows()[0]!.getAttribute('data-open')).toBe('true');
-      expect(rows()[1]!.getAttribute('data-open')).toBe('false');
-    });
-
-    it('Shows is the dashboard the screen shows, and a switch\'s Open opens its dashboard', () => {
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
-      // None set: the default.
-      expect((screen.getByLabelText('Dashboard this screen shows') as HTMLSelectElement).value).toBe(HOME);
-      unfold(rows()[0]!);
-      fireEvent.click(rows()[0]!.querySelector<HTMLElement>(`[data-dashboard-open="${BUS}"]`)!);
-      expect(switched).toHaveBeenCalledWith('bus');
-      pick('Dashboard this screen shows', BUS);
-      expect(seen.plan!.dashboardId).toBe(BUS);
-    });
-
-    it('each switch folds to one line that says what it does, and one row opens at a time (#1294)', async () => {
-      render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} plan={{ dashboardId: null, switches: [
-        { when: 'bus', dashboardId: BUS, routeIds: [AM_ROUTE] },
-        { when: 'times', days: [1, 2, 3, 4, 5], from: '01:45', to: '02:45', dashboardId: HOME },
+        { when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: HOME },
       ] }} />);
       await act(async () => {});
-      // All folded when the editor opens, Open, up and Remove inside.
-      expect(openRows()).toHaveLength(0);
-      expect(document.querySelector('[data-switch-remove], [data-switch-up], [data-dashboard-open]')).toBeNull();
-      expect(rows().map(summary)).toEqual(['Morning 07:15–08:00 · Bus', 'Mon–Fri 01:45–02:45 · Home']);
-      unfold(rows()[0]!);
-      expect(openRows()).toEqual([rows()[0]]);
-      expect(rows()[0]!.querySelector('[data-switch-remove]')).toBeTruthy();
-      // Opening another folds the one that was open.
-      unfold(rows()[1]!);
-      expect(openRows()).toEqual([rows()[1]]);
-      openNight();
-      expect(openRows()).toEqual([nightRow()]);
-      // A tap on the open one folds it.
-      unfold(nightRow());
-      expect(openRows()).toHaveLength(0);
-    });
-
-    it('a switch just added opens, and the one that was open folds (#1294)', () => {
-      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }} />);
-      unfold(rows()[0]!);
-      press('Switch at set times');
-      expect(rows()).toHaveLength(2);
-      expect(openRows()).toEqual([rows()[1]]);
-      expect(rows()[1]!.querySelector('[aria-label="Switch starts"]')).toBeTruthy();
-    });
-
-    it('nothing is sent until Done: every change stays on the editor page', () => {
-      const sent = jest.fn(async () => ({ ok: true, json: async () => ({}) }));
-      global.fetch = sent as never;
-      render(<Harness initial={{ source: 'dashboard' }} />);
-      press('Switch at set times');
-      pick('Dashboard this screen shows', BUS);
-      expect(sent).not.toHaveBeenCalled();
-      expect(seen.plan).toMatchObject({ dashboardId: BUS });
-    });
-
-    it('a dashboard edited on its own has no screen, so nothing to show or switch', () => {
-      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} />);
-      expect(document.querySelector('[data-screen-plan]')).toBeNull();
-      expect(document.querySelector('[data-switch-add]')).toBeNull();
+      expect(document.querySelector('[data-screen-plan], [data-switch-add], [data-switch-row], [data-screen-dashboard], [data-name-device]')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Switch at set times' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Switch at bus time' })).toBeNull();
       expect(screen.queryByLabelText('Dashboard this screen shows')).toBeNull();
+      expect(screen.queryByLabelText('Rest after')).toBeNull();
+      expect(screen.queryByLabelText('How dark at night')).toBeNull();
+      // Its switches still show on the day's line.
+      expect(document.querySelectorAll('[data-day-span="0"]').length).toBeGreaterThan(0);
+      expect(document.querySelectorAll('[data-day-span="1"]').length).toBeGreaterThan(0);
+    });
+
+    it('a dashboard edited on its own has no screen, so nothing switches on its line', () => {
+      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} />);
+      expect(document.querySelector('[data-day-span]')).toBeNull();
       // No timeline either: those are gone (#1282).
       expect(document.querySelector('[data-timeline-bar]')).toBeNull();
     });
@@ -468,12 +302,20 @@ describe('ThroughTheDaySheet', () => {
       expect((screen.getByRole('button', { name: 'Earlier' }) as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('tapping a dot goes there and opens the row that makes it; the line itself sets nothing', async () => {
+    it('tapping a dot goes there and opens the row that makes it, a switch\'s on the Screen sheet; the line itself sets nothing', async () => {
       render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
       await act(async () => {});
       fireEvent.click(dotAt('01:45'));
       expect(seen.preview).toBe(AMBIENT);
-      expect(openRows()).toEqual([rows()[1]]);
+      // Ambient's switch is the second: the Screen sheet opens at it (#1326).
+      expect(switchOpened).toHaveBeenCalledWith(1);
+      expect(openRows()).toHaveLength(0);
+      fireEvent.click(dotAt('07:15'));
+      expect(switchOpened).toHaveBeenLastCalledWith(0);
+      // Stepping there with the arrows opens nothing.
+      switchOpened.mockReset();
+      later();
+      expect(switchOpened).not.toHaveBeenCalled();
       fireEvent.click(dotAt('06:30'));
       expect(openRows()).toEqual([nightRow()]);
       fireEvent.click(dotAt('10:00'));
@@ -484,11 +326,12 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-day-slider] select, [data-day-slider] input')).toBeNull();
     });
 
-    it('each switch has a colour of its own, the same on its row as on its stretches and dots of the line', async () => {
+    it('each switch has a colour of its own, the same on its stretches and dots of the line', async () => {
       render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
       await act(async () => {});
       const rowColor = (row: Element) => row.querySelector('[data-swatch]')!.getAttribute('data-swatch');
-      const [bus, times] = rows().map(rowColor);
+      const bus = document.querySelector('[data-day-span="0"]')!.getAttribute('data-color');
+      const times = document.querySelector('[data-day-span="1"]')!.getAttribute('data-color');
       expect(bus).not.toBe(times);
       // The bus switch's two windows, and Ambient's one, in their row's colour.
       expect(Array.from(document.querySelectorAll('[data-day-span="0"]')).map((el) => el.getAttribute('data-color'))).toEqual([bus, bus]);
@@ -531,50 +374,6 @@ describe('ThroughTheDaySheet', () => {
     });
   });
 
-  describe('naming the device in use (#1267)', () => {
-    let posted: unknown[] = [];
-    beforeEach(() => {
-      posted = [];
-      global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
-        if (init?.method === 'POST') {
-          posted.push(JSON.parse(String(init.body)));
-          return { ok: true, json: async () => ({ display: { id: 'den', name: 'Den' } }) };
-        }
-        if (url === '/api/displays') return { ok: true, json: async () => ({ displays: [{ id: 'hall', name: 'Hall' }] }) };
-        return { ok: true, json: async () => ({}) };
-      }) as never;
-    });
-
-    it('a device with no name is named here, and then opens as that screen', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} deviceNamed={false} />);
-      expect(screen.getByText(/^This device has no name, so it shows Home\./)).toBeTruthy();
-      await act(async () => { press('Name this device'); });
-      // A screen named before can be picked instead, after a browser reset.
-      expect(screen.getByRole('option', { name: 'Hall' })).toBeTruthy();
-      fireEvent.change(screen.getByLabelText('Name for this screen'), { target: { value: 'Den' } });
-      await act(async () => { press('Name it'); });
-      expect(posted).toEqual([{ name: 'Den' }]);
-      expect(named).toHaveBeenCalledWith('den');
-    });
-
-    it('becomes a screen named before, taking its name', async () => {
-      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} deviceNamed={false} />);
-      await act(async () => { press('Name this device'); });
-      fireEvent.change(screen.getByLabelText('Existing screen'), { target: { value: 'hall' } });
-      await act(async () => { press('Use its name and settings'); });
-      expect(posted).toEqual([{ id: 'hall' }]);
-      // And opens as that screen, which loads its settings afresh.
-      expect(named).toHaveBeenCalledWith('den');
-    });
-
-    it('a device with a name, or a screen being edited, is not offered one', () => {
-      const { unmount } = render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} />);
-      expect(screen.queryByRole('button', { name: 'Name this device' })).toBeNull();
-      unmount();
-      render(<Harness initial={{ source: 'dashboard' }} deviceNamed={false} />);
-      expect(screen.queryByRole('button', { name: 'Name this device' })).toBeNull();
-    });
-  });
 });
 
 describe('busWindowsInWords', () => {

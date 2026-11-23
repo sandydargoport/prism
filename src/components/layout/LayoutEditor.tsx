@@ -15,6 +15,7 @@ import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
 import { EditorBar, type EditorSheet } from './EditorBar';
 import { forgetKeptPanel, panelKeptFor } from './canvasPanel';
 import { DashboardSheet, DaySheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
+import { openOtherScreen, ScreenSheet } from './ScreenSheet';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
@@ -108,16 +109,23 @@ export function LayoutEditor({
   // Through the day's slider and Resting's See it show the screen resting or
   // at night, which stays with another panel open so its layout can be
   // arranged; Dashboard, or Back to in use, goes back. Another dashboard shown
-  // as it is saved (#1294) is only for the slider: any other panel edits this one.
+  // as it is saved (#1294) is only for the slider, and for Screen, where a
+  // switch's dot tapped on the slider opens (#1326): any other panel edits this one.
+  const [openSwitch, setOpenSwitch] = useState<number | null>(null);
   const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
-    if (next !== 'day') onPreviewDashboardChange?.(null);
+    setOpenSwitch(null);
+    if (next !== 'day' && next !== 'screen') onPreviewDashboardChange?.(null);
     if (next === 'dashboard') onEditTabChange?.('dashboard');
   }, [onEditTabChange, onPreviewDashboardChange]);
   const backToInUse = useCallback(() => {
     onPreviewDashboardChange?.(null);
     onEditTabChange?.('dashboard');
   }, [onEditTabChange, onPreviewDashboardChange]);
+  const openScreenAt = useCallback((index: number) => {
+    setSheet('screen');
+    setOpenSwitch(index);
+  }, [setSheet]);
   const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
@@ -235,6 +243,28 @@ export function LayoutEditor({
   // would sit over the dialog's buttons.
   const sheetContent = (() => {
     switch (sheet) {
+      case 'screen':
+        return (
+          <ScreenSheet
+            idleBackground={idleBackground}
+            screenPlan={screenPlan}
+            onScreenPlanChange={onScreenPlanChange}
+            screenId={screenId}
+            deviceNamed={deviceNamed}
+            onDeviceNamed={onDeviceNamed}
+            forScreen={forScreen}
+            allDashboards={allDashboards}
+            currentDashboardId={currentDashboardId}
+            onSwitchDashboard={onSwitchDashboard}
+            openSwitch={openSwitch}
+            onRenamed={(name) => remoteEditHost()?.onRenamed?.(name)}
+            onPickScreen={(id) => {
+              // Changes not yet saved with Done are asked about first, as they would be lost.
+              const unsaved = !!dashboardDirty || !!idleDirty || !!remoteEditHost()?.unsaved?.();
+              void openOtherScreen(id, { unsaved, confirm: confirmDelete });
+            }}
+          />
+        );
       case 'dashboard':
         return (
           <DashboardSheet
@@ -276,17 +306,14 @@ export function LayoutEditor({
             onEditTabChange={onEditTabChange}
             idleCheck={idleCheck}
             screenPlan={screenPlan}
-            onScreenPlanChange={onScreenPlanChange}
             previewDashboardId={previewDashboardId}
             onPreviewDashboardChange={onPreviewDashboardChange}
             screenId={screenId}
-            deviceNamed={deviceNamed}
-            onDeviceNamed={onDeviceNamed}
             forScreen={forScreen}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
-            onSwitchDashboard={onSwitchDashboard}
             onOpenLook={() => setSheet('look')}
+            onOpenSwitch={openScreenAt}
           />
         );
       case 'look':

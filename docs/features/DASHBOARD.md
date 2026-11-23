@@ -12,9 +12,9 @@ A parent arranges layouts in the editor: the dashboard drawn on a canvas at the 
 
 Open **More** on the dock, the row of pages at the bottom of the screen, and choose **Edit layout** under **This screen**. If the dock is tucked behind the small **Menu** tab on the bottom edge, tap the tab first. Signed out, **Edit layout** asks for a parent's PIN, and while a child is signed in it isn't there. From a page other than the dashboard it opens the screen's dashboard with the editor open.
 
-The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, with **Cancel** and **Done** above them.
+The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Screen**, **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, with **Cancel** and **Done** above them.
 
-- **On a named screen** (named in **Through the day**, listed in *Settings > Screens*) **Edit layout** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
+- **On a named screen** (named in **Screen**, listed in *Settings > Screens*) **Edit layout** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
 - **On a laptop or any other device** it opens at the size of a screen that shows the dashboard. **Shown at** above the canvas picks another: a named screen or a common screen size.
 - **For another named screen**, **Edit** on its row in *Settings > Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**. This is how you edit from a phone, whose **More** has no **Edit layout**.
 
@@ -22,7 +22,8 @@ What each panel holds:
 
 - **Dashboard**: every dashboard, to switch to one, with **New dashboard**, **Make a copy**, **Rename**, **Make the default** and **Delete** (see [Multiple dashboards](#multiple-dashboards)).
 - **Widgets**: the widgets on this dashboard, the templates and the community gallery.
-- **Through the day**: which dashboard a screen shows and when it switches, when it rests and what it shows while resting and at night (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
+- **Screen**, first: the screen being edited. Its name (**Rename** saves a new one at once, as *Settings > Screens* does), which dashboard it shows and when it switches (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches)), **Rest after** and **How dark**, and **Other screens**, which opens another named screen's editor; with changes not saved it asks first. On a device with no name it offers **Name this device**. Editing a dashboard with no screen, from a phone say, it says so and lists the screens.
+- **Through the day**: what the dashboard shows while resting and at night, and the day's line, with a dot for each of the screen's switches; tapping a switch's dot opens it in **Screen** (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
 - **Look**: the screen shape, **See it at a screen size**, and this screen's own settings under **This screen**.
 - **More**: the overview, notices, **Export**, **Import**, **Share to the gallery** and **Reset this layout**.
 
@@ -108,7 +109,7 @@ You can make a separate dashboard for each room or display. The **Dashboard** pa
 
 #### Which dashboard a screen shows, and when it switches
 
-A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Through the day**: **Shows** is its dashboard, and each switch is a row of its own.
+A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Screen** (More > Edit layout > Screen): **Shows** is its dashboard, and each switch is a row of its own. Two screens can show the same dashboard, and each keeps its own switches.
 
 - **At bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
   - **Routes**: with two or more bus routes, the row has a chip for each, all on to begin with. Turn one off to leave that route out. With every route on, the switch also follows routes added later. One always stays on.
@@ -118,7 +119,7 @@ A named screen shows one dashboard, and can switch to another for a while. Both 
 
 **+ Switch at bus time** and **+ Switch at set times** add one; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
 
-A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Through the day** > **Name this device**.
+A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Screen** > **Name this device**.
 
 Make a dashboard to switch to with **Make a copy** in the Dashboard panel and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next switch starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
@@ -190,7 +191,7 @@ Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigat
 
 Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In the editor, open **Through the day**, tap **See it** on the **Resting** row (or step to night on the day's line), then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
 
-The screen rests after the time set as **Rest after** in the Through the day panel: 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests**, 2 minutes by default. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
+The screen rests after the time set as **Rest after** in the Screen panel: 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests**, 2 minutes by default. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
 
 See [Idle, away and sitter screens](DISPLAY-MODES.md) for more on the screensaver and Away mode.
 

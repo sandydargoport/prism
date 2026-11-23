@@ -73,7 +73,7 @@ test.describe('canvas editor (#1265)', () => {
       expect(panels.width).toBeGreaterThan(320);
 
       // Opening each panel leaves the canvas exactly where it was.
-      for (const id of ['dashboard', 'widgets', 'day', 'look', 'more'] as const) {
+      for (const id of ['screen', 'dashboard', 'widgets', 'day', 'look', 'more'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         const sheet = page.locator(`[data-editor-sheet="${id}"]`);
         await expect(sheet).toBeVisible();
@@ -81,9 +81,16 @@ test.describe('canvas editor (#1265)', () => {
         const s = await rect(page, `[data-editor-sheet="${id}"]`);
         expect(s.left, `${id} is beside the canvas`).toBeGreaterThanOrEqual(picture.right);
         expect(s.bottom, `${id} ends inside the window`).toBeLessThanOrEqual(900 + 0.5);
+        if (id === 'screen') {
+          // A dashboard edited on its own has no screen (#1326): it says so,
+          // with nothing of a screen's to set.
+          await expect(sheet.locator('[data-no-screen]')).toBeVisible();
+          await expect(sheet.locator('[data-switch-add]')).toHaveCount(0);
+          await expect(sheet.getByLabel('Rest after')).toHaveCount(0);
+        }
         if (id === 'day') {
-          // Its rows stay inside the panel (#1281), and a dashboard edited
-          // on its own has no screen to rest or dim, so only its own look shows.
+          // Its rows stay inside the panel (#1281), and only the dashboard's
+          // own look shows: a screen's rows are on Screen (#1326).
           expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
           await expect(sheet.getByLabel('While resting')).toBeVisible();
           // Night folds to one line (#1294), and opens to its look.
@@ -120,7 +127,7 @@ test.describe('canvas editor (#1265)', () => {
       const panels = await rect(page, '[data-editor-panels]');
       expect(panels.top).toBeGreaterThanOrEqual(picture.bottom);
       expect(panels.right).toBeLessThanOrEqual(390);
-      for (const id of ['dashboard', 'day', 'look'] as const) {
+      for (const id of ['screen', 'dashboard', 'day', 'look'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
         expect(await rect(page, '[data-remote-picture]'), `the canvas with ${id} open`).toEqual(picture);

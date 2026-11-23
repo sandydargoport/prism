@@ -234,12 +234,12 @@ test.describe('Editing a screen from a phone', () => {
       await expect(wall.locator('[data-remote-editing-note]')).toHaveText('Being edited from a phone', { timeout: 30_000 });
 
       // Change how long until it rests and its keyboard, then Done.
-      await phone.locator('[data-editor-open="day"]').click();
+      await phone.locator('[data-editor-open="screen"]').click();
       // An open sheet stops short of the picture, so the change can be watched.
       const sheet = await phone.locator('[data-editor-sheet]').evaluate((el) => el.getBoundingClientRect().toJSON());
       const shown = await picture.evaluate((el) => el.getBoundingClientRect().toJSON());
       expect(sheet.top).toBeGreaterThanOrEqual(shown.bottom);
-      // Rest after is the screen's own, on the resting row (#1281).
+      // Rest after is the screen's own, on its Screen tab (#1326).
       await phone.getByLabel('Rest after').selectOption({ label: '1 hour' });
       await phone.locator('[data-editor-open="look"]').click();
       await phone.locator('[data-screen-options]').getByLabel('On-screen keyboard').selectOption({ label: 'Never' });
@@ -316,11 +316,11 @@ test.describe('Time-of-day layouts', () => {
       const steady = (t: number) => [t - 2 * 3600_000, t + 3600_000].every((u) => zoneOffset(u, zone) === zoneOffset(t, zone));
       while (!steady(start)) start += 3600_000;
       await nameThisScreen(wall, PORCH);
-      // Switches are set in the screen's own editor, as rows of Through the
-      // day: + Switch at set times adds one on every day, and Done sends it.
+      // Switches are set in the screen's own editor, as rows of its Screen
+      // tab (#1326): + Switch at set times adds one on every day, and Done sends it.
       await wall.goto('/?edit=1');
-      await wall.locator('[data-editor-open="day"]').click({ timeout: 60_000 });
-      const sheet = wall.locator('[data-editor-sheet="day"]');
+      await wall.locator('[data-editor-open="screen"]').click({ timeout: 60_000 });
+      const sheet = wall.locator('[data-editor-sheet="screen"]');
       await sheet.locator('[data-switch-add="times"]').click();
       const card = sheet.locator('[data-switch-row="0"]');
       await card.getByLabel('Switches to').selectOption({ label: MORNING });
