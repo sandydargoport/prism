@@ -10,13 +10,16 @@
  * re-login on every asset fetch. Cache survives only the lifetime of the
  * Node process.
  *
- * Every outbound URL is run through validatePublicUrl() before fetch to
- * prevent SSRF: a parent could otherwise paste an internal address into
- * the share URL field and use Prism as a proxy to probe the home network.
+ * Every outbound URL is run through validatePublicUrl() / safeFetch() to
+ * prevent SSRF. An Immich server usually sits on the home network, so these
+ * requests opt in to allowHomeNetwork: RFC1918, 100.64.0.0/10 and IPv6
+ * unique-local addresses are accepted, at add time, at sync time and for
+ * every image. Loopback, link-local (which holds the cloud metadata address)
+ * and the other reserved ranges are still refused, on redirects too.
  */
 
 import sharp from 'sharp';
-import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { validatePublicUrl, safeFetch, UnsafeUrlError, type SafeFetchOptions } from '@/lib/utils/safeFetch';
 
 export interface ImmichShareCredentials {
   serverUrl: string;
@@ -66,11 +69,17 @@ export function _clearImmichCookieCache(): void {
 }
 
 /**
+ * The SSRF rule for every Immich request: home-network addresses are fine,
+ * loopback, link-local, metadata and reserved addresses are not.
+ */
+const IMMICH_FETCH_OPTIONS: SafeFetchOptions = { allowHomeNetwork: true };
+
+/**
  * Validate a serverUrl as a safe outbound target. Throws UnsafeUrlError
- * if the URL points at a private / loopback / metadata address.
+ * if the URL points at a loopback / link-local / metadata / reserved address.
  */
 function assertSafeServerUrl(serverUrl: string): void {
-  validatePublicUrl(serverUrl);
+  validatePublicUrl(serverUrl, IMMICH_FETCH_OPTIONS);
 }
 
 export interface ImmichAsset {
@@ -228,7 +237,7 @@ async function fetchAlbumAssets(
       method: 'POST',
       headers,
       body: JSON.stringify({ albumIds: [albumId], page, size: 1000, withExif: true }),
-    });
+    }, IMMICH_FETCH_OPTIONS);
     if (!res.ok) {
       throw new Error(
         `Failed to fetch Immich album ${albumId}: ${res.status} ${res.statusText}`,
@@ -280,7 +289,7 @@ async function loginShare(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
-  });
+  }, IMMICH_FETCH_OPTIONS);
 
   if (res.status === 401 || res.status === 403) {
     throw new ImmichInvalidPasswordError();
@@ -308,7 +317,7 @@ async function fetchSharedLinkRaw(
   }
 
   const url = `${creds.serverUrl}/api/shared-links/me?key=${encodeURIComponent(creds.shareKey)}`;
-  const res = await safeFetch(url);
+  const res = await safeFetch(url, {}, IMMICH_FETCH_OPTIONS);
 
   if (res.status === 401 || res.status === 403) {
     throw new ImmichPasswordRequiredError();
@@ -417,7 +426,7 @@ export async function downloadImmichAsset(
   if (cookie) headers.Cookie = cookie;
 
   const get = (size: 'preview' | 'fullsize') =>
-    safeFetch(thumbnailPath(creds.serverUrl, assetId, creds.shareKey, size), { headers });
+    safeFetch(thumbnailPath(creds.serverUrl, assetId, creds.shareKey, size), { headers }, IMMICH_FETCH_OPTIONS);
 
   // safeFetch re-validates any redirect Location, so a share URL that 30x-
   // redirects to an internal host can no longer be used to exfiltrate the

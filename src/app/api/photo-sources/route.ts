@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { photoSources } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
@@ -51,6 +51,11 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
 
+  // A parent adds a source, as a parent edits or deletes one. Adding one makes
+  // Prism fetch the address given, which may be on the home network (#1286).
+  const forbidden = requireRole(auth, 'canManageIntegrations');
+  if (forbidden) return forbidden;
+
   // Mutation route: a malicious or compromised parent session could otherwise
   // submit URLs in a tight loop, each of which fires an outbound fetch. Cap
   // at 20 source-create attempts per minute per user.
@@ -85,16 +90,18 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate the share is reachable + the password (if any) is correct.
-      // SSRF guards inside fetchSharedLink will throw UnsafeUrlError if the
-      // serverUrl points at a private / loopback / metadata destination.
+      // A server on the home network is accepted. SSRF guards inside
+      // fetchSharedLink throw UnsafeUrlError if the serverUrl points at a
+      // loopback / link-local / metadata / reserved destination.
       const pw = typeof password === 'string' && password.length > 0 ? password : null;
       let link;
       try {
         link = await fetchSharedLink({ serverUrl, shareKey, password: pw });
       } catch (err) {
         if (err instanceof UnsafeUrlError) {
+          // The guard's own message names the address and how to allow it.
           return NextResponse.json(
-            { error: 'unsafe_url', message: 'Share URL points at a private or loopback address' },
+            { error: 'unsafe_url', message: err.message },
             { status: 400 },
           );
         }

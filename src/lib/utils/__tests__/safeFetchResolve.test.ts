@@ -2,7 +2,8 @@
  * safeFetch resolves each hostname and refuses one pointed at a non-public
  * address (#809), and a calendar-style redirect chain is checked hop by hop.
  * Addresses come from reserved, non-LAN ranges (198.18.0.0/15, benchmarking;
- * 203.0.113.0/24, documentation) so the test holds no real network.
+ * 203.0.113.0/24, documentation) so the test holds no real network. The
+ * allowHomeNetwork cases need LAN-range addresses; those are made up.
  */
 import { safeFetch, UnsafeUrlError, validatePublicUrl, type HostResolver } from '../safeFetch';
 
@@ -44,6 +45,39 @@ describe('safeFetch resolves hostnames (#809)', () => {
     await safeFetch('https://nas.example.org/', {}, { resolveHost: resolver({ 'nas.example.org': ['198.18.0.9'] }), allowedInternalHosts: ['nas.example.org'] });
     await safeFetch('https://missing.example.org/', {}, { resolveHost: resolver({}) });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('a name that resolves onto the home network, with allowHomeNetwork (#1286)', () => {
+  // Fictional names and addresses from the home-network ranges.
+  const home = { isProduction: true, allowHomeNetwork: true, allowedInternalHosts: [] };
+  const resolveHost = resolver({
+    'photos.home.example': ['192.168.77.10'],
+    'photos.vpn.example': ['100.101.102.103', 'fd7a:1234:5678::9'],
+    'sneaky.example.org': ['100.101.102.103', '127.0.0.1'],
+    'meta.example.org': ['169.254.169.254'],
+    'linklocal.example.org': ['fe80::1'],
+  });
+
+  it('fetches a name that resolves to a LAN, CGNAT or unique-local address', async () => {
+    fetchMock.mockResolvedValue(ok());
+    await safeFetch('http://photos.home.example:2283/api', {}, { ...home, resolveHost });
+    await safeFetch('https://photos.vpn.example/api', {}, { ...home, resolveHost });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('still refuses a name that resolves to loopback or link-local, before fetching', async () => {
+    for (const host of ['sneaky.example.org', 'meta.example.org', 'linklocal.example.org']) {
+      await expect(safeFetch(`https://${host}/`, {}, { ...home, resolveHost })).rejects.toBeInstanceOf(UnsafeUrlError);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('without the option, a name that resolves onto the home network is refused as before', async () => {
+    await expect(
+      safeFetch('https://photos.vpn.example/api', {}, { isProduction: true, allowedInternalHosts: [], resolveHost }),
+    ).rejects.toBeInstanceOf(UnsafeUrlError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
