@@ -203,6 +203,59 @@ describe('validatePublicUrl — PRISM_ALLOWED_INTERNAL_HOSTS allowlist', () => {
   });
 });
 
+describe('validatePublicUrl with allowHomeNetwork (#1286)', () => {
+  const home = { isProduction: true, allowHomeNetwork: true, allowedInternalHosts: [] };
+
+  it.each([
+    ['10.20.30.40', '10/8'],
+    ['172.16.0.9', '172.16/12 lower'],
+    ['172.31.200.1', '172.16/12 upper'],
+    ['192.168.77.10', '192.168/16'],
+    ['100.64.0.1', 'CGNAT lower'],
+    ['100.101.102.103', 'CGNAT, a mesh VPN address'],
+    ['100.127.255.254', 'CGNAT upper'],
+    ['[fd12:3456:789a::1]', 'IPv6 unique local fd'],
+    ['[fc00::5]', 'IPv6 unique local fc'],
+  ])('accepts %s (%s)', (host) => {
+    expect(validatePublicUrl(`http://${host}:2283/api`, home).hostname).toBe(host);
+  });
+
+  it.each([
+    ['127.0.0.1', 'loopback'],
+    ['127.8.8.8', 'loopback /8'],
+    ['localhost', 'localhost name'],
+    ['photos.localhost', 'subdomain of localhost'],
+    ['0.0.0.0', 'this network'],
+    ['169.254.169.254', 'cloud metadata'],
+    ['169.254.10.1', 'link-local'],
+    ['[::1]', 'IPv6 loopback'],
+    ['[::]', 'IPv6 unspecified'],
+    ['[fe80::1]', 'IPv6 link-local'],
+    ['[::ffff:10.20.30.40]', 'IPv4-mapped IPv6'],
+    ['198.18.0.1', 'benchmarking'],
+    ['192.0.0.8', 'protocol assignments'],
+    ['224.0.0.1', 'multicast'],
+  ])('still refuses %s (%s)', (host) => {
+    expect(() => validatePublicUrl(`http://${host}/`, home)).toThrow(UnsafeUrlError);
+  });
+
+  it('leaves every other caller as it was: without the option a home address is refused', () => {
+    const strict = { isProduction: true, allowedInternalHosts: [] };
+    expect(() => validatePublicUrl('http://10.20.30.40/', strict)).toThrow(UnsafeUrlError);
+    expect(() => validatePublicUrl('http://100.101.102.103/', strict)).toThrow(UnsafeUrlError);
+    expect(() => validatePublicUrl('http://[fd12:3456:789a::1]/', strict)).toThrow(UnsafeUrlError);
+  });
+
+  it('keeps PRISM_ALLOWED_INTERNAL_HOSTS working alongside it', () => {
+    const url = validatePublicUrl('http://127.0.0.1:2283/', {
+      isProduction: true,
+      allowHomeNetwork: true,
+      allowedInternalHosts: ['127.0.0.1'],
+    });
+    expect(url.hostname).toBe('127.0.0.1');
+  });
+});
+
 describe('parseAllowedInternalHosts', () => {
   const expected = ['192.168.50.60', 'docker-host', '10.0.0.0/8'];
   it('accepts comma-separated entries', () => {
@@ -364,6 +417,38 @@ describe('safeFetch (redirect re-validation)', () => {
     const res = await safeFetch('https://example.com/weird', {}, { isProduction: true });
     expect(res.status).toBe(302);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  describe('with allowHomeNetwork (#1286)', () => {
+    const home = { isProduction: true, allowHomeNetwork: true, allowedInternalHosts: [] };
+
+    it('fetches a home-network server and follows its redirect to another home address', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(redirect(302, 'http://192.168.77.10:2283/api/x'))
+        .mockResolvedValueOnce(ok());
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const res = await safeFetch('http://10.20.30.40:2283/api/x', {}, home);
+      expect(res.status).toBe(200);
+      expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+        'http://10.20.30.40:2283/api/x',
+        'http://192.168.77.10:2283/api/x',
+      ]);
+    });
+
+    it.each([
+      'http://169.254.169.254/latest/meta-data',
+      'http://127.0.0.1:2283/api/x',
+      'http://[::1]/api/x',
+      'http://[fe80::1]/api/x',
+    ])('refuses a redirect from a home server to %s', async (location) => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(redirect(302, location));
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await expect(safeFetch('http://10.20.30.40:2283/api/x', {}, home)).rejects.toBeInstanceOf(UnsafeUrlError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('credentials stay on their origin across a redirect (#1225)', () => {

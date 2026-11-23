@@ -115,13 +115,30 @@ export function PhotosSettingsSection() {
     setFolders([]);
   };
 
+  // A failed sync says why. The route answers a failure with { error } naming
+  // the cause (an address the guard refused, a share that is gone, a server
+  // that is down); without this the button only spun for a moment.
   const handleSync = async (sourceId: string) => {
     setSyncing(sourceId);
     try {
-      await fetch(`/api/photo-sources/${sourceId}/sync`, { method: 'POST' });
+      const res = await fetch(`/api/photo-sources/${sourceId}/sync`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast({
+          title: 'Sync failed',
+          description: typeof data?.error === 'string' && data.error ? data.error : `The server answered ${res.status}.`,
+          variant: 'destructive',
+        });
+      }
+      // Refetch either way: a sync that failed part way may have added photos.
       await fetchSources();
     } catch (err) {
       console.error('Sync error:', err);
+      toast({
+        title: 'Sync failed',
+        description: 'Prism could not be reached. Check the connection and try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSyncing(null);
     }

@@ -85,16 +85,18 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate the share is reachable + the password (if any) is correct.
-      // SSRF guards inside fetchSharedLink will throw UnsafeUrlError if the
-      // serverUrl points at a private / loopback / metadata destination.
+      // A server on the home network is accepted. SSRF guards inside
+      // fetchSharedLink throw UnsafeUrlError if the serverUrl points at a
+      // loopback / link-local / metadata / reserved destination.
       const pw = typeof password === 'string' && password.length > 0 ? password : null;
       let link;
       try {
         link = await fetchSharedLink({ serverUrl, shareKey, password: pw });
       } catch (err) {
         if (err instanceof UnsafeUrlError) {
+          // The guard's own message names the address and how to allow it.
           return NextResponse.json(
-            { error: 'unsafe_url', message: 'Share URL points at a private or loopback address' },
+            { error: 'unsafe_url', message: err.message },
             { status: 400 },
           );
         }

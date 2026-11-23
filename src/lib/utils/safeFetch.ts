@@ -100,6 +100,30 @@ function unbracket(host: string): string {
 }
 
 /**
+ * True if `host` is an IP literal in a range a home network uses: RFC1918
+ * (10/8, 172.16/12, 192.168/16), carrier-grade NAT 100.64.0.0/10 (what mesh
+ * VPNs hand out), or IPv6 unique local fc00::/7. Loopback,
+ * 0.0.0.0, link-local (and with it the cloud metadata address) and the other
+ * reserved ranges are not in this set, so they stay refused when a caller
+ * opts in with allowHomeNetwork.
+ */
+function isHomeNetworkAddress(host: string): boolean {
+  const lower = unbracket(host).toLowerCase();
+  const m = lower.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    return (
+      a === 10 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127)
+    );
+  }
+  return /^f[cd][0-9a-f]{2}:/.test(lower);
+}
+
+/**
  * True if `host` (a hostname or IP literal, port already stripped) is not
  * publicly routable: a localhost name, RFC1918 / loopback / link-local / CGNAT
  * IPv4, or a private IPv6. Used to decide when a request-derived OAuth redirect
@@ -174,6 +198,14 @@ export interface ValidatePublicUrlOptions {
    * CIDR ranges; a matching host bypasses the private-range checks below.
    */
   allowedInternalHosts?: string[];
+  /**
+   * Also accept home-network addresses (RFC1918, 100.64.0.0/10, IPv6 unique
+   * local), as a literal, as what a hostname resolves to, and on every
+   * redirect hop. Loopback, 0.0.0.0, link-local and the other reserved ranges
+   * are still refused. For an integration whose server normally sits on the
+   * household network and that a parent adds by hand. Default false.
+   */
+  allowHomeNetwork?: boolean;
 }
 
 /**
@@ -185,7 +217,9 @@ export interface ValidatePublicUrlOptions {
  * link-local, cloud metadata IP, IPv6 loopback / ULA / link-local.
  * In non-production, localhost and 127.x are permitted to keep dev
  * flows working. Hosts on PRISM_ALLOWED_INTERNAL_HOSTS are always
- * permitted (how a LAN self-hosted integration is allowed).
+ * permitted (how a LAN self-hosted integration is allowed). With
+ * allowHomeNetwork, RFC1918, 100.64.0.0/10 and IPv6 unique-local
+ * addresses are permitted as well.
  */
 export function validatePublicUrl(
   rawUrl: string,
@@ -216,6 +250,10 @@ export function validatePublicUrl(
   // (protocol is still enforced above). This is how self-hosted integrations
   // on a LAN — Tandoor, Nextcloud/CalDAV, Immich — are permitted in production.
   if (hostAllowed(host, allowlist)) return parsed;
+
+  // A caller that opted in accepts a home-network address. Anything else
+  // private falls through to the checks below and is refused as before.
+  if (options.allowHomeNetwork && isHomeNetworkAddress(host)) return parsed;
 
   // IPv6 literals come bracketed in URL.hostname on some runtimes and
   // unbracketed on others, so isPrivateIPv6 handles both shapes.
@@ -284,6 +322,7 @@ async function assertResolvesPublic(url: URL, options: SafeFetchOptions): Promis
   }
   for (const addr of addresses) {
     if (hostAllowed(addr, allowlist)) continue;
+    if (options.allowHomeNetwork && isHomeNetworkAddress(addr)) continue;
     const loopbackInDev = !isProd && (/^127\./.test(addr) || addr === '::1');
     if (!loopbackInDev && (isPrivateIPv4(addr) || isPrivateIPv6(addr))) {
       throw new UnsafeUrlError(blockedMessage(host));

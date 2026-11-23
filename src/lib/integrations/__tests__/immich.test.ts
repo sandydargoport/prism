@@ -15,6 +15,11 @@ jest.mock('sharp', () => {
   return { __esModule: true, default: sharpFn };
 });
 
+// The DNS check safeFetch runs in production. Only the SSRF cases below run
+// as production, and they set what each name resolves to.
+const mockLookup = jest.fn();
+jest.mock('node:dns/promises', () => ({ lookup: (...args: unknown[]) => mockLookup(...args) }));
+
 import {
   parseImmichShareUrl,
   fetchSharedLink,
@@ -577,8 +582,19 @@ describe('downloadImmichAsset cookie cache (password-protected, with sourceId)',
 describe('SSRF guard on Immich serverUrl', () => {
   // validatePublicUrl only blocks private targets in production. Force prod
   // for these cases so the dev-mode loopback escape hatch does not interfere.
+  // Production also turns on the DNS check, so lookups are answered by
+  // mockLookup: a public documentation address unless a case says otherwise.
   beforeEach(() => {
     jest.replaceProperty(process.env, 'NODE_ENV', 'production');
+    mockLookup.mockReset();
+    mockLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+  });
+
+  const sharePage = (body: Record<string, unknown>) => () => ({
+    ok: true,
+    status: 200,
+    headers: new Headers(),
+    json: () => Promise.resolve(body),
   });
 
   it('rejects fetchSharedLink with a loopback serverUrl', async () => {
@@ -587,16 +603,92 @@ describe('SSRF guard on Immich serverUrl', () => {
     ).rejects.toBeInstanceOf(UnsafeUrlError);
   });
 
-  it('rejects fetchSharedLink with an RFC1918 serverUrl', async () => {
+  it('accepts a server on the home network by its LAN address (#1286)', async () => {
+    mockFetchOnce(sharePage({ password: null, assets: [] }));
+    const link = await fetchSharedLink({ serverUrl: 'http://10.20.30.40:2283', shareKey: 'k' });
+    expect(link.assets).toEqual([]);
+    expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+      'http://10.20.30.40:2283/api/shared-links/me?key=k',
+    );
+  });
+
+  it('accepts a server by its IPv6 unique-local address (#1286)', async () => {
+    mockFetchOnce(sharePage({ password: null, assets: [] }));
     await expect(
-      fetchSharedLink({ serverUrl: 'http://10.0.0.5', shareKey: 'k' }),
-    ).rejects.toBeInstanceOf(UnsafeUrlError);
+      fetchSharedLink({ serverUrl: 'http://[fd12:3456:789a::1]:2283', shareKey: 'k' }),
+    ).resolves.toMatchObject({ assets: [] });
+  });
+
+  it('syncs an album from a server name that resolves into 100.64.0.0/10 (#1286)', async () => {
+    mockLookup.mockResolvedValue([
+      { address: '100.101.102.103', family: 4 },
+      { address: 'fd7a:1234:5678::9', family: 6 },
+    ]);
+    mockFetchSequence([
+      sharePage({ type: 'ALBUM', album: { id: 'album-1', albumName: 'Garden' }, password: null }),
+      sharePage({
+        assets: {
+          nextPage: null,
+          items: [{ id: 'a1', originalFileName: 'rose.jpg', originalMimeType: 'image/jpeg', type: 'IMAGE', fileCreatedAt: '2025-06-01T00:00:00.000Z' }],
+        },
+      }),
+    ]);
+
+    const link = await fetchSharedLink({ serverUrl: 'https://photos.vpn.example', shareKey: 'k' });
+
+    expect(link.assets.map((a) => a.id)).toEqual(['a1']);
+    expect(mockLookup).toHaveBeenCalledWith('photos.vpn.example', { all: true });
+  });
+
+  it('downloads an image from a server on the home network (#1286)', async () => {
+    mockFetchOnce(() => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'image/jpeg' }),
+      arrayBuffer: () => Promise.resolve(new Uint8Array([0xff, 0xd8]).buffer),
+    }));
+    const result = await downloadImmichAsset({ serverUrl: 'http://192.168.77.10:2283', shareKey: 'k' }, 'asset-1', { thumb: true });
+    expect(result.contentType).toBe('image/jpeg');
+    expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+      'http://192.168.77.10:2283/api/assets/asset-1/thumbnail?key=k&size=preview',
+    );
   });
 
   it('rejects fetchSharedLink with the cloud metadata IP', async () => {
     await expect(
       fetchSharedLink({ serverUrl: 'http://169.254.169.254', shareKey: 'k' }),
     ).rejects.toBeInstanceOf(UnsafeUrlError);
+  });
+
+  it.each(['http://169.254.10.1', 'http://[fe80::1]', 'http://0.0.0.0:2283', 'http://localhost:2283'])(
+    'still rejects fetchSharedLink with %s (link-local, unspecified, loopback name)',
+    async (serverUrl) => {
+      global.fetch = jest.fn();
+      await expect(fetchSharedLink({ serverUrl, shareKey: 'k' })).rejects.toBeInstanceOf(UnsafeUrlError);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('still rejects a server name that resolves to loopback or link-local', async () => {
+    global.fetch = jest.fn();
+    for (const address of ['127.0.0.1', '169.254.169.254']) {
+      mockLookup.mockResolvedValue([{ address, family: 4 }]);
+      await expect(
+        fetchSharedLink({ serverUrl: 'https://photos.vpn.example', shareKey: 'k' }),
+      ).rejects.toBeInstanceOf(UnsafeUrlError);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('blocks a home-network server that 30x-redirects to loopback', async () => {
+    mockFetchOnce(() => ({
+      status: 302,
+      headers: new Headers({ location: 'http://127.0.0.1:2283/api/assets/asset-1/thumbnail' }),
+    }));
+    await expect(
+      downloadImmichAsset({ serverUrl: 'http://10.20.30.40:2283', shareKey: 'k' }, 'asset-1'),
+    ).rejects.toBeInstanceOf(UnsafeUrlError);
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(1);
   });
 
   it('rejects downloadImmichAsset with a loopback serverUrl', async () => {
