@@ -212,7 +212,7 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-screen-plan], [data-switch-add], [data-switch-row], [data-screen-dashboard], [data-name-device]')).toBeNull();
       expect(screen.queryByRole('button', { name: 'Switch at set times' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Switch at bus time' })).toBeNull();
-      expect(screen.queryByLabelText('Dashboard this screen shows')).toBeNull();
+      expect(screen.queryByLabelText('Dashboard it shows')).toBeNull();
       expect(screen.queryByLabelText('Rest after')).toBeNull();
       expect(screen.queryByLabelText('How dark at night')).toBeNull();
       // Its switches still show on the day's line.

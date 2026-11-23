@@ -247,15 +247,14 @@ function ScreensHelp() {
       <H2>Screen</H2>
       <P>More &gt; Edit layout &gt; Screen, the first tab, is the screen being edited.</P>
       <Ul>
-        <Li><strong>Name</strong>: the screen&apos;s name; <strong>Rename</strong> changes it at once</Li>
-        <Li><strong>Shows</strong>: the dashboard this screen shows</Li>
-        <Li><strong>Switch at bus time</strong>: shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
-        <Li><strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
-        <Li><strong>Rest after</strong>: how long nobody touches the screen before it rests</Li>
-        <Li><strong>How dark</strong>: how far the screen dims at night</Li>
-        <Li><strong>Other screens</strong>: pick one to edit it instead. With changes not saved, the editor asks first</Li>
+        <Li><strong>Screen</strong>: every named screen, set to the one being edited. Pick another to edit it instead. With changes not saved, the editor asks first</Li>
+        <Li><strong>Name of screen</strong>: type a new name; it is saved when you press Enter or leave the field</Li>
+        <Li><strong>Dashboard it shows</strong>: the dashboard this screen shows</Li>
+        <Li><strong>Switches</strong> &gt; <strong>Switch at bus time</strong>: shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
+        <Li><strong>Switches</strong> &gt; <strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
+        <Li><strong>When nobody is using it</strong>: <strong>Rest after</strong>, how long nobody touches the screen before it rests, and <strong>How dark</strong>, how far it dims at night</Li>
       </Ul>
-      <P>These belong to the screen. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the tab says so and lists the screens.</P>
+      <P>These belong to the screen. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the Screen drop-down says <strong>No screen</strong> (or <strong>This device (not named)</strong>, with <strong>Name this device</strong> below it) and lists the screens.</P>
 
       <H2>Through the day</H2>
       <P>More &gt; Edit layout &gt; Through the day sets how the dashboard rests and sleeps.</P>
@@ -350,7 +349,7 @@ function DashboardHelp() {
         <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default with <strong>Dashboard &gt; Make the default</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
         <Li>Each has independent widget layout, resting layout, and orientation (landscape/portrait)</Li>
-        <Li>Each named screen picks the dashboard it shows (Screen &gt; Shows, or Settings &gt; Screens)</Li>
+        <Li>Each named screen picks the dashboard it shows (Screen &gt; Dashboard it shows, or Settings &gt; Screens)</Li>
       </Ul>
 
       <H2>Orientation</H2>

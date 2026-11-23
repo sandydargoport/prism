@@ -22,7 +22,7 @@ What each panel holds:
 
 - **Dashboard**: every dashboard, to switch to one, with **New dashboard**, **Make a copy**, **Rename**, **Make the default** and **Delete** (see [Multiple dashboards](#multiple-dashboards)).
 - **Widgets**: the widgets on this dashboard, the templates and the community gallery.
-- **Screen**, first: the screen being edited. Its name (**Rename** saves a new one at once, as *Settings > Screens* does), which dashboard it shows and when it switches (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches)), **Rest after** and **How dark**, and **Other screens**, which opens another named screen's editor; with changes not saved it asks first. On a device with no name it offers **Name this device**. Editing a dashboard with no screen, from a phone say, it says so and lists the screens.
+- **Screen**, first: the screen being edited. A **Screen** drop-down lists every named screen, set to this one; picking another opens that screen's editor, asking first when changes are not saved. **Name of screen** is saved when you press Enter or leave the field, as *Settings > Screens* renames one. **Dashboard it shows** and **Switches** set what it shows and when it switches (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches)); **When nobody is using it** has **Rest after** and **How dark**. On a device with no name the drop-down says **This device (not named)** and **Name this device** is below it; editing a dashboard with no screen, from a phone say, it says **No screen**.
 - **Through the day**: what the dashboard shows while resting and at night, and the day's line, with a dot for each of the screen's switches; tapping a switch's dot opens it in **Screen** (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
 - **Look**: the screen shape, **See it at a screen size**, and this screen's own settings under **This screen**.
 - **More**: the overview, notices, **Export**, **Import**, **Share to the gallery** and **Reset this layout**.
@@ -109,7 +109,7 @@ You can make a separate dashboard for each room or display. The **Dashboard** pa
 
 #### Which dashboard a screen shows, and when it switches
 
-A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Screen** (More > Edit layout > Screen): **Shows** is its dashboard, and each switch is a row of its own. Two screens can show the same dashboard, and each keeps its own switches.
+A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Screen** (More > Edit layout > Screen): **Dashboard it shows** is its dashboard, and each switch is a row of its own under **Switches**. Two screens can show the same dashboard, and each keeps its own switches.
 
 - **At bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
   - **Routes**: with two or more bus routes, the row has a chip for each, all on to begin with. Turn one off to leave that route out. With every route on, the switch also follows routes added later. One always stays on.

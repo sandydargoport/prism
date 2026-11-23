@@ -6,7 +6,7 @@
  * Widgets and Through the day tabs show theirs.
  */
 import React from 'react';
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { LayoutEditor } from '../LayoutEditor';
 
 let unsaved = false;
@@ -50,6 +50,6 @@ it('a setting changed on the Screen tab shows the dot at once', async () => {
   await act(async () => {});
   expect(dot()).toBeNull();
   unsaved = true;
-  fireEvent.change(document.querySelector<HTMLSelectElement>('[aria-label="Rest after"]')!, { target: { value: '3600' } });
+  fireEvent.change(screen.getByLabelText('Rest after'), { target: { value: '3600' } });
   expect(dot()).not.toBeNull();
 });

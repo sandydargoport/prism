@@ -68,7 +68,7 @@ A web page can't change the panel's own brightness or turn it off. On an OLED pa
 
 A screen's own screensaver settings are in its editor, More > Edit layout. From a phone, **Edit** on the screen's row in *Settings > Screens* opens the same editor for that screen.
 
-In **Screen** (More > Edit layout > Screen):
+In **Screen** (More > Edit layout > Screen), under **When nobody is using it**:
 
 - **Rest after**: how long nobody touches the screen before it rests. 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests** (default 2 minutes).
 - **How dark**: **Not dimmed**, or 25%, 50% or 75% darker at night. Not dimmed by default. It isn't offered when the night look is **Screen off**.

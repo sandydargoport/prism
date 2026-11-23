@@ -4,16 +4,18 @@
  * The editor's Screen sheet (#1326), first in the bar: the screen being
  * edited, as a device of its own.
  *
- * Its name, renamed here; the dashboard it shows, and the dashboards it
- * switches to for a while (#1282), at bus time or at set times, a bus switch
- * with its routes and minutes (#1291); how long until it rests and how dark it
- * goes at night. They belong to the screen, not the dashboard: two screens can
- * show one dashboard, each on its own schedule. Done sends them to it with its
- * settings; the name is saved at once, as Settings > Screens saves it.
+ * First a Screen drop-down of every named screen, set to the one edited:
+ * picking another opens its editor. Then the Name of screen, saved on Enter or
+ * on leaving the field, as Settings > Screens saves it; the Dashboard it
+ * shows; its Switches to other dashboards for a while (#1282), at bus time or
+ * at set times, a bus switch with its routes and minutes (#1291); and, When
+ * nobody is using it, how long until it rests and how dark it goes at night.
+ * They belong to the screen, not the dashboard: two screens can show one
+ * dashboard, each on its own schedule. Done sends them with its settings.
  *
- * Then the other named screens, to edit one of them instead. On a device
- * nobody named, it offers to name it (#1267), or to become a screen named
- * before. A dashboard edited with no screen says so.
+ * On a device nobody named, the drop-down says so and the sheet offers to
+ * name it (#1267), or to become a screen named before. A dashboard edited
+ * with no screen says so.
  */
 import * as React from 'react';
 import { useEffect, useState } from 'react';
@@ -31,7 +33,7 @@ import {
 import { screenEditLink } from '@/lib/displays/editPlace';
 import { NameThisDevice } from './NameThisDevice';
 import { keepPanelFor } from './canvasPanel';
-import { busWindowsInWords, chip, dayChip, field, Fold, hhmm, iconButton, note, Row, useBusRoutes } from './sheetRows';
+import { busWindowsInWords, chip, dayChip, field, Fold, hhmm, iconButton, note, useBusRoutes } from './sheetRows';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +42,24 @@ const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 /** The day chips, Monday first as a week is read. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const NAME_MAX = 60;
+/** A section's heading, as the editor's other sheets have them. */
+const HEADING = 'm-0 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
+
+/**
+ * A labelled control: the label in one column of one width, top-aligned, the
+ * control filling the other; at a phone's width the label sits above it.
+ */
+function Field({ label, htmlFor, children, after }: { label: string; htmlFor?: string; children: React.ReactNode; after?: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-[9rem_minmax(0,1fr)]" data-field>
+      <label htmlFor={htmlFor} className="pt-0 text-body font-medium sm:pt-2.5 pointer-fine:sm:pt-2" data-field-label>{label}</label>
+      <div className="flex min-w-0 flex-col gap-1">
+        {children}
+        {after}
+      </div>
+    </div>
+  );
+}
 
 /** A switch without the keys an edit cleared, so it is stored as plainly as it reads. */
 function withoutUnset(sw: ScreenSwitch): ScreenSwitch {
@@ -133,7 +153,8 @@ export function ScreenSheet({
   const [openRow, setOpenRow] = useState<number | null>(openSwitch);
   const toggle = (row: number) => setOpenRow((o) => (o === row ? null : row));
   const [screens, setScreens] = useScreens();
-  const [renaming, setRenaming] = useState<string | null>(null);
+  /** The name as typed, until it is saved; null shows the saved one. */
+  const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -310,9 +331,11 @@ export function ScreenSheet({
   );
 
   const name = screenId ? screens?.find((s) => s.id === screenId)?.name ?? null : null;
+  /** Saves the name typed, on Enter or on leaving the field; an empty one goes back. */
   const rename = async () => {
-    const next = renaming?.trim();
-    if (!screenId || !next) return;
+    const next = draft?.trim();
+    if (!screenId || draft === null) return;
+    if (!next || next === name) { setDraft(null); return; }
     setBusy(true);
     setProblem(null);
     try {
@@ -324,54 +347,62 @@ export function ScreenSheet({
       }).catch(() => null);
       if (!res?.ok) { setProblem(res ? await problemFrom(res) : 'That did not work. Try again.'); return; }
       setScreens((list) => list?.map((s) => (s.id === screenId ? { ...s, name: next } : s)) ?? list);
-      setRenaming(null);
+      setDraft(null);
       onRenamed?.(next);
     } finally {
       setBusy(false);
     }
   };
-  const others = (screens ?? []).filter((s) => s.id !== screenId);
+  const control = cn(field, 'w-full min-w-0');
+  const fieldId = (key: string) => `screen-sheet-${key}`;
 
   return (
-    <div className="flex flex-col gap-5 pointer-fine:gap-4" data-screen-sheet>
-      {screenId ? (
-        <section className="flex flex-col gap-2 pointer-fine:gap-1.5" aria-label="This screen" data-screen-name>
-          {renaming === null ? (
-            <Row name="Name">
-              <span className="min-w-0 truncate text-body font-medium" data-screen-name-text>{name ?? '…'}</span>
-              <button type="button" className={cn(chip(false), 'ml-auto')} disabled={name === null}
-                onClick={() => { setRenaming(name ?? ''); setProblem(null); }} data-screen-rename>
-                Rename
-              </button>
-            </Row>
-          ) : (
+    <div className="flex flex-col gap-6 pointer-fine:gap-5" data-screen-sheet>
+      <section className="flex flex-col gap-3" aria-label="This screen" data-screen-top>
+        <Field label="Screen" htmlFor={fieldId('pick')}>
+          <select id={fieldId('pick')} className={control} value={screenId ?? ''} data-screen-pick
+            onChange={(e) => { if (e.target.value && e.target.value !== screenId) onPickScreen?.(e.target.value); }}>
+            {!screenId && <option value="">{deviceNamed ? 'No screen' : 'This device (not named)'}</option>}
+            {screenId && !screens?.some((s) => s.id === screenId) && <option value={screenId}>{name ?? '…'}</option>}
+            {(screens ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+        {screenId ? (
+          <Field label="Name of screen" htmlFor={fieldId('name')}
+            after={problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}>
             <form onSubmit={(e) => { e.preventDefault(); void rename(); }}>
-              <Row name="Name">
-                <input className={cn(field, 'min-w-0 flex-1')} aria-label="New name for this screen" maxLength={NAME_MAX}
-                  value={renaming} onChange={(e) => setRenaming(e.target.value)} autoFocus />
-                <button type="submit" className={chip(true)} disabled={busy || !renaming.trim()}>Save</button>
-                <button type="button" className={chip(false)} onClick={() => setRenaming(null)}>Cancel</button>
-              </Row>
+              <input id={fieldId('name')} className={control} maxLength={NAME_MAX} disabled={name === null || busy}
+                value={draft ?? name ?? ''} onChange={(e) => setDraft(e.target.value)} onBlur={() => void rename()} data-screen-name />
             </form>
-          )}
-          {problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}
+          </Field>
+        ) : (
+          <p className="m-0 text-body text-muted-foreground" data-no-screen>
+            No screen is being edited, so this edits {dashboardName(currentDashboardId)} on its own.
+          </p>
+        )}
+        {plan && (
+          <Field label="Dashboard it shows" htmlFor={fieldId('dashboard')}>
+            <div className="flex min-w-0 items-center gap-2">
+              <select id={fieldId('dashboard')} className={control} value={shownId} data-screen-dashboard
+                onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value })}>
+                {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              {openButton(shownId)}
+            </div>
+          </Field>
+        )}
+      </section>
+
+      {!screenId && !deviceNamed && onDeviceNamed && (
+        <section aria-label="Name this device">
+          <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} />
         </section>
-      ) : (
-        <p className="m-0 text-body text-muted-foreground" data-no-screen>
-          No screen is being edited, so this edits {dashboardName(currentDashboardId)} on its own.
-        </p>
       )}
 
       {plan && (
-        // What the screen shows, and when it switches to another, as rows.
-        <section className="flex flex-col gap-2 pointer-fine:gap-1.5" aria-label="What this screen shows" data-screen-plan>
-          <Row name="Shows">
-            <select className={cn(field, 'min-w-0 max-w-full')} value={shownId} aria-label="Dashboard this screen shows" data-screen-dashboard
-              onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value })}>
-              {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            {openButton(shownId)}
-          </Row>
+        // When the screen switches to another dashboard, as rows.
+        <section className="flex flex-col gap-2 pointer-fine:gap-1.5" aria-labelledby={fieldId('switches')} data-screen-plan>
+          <h3 id={fieldId('switches')} className={HEADING} data-screen-heading>Switches</h3>
           {switches.map(switchRow)}
           {switches.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
           <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -389,39 +420,20 @@ export function ScreenSheet({
       {forScreen && (
         // How soon it rests and how dark it goes are the screen's own, kept
         // with its other settings.
-        <section className="flex flex-col gap-2 border-t border-border pt-4 pointer-fine:gap-1.5 pointer-fine:pt-3" aria-label="On this screen" data-screen-own>
-          <Row name="Rest after">
-            <select className={field} value={timeout} onChange={(e) => { setTimeout(Number(e.target.value)); onSettingChange?.(); }} aria-label="Rest after">
+        <section className="flex flex-col gap-3" aria-labelledby={fieldId('idle')} data-screen-own>
+          <h3 id={fieldId('idle')} className={HEADING} data-screen-heading>When nobody is using it</h3>
+          <Field label="Rest after" htmlFor={fieldId('rest')} after={<span className={note}>of nobody touching it</span>}>
+            <select id={fieldId('rest')} className={control} value={timeout} onChange={(e) => { setTimeout(Number(e.target.value)); onSettingChange?.(); }}>
               {SCREENSAVER_TIMEOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.value === 0 ? 'Never rests' : o.label}</option>)}
             </select>
-            <span className={note}>of nobody touching it</span>
-          </Row>
+          </Field>
           {night !== 'off' && (
-            <Row name="How dark">
-              <select className={field} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
+            <Field label="How dark" htmlFor={fieldId('dark')} after={<span className={note}>at night</span>}>
+              <select id={fieldId('dark')} className={control} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
                 {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.raw === '0' ? 'Not dimmed' : l.label}</option>)}
               </select>
-              <span className={note}>at night</span>
-            </Row>
+            </Field>
           )}
-        </section>
-      )}
-
-      {!screenId && !deviceNamed && onDeviceNamed && (
-        <section className="border-t border-border pt-4 pointer-fine:pt-3" aria-label="Name this device">
-          <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} />
-        </section>
-      )}
-
-      {others.length > 0 && (
-        <section className="border-t border-border pt-4 pointer-fine:pt-3" aria-label="Other screens" data-screen-picker>
-          <Row name={screenId ? 'Other screens' : 'Screens'}>
-            <select className={cn(field, 'min-w-0 max-w-full')} aria-label="Edit another screen" value=""
-              onChange={(e) => { if (e.target.value) onPickScreen?.(e.target.value); }} data-screen-pick>
-              <option value="">{screenId ? 'Edit another…' : 'Edit a screen…'}</option>
-              {others.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </Row>
         </section>
       )}
     </div>

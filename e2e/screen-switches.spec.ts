@@ -141,8 +141,15 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       let page = laptop.page;
       let sheet = page.locator('[data-editor-sheet="screen"]');
       // The tab says which screen it is (#1326).
-      await expect(sheet.locator('[data-screen-name-text]')).toHaveText(`Hall ${tag}`);
-      await expect(sheet.getByLabel('Dashboard this screen shows')).toHaveValue(kitchen.id);
+      await expect(sheet.getByLabel('Screen', { exact: true })).toHaveValue(screen.id);
+      await expect(sheet.getByLabel('Name of screen')).toHaveValue(`Hall ${tag}`);
+      await expect(sheet.getByLabel('Dashboard it shows')).toHaveValue(kitchen.id);
+      // Name of screen saves on Enter, at once: the heading and the drop-down follow.
+      await sheet.getByLabel('Name of screen').fill(`Front hall ${tag}`);
+      await sheet.getByLabel('Name of screen').press('Enter');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Editing Front hall ${tag}`);
+      await expect(sheet.getByLabel('Screen', { exact: true }).locator(`option[value="${screen.id}"]`)).toHaveText(`Front hall ${tag}`);
+      await expect.poll(async () => (await stored()).name).toBe(`Front hall ${tag}`);
       await expect(sheet.locator('[data-timeline-bar]')).toHaveCount(0);
 
       // A bus switch and a set-times one, then Cancel: nothing reaches the screen.
