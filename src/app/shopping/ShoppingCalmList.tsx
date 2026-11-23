@@ -6,8 +6,13 @@
  * same as a person's heading on Chores. A tap anywhere on an item crosses it
  * off: the name strikes through, then it folds into "Checked off"; a tap there
  * puts it back. The pencil at the end of a row edits it, Delete included
- * (#1053), as on the Tasks and Chores widgets. The category cards stay behind
- * Manage.
+ * (#1053), as on the Tasks and Chores widgets. The categories themselves are
+ * behind Manage.
+ *
+ * Shopping mode (#1312) shows the same list with no pencil: in the store a
+ * row is only ticked, so the whole row is the target and a thumb at its end
+ * cannot open the edit form by mistake. The add field stays, for something
+ * remembered in the aisle (and the phone's round button focuses it).
  *
  * Adding asks where the item goes (#1070): the field gives way to the list's
  * categories, one tap files it and the field comes back. The item is saved
@@ -38,7 +43,8 @@ export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit
   /** Every category, in order: the question offers them all, this list's first. */
   allCategories: string[];
   onToggle: (id: string) => void;
-  onEdit: (item: ShoppingItem) => void;
+  /** Opens the item's edit form; left out, the rows have no pencil (Shopping mode). */
+  onEdit?: (item: ShoppingItem) => void;
   /** Saves the item (in Other) and returns it, so it can then be filed. */
   onAdd: (name: string) => Promise<{ id: string } | unknown>;
   /** Moves a just-added item into a category. */
@@ -88,8 +94,8 @@ export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit
         title={<span className={struck ? 'text-muted-foreground line-through' : undefined} data-shopping-struck={struck || undefined}>{item.name}</span>}
         meta={[item.quantity, item.unit].filter(Boolean).join(' ')}
         onClick={() => tick(item)}
-        editing
-        actions={
+        editing={!!onEdit}
+        actions={onEdit &&
           <button
             type="button"
             onClick={() => onEdit(item)}
