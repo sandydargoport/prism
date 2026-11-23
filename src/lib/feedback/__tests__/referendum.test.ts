@@ -46,7 +46,7 @@ describe('isReferendumOpen', () => {
 
 describe('findAnswer', () => {
   it('finds only the answers the question has', () => {
-    expect(findAnswer(REFERENDUM, 'sidebar')?.label).toBe('Bring back the sidebar');
+    expect(findAnswer(REFERENDUM, 'sidebar')?.label).toBe('A sidebar');
     expect(findAnswer(REFERENDUM, 'top-bar')).toBeUndefined();
     expect(findAnswer(REFERENDUM, undefined)).toBeUndefined();
   });

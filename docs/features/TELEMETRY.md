@@ -79,8 +79,8 @@ Any one of these turns it off:
 ## Feedback votes
 
 Sometimes Prism asks one question at the bottom of **More**, with a button for
-each answer. The first one asks whether to keep the bar along the bottom or
-bring back the sidebar. Nothing is sent until someone taps an answer. Then
+each answer. The first one asks where the page buttons go: in the bar along the
+bottom, or in a sidebar. Nothing is sent until someone taps an answer. Then
 Prism sends these fields to the same collector as the weekly check-in:
 
 ```json
