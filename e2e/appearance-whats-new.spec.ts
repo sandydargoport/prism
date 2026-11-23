@@ -56,7 +56,7 @@ test.describe('Appearance and what moved', () => {
     const note = page.locator('[data-whats-new]');
     await expect(note).toBeVisible({ timeout: 60_000 });
     expect(await note.locator('[data-whats-new-list] li').count()).toBeGreaterThanOrEqual(5);
-    await expect(note.getByText('under Manage')).toBeVisible();
+    await expect(note.getByRole('link', { name: 'See everything that changed' })).toBeVisible();
     await note.locator('[data-whats-new-ok]').click();
     await expect(note).toBeHidden();
     await page.reload();
