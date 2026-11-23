@@ -73,6 +73,24 @@ describe('the Do list with pets (#856)', () => {
  * household's clock, not the device's. CI runs in UTC, so each case puts the
  * household in a zone whose wall clock differs from UTC at that instant.
  */
+describe('a chore with no due date', () => {
+  it('is due now, listed under Due today, and a disabled one stays out', () => {
+    const undated = chore({ id: 'u', title: 'Water plants', nextDue: undefined });
+    const off = chore({ id: 'off', title: 'Retired', nextDue: undefined, enabled: false });
+    const g = choreGroups([undated, off], today);
+    expect(g.today.map((c) => c.id)).toEqual(['u']);
+    expect(g.later).toEqual([]);
+    expect(g.tomorrow).toEqual([]);
+  });
+
+  it('is listed once it is ticked today only as done, not as the next round', () => {
+    const ticked = chore({ id: 'u', title: 'Water plants', nextDue: undefined, lastCompleted: new Date(2026, 10, 12, 8, 0) });
+    const g = choreGroups([ticked], today);
+    expect(g.today).toEqual([]);
+    expect(g.done.map((c) => c.id)).toEqual(['u']);
+  });
+});
+
 describe('the Do list on the household clock (#1227)', () => {
   // 19:30 UTC on 12 Nov 2026 is 1:30 PM in Chicago and 4:30 AM on the 13th in Tokyo.
   const evening = new Date(Date.UTC(2026, 10, 12, 19, 30));

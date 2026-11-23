@@ -30,8 +30,9 @@ export function timesADay(c: Chore): number {
 export function choreGroups(chores: Chore[], today: Date, timeZone?: string) {
   const key = (d: Date) => getDisplayDateKey(d, timeZone);
   const t = key(today), tomorrow = addDaysToKey(t, 1), week = addDaysToKey(t, 7);
-  const live = chores.filter((c) => c.enabled && c.nextDue);
-  const due = (c: Chore) => c.nextDue!.slice(0, 10);
+  // A chore with no due date is due now, as the chores API and the dashboard widget treat it.
+  const live = chores.filter((c) => c.enabled);
+  const due = (c: Chore) => c.nextDue ? c.nextDue.slice(0, 10) : t;
   // Done today (#984): not the next round waiting under Tomorrow or Later;
   // the page leaves it out altogether (#1051). A chore done more than once a
   // day (#1107) is done only once the server has moved it past today.
