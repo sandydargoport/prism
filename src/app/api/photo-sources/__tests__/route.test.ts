@@ -11,7 +11,11 @@ const mockInsertValues = jest.fn();
 
 jest.mock('node:dns/promises', () => ({ lookup: (...args: unknown[]) => mockLookup(...args) }));
 jest.mock('sharp', () => ({ __esModule: true, default: jest.fn() }));
-jest.mock('@/lib/auth', () => ({ requireAuth: () => Promise.resolve({ userId: 'u1', role: 'parent' }) }));
+const mockRole = { current: 'parent' };
+jest.mock('@/lib/auth', () => ({
+  requireAuth: () => Promise.resolve({ userId: 'u1', role: mockRole.current }),
+  requireRole: jest.requireActual('@/lib/auth/requireAuth').requireRole,
+}));
 jest.mock('@/lib/cache/rateLimit', () => ({ rateLimitGuard: () => Promise.resolve(null) }));
 jest.mock('@/lib/cache/cacheKeys', () => ({ invalidateEntity: () => Promise.resolve() }));
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
@@ -51,6 +55,7 @@ const addImmich = (shareUrl: string) =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockRole.current = 'parent';
   // Production is where the guard refuses private addresses and resolves names.
   jest.replaceProperty(process.env, 'NODE_ENV', 'production');
   mockLookup.mockReset();
@@ -98,5 +103,15 @@ describe('POST /api/photo-sources (Immich) on the home network (#1286)', () => {
     const res = await addImmich('https://photos.vpn.example/share/fictional-key-4');
     expect(res.status).toBe(400);
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/photo-sources: who may add a source (#1286)', () => {
+  it('refuses a child, before anything is fetched or saved', async () => {
+    mockRole.current = 'child';
+    const res = await addImmich('http://192.168.77.10:2283/share/fictional-key-1');
+    expect(res.status).toBe(403);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(mockInsertValues).not.toHaveBeenCalled();
   });
 });

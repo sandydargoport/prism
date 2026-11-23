@@ -108,6 +108,7 @@ All notable changes to Prism are documented in this file.
 - **Bus card compares today with the usual.** Beside how late the bus is against the timetable, the live bus card says how that compares with its typical lateness at your stop over the last 10 trips ("8 min late · about usual", "12 min late · 4 min later than usual"). Before anything on the trip is measured, it says what is typical ("usually 9 min late").
 
 ### Fixed
+- **An Immich server on the home network can be added and synced.** A shared-album link on a home-network or VPN address is accepted; the server's own machine and link-local addresses are still refused. **Sync now** says why when a sync fails, and adding a photo source needs a parent, as editing and deleting one already did. ([#1286](https://github.com/sandydargoport/prism/issues/1286))
 - **Not now on Today's birthday nudge is kept as a one-way digest** of the birthday and its date, so the screen's browser storage holds neither. One put off before still holds. ([#1296](https://github.com/sandydargoport/prism/pull/1296))
 - **Editing a screen from another device no longer asks for a PIN when already signed in.** A page that asked for sign-in as it opened did so before the session had been checked. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
 - **A short stretch at the end of the Through the day line stays on the line** in a narrow panel, instead of running past its end. ([#1265](https://github.com/sandydargoport/prism/issues/1265))

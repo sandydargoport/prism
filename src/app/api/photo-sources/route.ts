@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { photoSources } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
@@ -50,6 +50,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  // A parent adds a source, as a parent edits or deletes one. Adding one makes
+  // Prism fetch the address given, which may be on the home network (#1286).
+  const forbidden = requireRole(auth, 'canManageIntegrations');
+  if (forbidden) return forbidden;
 
   // Mutation route: a malicious or compromised parent session could otherwise
   // submit URLs in a tight loop, each of which fires an outbound fetch. Cap
