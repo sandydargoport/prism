@@ -140,9 +140,9 @@ Each of these has its own settings:
 
 The browser fetches photos ahead of time and rotates them itself, so a new photo doesn't need a trip to the server.
 
-### Crossfade and slow zoom
+### Crossfade and the Ken Burns zoom
 
-The wallpaper and the screensaver share one way of showing photos. The next photo is loaded and decoded first, then fades in over the current one for 2.2 seconds, so the picture never dips to black. While a photo is on screen it zooms slowly in or out, the next one the other way, anchored on its subject. Each photo is also cropped so its subject sits where no widget or Glance text covers it.
+The wallpaper and the screensaver share one way of showing photos. The next photo is loaded and decoded first, then fades in over the current one for 2.2 seconds, so the picture never dips to black. While a photo is on screen it zooms slowly in or out (the Ken Burns effect), the next one the other way, anchored on its subject. Each photo is also cropped so its subject sits where no widget or Glance text covers it.
 
 Prism finds each photo's subject on the wall itself, a few photos every few minutes, and no photo leaves your install to do it.
 
