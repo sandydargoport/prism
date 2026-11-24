@@ -61,6 +61,9 @@ E2E specs that seed or reset data need a test database and Redis, named
 explicitly: `DATABASE_URL` and `REDIS_URL`, or `E2E_DB_CONTAINER` and
 `E2E_REDIS_CONTAINER` for containers to `docker exec` into. There is no default,
 so a run cannot reach the database of a Prism install on the same machine.
+The test server runs on `E2E_PORT` (default 3000). A server already running
+there is reused only with `E2E_REUSE_SERVER=1`; otherwise Playwright stops, so
+a run never drives an install that holds the port.
 
 ### Every fix and feature comes with its test
 

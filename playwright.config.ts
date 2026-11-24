@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// The port the test server runs on. Locally, an existing server on it is
+// reused only when E2E_REUSE_SERVER=1: on a machine that also runs a Prism
+// install, the default port is that install, and a spec must never drive it
+// (#1360). Without the flag, Playwright refuses to start when the port is taken.
+const port = process.env.E2E_PORT || '3000';
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: './e2e',
   testIgnore: ['**/demos/**'],
@@ -11,7 +18,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -33,8 +40,8 @@ export default defineConfig({
   webServer: {
     // The browser tests run on webpack, the bundler production builds use;
     // `npm run dev` is Turbopack for day-to-day work (see devBundler.test.ts).
-    command: 'npm run dev:webpack',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: `npm run dev:webpack -- -p ${port} -H localhost`,
+    url: baseURL,
+    reuseExistingServer: !process.env.CI && process.env.E2E_REUSE_SERVER === '1',
   },
 });
