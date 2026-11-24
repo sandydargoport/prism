@@ -12,6 +12,10 @@ import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { Button, Badge, UserAvatar } from '@/components/ui';
 import { Input } from '@/components/ui/input';
+import { useNow } from '@/lib/hooks/useNow';
+import { useStartAtNext } from '@/lib/hooks/useStartAtNext';
+import { startAnchor, type StartEntry } from '@/lib/utils/startAtNext';
+import { isMealOver } from '@/components/calendar/cells/itemTime';
 
 // Meal type imported from shared types
 import type { Meal } from '@/types';
@@ -75,6 +79,29 @@ export const MealsWidget = React.memo(function MealsWidget({
     );
     return { weekMeals, mealsByDay: groupMealsByDay(weekMeals) };
   }, [allMeals, weekOfString, weekEndString]);
+
+  // The list opens at the next meal not yet eaten, the ones that are over
+  // greyed above it (#1370). Only this week: another week opens at its top.
+  // useNow re-renders the widget as meal times pass, so the list follows.
+  const now = useNow(30_000);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    // Derive the day NAME from the actual column date rather than a fixed
+    // Monday-first list, or the labels desync from the dates whenever the
+    // week does not start on Monday. getDay() is 0=Sun, matching
+    // DAYS_OF_WEEK's Sunday-first indexing.
+    const date = addDays(parseISO(weekOfString), index);
+    const dateKey = format(date, 'yyyy-MM-dd');
+    const day = DAYS_OF_WEEK[date.getDay()]!; // getDay() is 0–6
+    const meals = (mealsByDay[day] || []).map((meal) => ({ meal, over: isMealOver(dateKey, meal, now) }));
+    return { date, dateKey, day, meals };
+  }), [weekOfString, mealsByDay, now]);
+  const anchor = useMemo(() => {
+    if (!isCurrentWeek) return null;
+    const entries: StartEntry[] = days.flatMap(({ dateKey, meals }) =>
+      meals.map(({ meal, over }) => ({ key: `meal-${meal.id}`, group: `day-${dateKey}`, over })));
+    return startAnchor(entries);
+  }, [days, isCurrentWeek]);
+  const listRef = useStartAtNext(anchor);
 
   const goToPreviousWeek = useCallback(() => {
     setWeekOffset((o) => o - 1);
@@ -142,31 +169,21 @@ export const MealsWidget = React.memo(function MealsWidget({
             }
           />
         ) : (
-          <div className="overflow-auto h-full -mr-2 pr-2">
+          <div ref={listRef} data-meals-list className="overflow-auto h-full -mr-2 pr-2">
             <div className="space-y-3">
-              {Array.from({ length: 7 }, (_, index) => {
-                // Derive the day NAME from the actual column date rather than a
-                // fixed Monday-first list — otherwise the labels desync from
-                // the dates whenever weekStartsOn ≠ Monday (e.g. the Sunday
-                // default shifted every label a day ahead). getDay() is 0=Sun,
-                // matching DAYS_OF_WEEK's Sunday-first indexing.
-                const dayDate = addDays(currentWeek, index);
-                const day = DAYS_OF_WEEK[dayDate.getDay()]!; // getDay() is 0–6
-                const dayMeals = mealsByDay[day] || [];
-                const isToday = format(dayDate, 'yyyy-MM-dd') === todayKey;
-                return (
-                  <DaySection
-                    key={day}
-                    day={day}
-                    date={dayDate}
-                    meals={dayMeals}
-                    isToday={isToday}
-                    onMarkCooked={onMarkCooked}
-                    onUnmarkCooked={onUnmarkCooked}
-                    onMealClick={onMealClick}
-                  />
-                );
-              })}
+              {days.map(({ date, dateKey, day, meals }) => (
+                <DaySection
+                  key={dateKey}
+                  day={day}
+                  date={date}
+                  dateKey={dateKey}
+                  meals={meals}
+                  isToday={dateKey === todayKey}
+                  onMarkCooked={onMarkCooked}
+                  onUnmarkCooked={onUnmarkCooked}
+                  onMealClick={onMealClick}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -187,11 +204,12 @@ export const MealsWidget = React.memo(function MealsWidget({
 });
 
 function DaySection({
-  day, date, meals, isToday, onMarkCooked, onUnmarkCooked, onMealClick,
+  day, date, dateKey, meals, isToday, onMarkCooked, onUnmarkCooked, onMealClick,
 }: {
   day: Meal['dayOfWeek'];
   date: Date;
-  meals: Meal[];
+  dateKey: string;
+  meals: Array<{ meal: Meal; over: boolean }>;
   isToday: boolean;
   onMarkCooked?: (mealId: string) => void;
   onUnmarkCooked?: (mealId: string) => void;
@@ -199,17 +217,18 @@ function DaySection({
 }) {
   if (meals.length === 0) return null;
   return (
-    <div className={cn('space-y-1', isToday && 'rounded-lg bg-accent/30 p-2 -m-2')}>
+    <div data-scroll-anchor={`day-${dateKey}`} className={cn('space-y-1', isToday && 'rounded-lg bg-accent/30 p-2 -m-2')}>
       <div className="flex items-center gap-2">
         <h4 className={cn('text-sm font-semibold capitalize', isToday && 'text-primary')}>{day}</h4>
         <span className="text-xs text-muted-foreground">{format(date, 'MMM d')}</span>
         {isToday && <Badge variant="default" className="text-3xs px-1.5 py-0">Today</Badge>}
       </div>
       <div className="space-y-1">
-        {meals.map((meal) => (
+        {meals.map(({ meal, over }) => (
           <MealItem
             key={meal.id}
             meal={meal}
+            over={over}
             onMarkCooked={onMarkCooked}
             onUnmarkCooked={onUnmarkCooked}
             onClick={onMealClick ? () => onMealClick(meal) : undefined}
@@ -221,16 +240,22 @@ function DaySection({
 }
 
 function MealItem({
-  meal, onMarkCooked, onUnmarkCooked, onClick,
+  meal, over, onMarkCooked, onUnmarkCooked, onClick,
 }: {
   meal: Meal;
+  /** The meal's time has passed (see isMealOver): greyed, not struck through. */
+  over: boolean;
   onMarkCooked?: (mealId: string) => void;
   onUnmarkCooked?: (mealId: string) => void;
   onClick?: () => void;
 }) {
   const isCooked = !!meal.cookedAt;
   return (
-    <div className={cn('flex items-start gap-2 p-2 rounded-md', 'hover:bg-accent/50 transition-colors group', isCooked && 'opacity-60')}>
+    <div
+      data-scroll-anchor={`meal-${meal.id}`}
+      data-meal-over={over || undefined}
+      className={cn('flex items-start gap-2 p-2 rounded-md', 'hover:bg-accent/50 transition-colors group', (isCooked || over) && 'opacity-60')}
+    >
       <span className="text-base shrink-0"><Emoji e={getMealTypeEmoji(meal.mealType)} /></span>
       {/* Meal content — clickable surface that opens the edit modal. */}
       <div

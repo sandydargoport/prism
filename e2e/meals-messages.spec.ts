@@ -82,6 +82,81 @@ test.describe('Meals and Messages pages', () => {
     }
   });
 
+  test('Meals widget opens at the next meal, past meals greyed above, and follows the clock (#1370)', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const tag = Date.now();
+    // A far week the seed never touches: Monday 2027-03-08 to Saturday 03-13,
+    // inside the visible week whether it starts on Sunday or Monday.
+    const plan: Array<[string, 'breakfast' | 'lunch' | 'dinner']> = [
+      ['monday', 'dinner'], ['tuesday', 'dinner'], ['wednesday', 'dinner'],
+      ['thursday', 'breakfast'], ['thursday', 'lunch'], ['thursday', 'dinner'],
+      ['friday', 'breakfast'], ['friday', 'dinner'], ['saturday', 'lunch'], ['saturday', 'dinner'],
+    ];
+    const name = (day: string, type: string) => `${day} ${type} ${tag}`;
+    const ids: string[] = [];
+    const layout = await (await page.request.post('/api/layouts', {
+      // A small Meals tile beside two others, so it keeps its size.
+      data: { name: `Meals next ${tag}`, widgets: [
+        { i: 'meals', x: 0, y: 0, w: 12, h: 8, visible: true },
+        { i: 'clock', x: 12, y: 0, w: 36, h: 32, visible: true },
+        { i: 'messages', x: 0, y: 8, w: 12, h: 24, visible: true },
+      ] },
+    })).json();
+    try {
+      for (const [day, type] of plan) {
+        const res = await page.request.post('/api/meals', { data: { name: name(day, type), weekOf: '2027-03-08', dayOfWeek: day, mealType: type } });
+        expect(res.ok()).toBe(true);
+        ids.push((await res.json()).id);
+      }
+      // Thursday 13:30: breakfast (over 8:00) and lunch (over 13:00) are done,
+      // dinner (18:00) is next.
+      await page.clock.install({ time: new Date(2027, 2, 11, 13, 30) });
+      await page.goto(`/d/${layout.slug}`);
+      const list = page.locator('.widget-cell[data-widget="meals"] [data-meals-list]');
+      const row = (day: string, type: string) => list.locator('[data-scroll-anchor^="meal-"]').filter({ hasText: name(day, type) });
+      await expect(row('thursday', 'dinner')).toBeAttached({ timeout: 60_000 });
+      await page.clock.runFor(2_000);
+
+      const offset = (target: ReturnType<typeof row>) => target.evaluate((el) => {
+        const box = el.closest('[data-meals-list]')!;
+        return Math.round(el.getBoundingClientRect().top - box.getBoundingClientRect().top);
+      });
+      const size = await list.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight, top: el.scrollTop }));
+      expect(size.scroll, 'premise: the list is longer than the widget').toBeGreaterThan(size.client);
+      await expect.poll(async () => Math.abs(await offset(row('thursday', 'dinner'))), 'the next meal is the top row').toBeLessThanOrEqual(1);
+
+      // Lunch is over: greyed, above the top, reached by scrolling up.
+      const lunch = row('thursday', 'lunch');
+      await expect(lunch).toHaveAttribute('data-meal-over', 'true');
+      expect(Number(await lunch.evaluate((el) => getComputedStyle(el).opacity))).toBeLessThan(1);
+      await expect(row('thursday', 'dinner')).not.toHaveAttribute('data-meal-over');
+      expect(await offset(lunch), 'lunch sits above the top').toBeLessThan(0);
+      await list.hover();
+      await page.mouse.wheel(0, -2000);
+      await expect.poll(() => list.evaluate((el) => el.scrollTop), 'scrolled to the top').toBe(0);
+      expect(await offset(lunch)).toBeGreaterThanOrEqual(0);
+
+      // Left alone for the quiet spell, it goes back to the next meal.
+      await page.clock.runFor(15_000);
+      expect(await list.evaluate((el) => el.scrollTop), 'not moved while recently touched').toBe(0);
+      await page.clock.runFor(20_000);
+      await expect.poll(async () => Math.abs(await offset(row('thursday', 'dinner'))), 'back at the next meal').toBeLessThanOrEqual(1);
+
+      // 19:05: dinner is over, Friday is next, and its day heading is the top.
+      await page.clock.fastForward('05:35:00');
+      await page.clock.runFor(31_000);
+      await expect(row('thursday', 'dinner')).toHaveAttribute('data-meal-over', 'true');
+      await expect.poll(() => list.evaluate((el) => {
+        const day = el.querySelector('[data-scroll-anchor="day-2027-03-12"]')!;
+        return Math.abs(day.getBoundingClientRect().top - el.getBoundingClientRect().top);
+      }), 'Friday is the top row').toBeLessThanOrEqual(1);
+    } finally {
+      for (const id of ids) await page.request.delete(`/api/meals/${id}`);
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
   test('Messages: quiet rows with the sender as meta and the message at prose size', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const text = `A quiet note ${Date.now()}`;

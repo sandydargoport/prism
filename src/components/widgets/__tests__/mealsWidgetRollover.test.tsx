@@ -76,3 +76,32 @@ describe('MealsWidget week at midnight', () => {
     screen.getByText('Oct 4 - Oct 10');
   });
 });
+
+describe('MealsWidget meals that are over (#1370)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // Thursday 2027-03-11, 13:30: breakfast and lunch are over, dinner is next.
+    jest.setSystemTime(new Date(2027, 2, 11, 13, 30));
+  });
+  afterEach(() => jest.useRealTimers());
+
+  const planned = (mealType: Meal['mealType'], name: string): Meal => ({
+    id: name, name, weekOf: '2027-03-07', date: '2027-03-11', dayOfWeek: 'thursday', mealType, createdAt: new Date(0),
+  });
+  const row = (name: string) => screen.getByText(name).closest('[data-scroll-anchor]')!;
+
+  it('greys the meals that are over and follows the clock', () => {
+    render(<MealsWidget meals={[
+      planned('breakfast', 'Oat porridge'),
+      planned('lunch', 'Tomato soup'),
+      planned('dinner', 'Bean chili'),
+    ]} />);
+    expect(row('Oat porridge').hasAttribute('data-meal-over')).toBe(true);
+    expect(row('Tomato soup').hasAttribute('data-meal-over')).toBe(true);
+    expect(row('Bean chili').hasAttribute('data-meal-over')).toBe(false);
+
+    // 19:00: dinner is over too, without a reload.
+    act(() => { jest.advanceTimersByTime(5.5 * 60 * 60_000); });
+    expect(row('Bean chili').hasAttribute('data-meal-over')).toBe(true);
+  });
+});
