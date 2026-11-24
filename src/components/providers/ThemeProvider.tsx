@@ -15,7 +15,6 @@
 
 import * as React from 'react';
 import { createContext, useContext, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
-import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 import { useHydrated, useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
@@ -130,9 +129,6 @@ export function ThemeProvider({
   const [palette, setPaletteState] = useState<Theme>(
     () => getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!,
   );
-  // A ref rather than an effect event: persistTheme is called from event
-  // handlers as well as the load effect.
-  const themeRef = useLatestRef(theme);
 
   // Apply the light/dark class. Not while hydrating: the inline script in
   // app/layout.tsx already set it from the same stored value before the first
@@ -149,7 +145,7 @@ export function ThemeProvider({
   // household choice: every screen in the house should agree, and a new tablet
   // should pick it up without being configured.
   //
-  // Always writes all three fields. The settings row is replaced wholesale
+  // Always writes both fields. The settings row is replaced wholesale
   // rather than merged, so a write that names only `paletteId` deletes the
   // installed themes — and because the API requires `paletteId` to name a
   // builtin or a theme in the same write, such a write is also rejected
@@ -160,12 +156,10 @@ export function ThemeProvider({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Read through a ref, not the closure. The load effect runs once and
-          // persists from inside its own response handler, where the captured
-          // `theme` is still the pre-mount default — writing it back would
-          // reset the row's mode as a side effect of reading it.
+          // Light or dark is per screen, in localStorage. Old rows may still
+          // hold a `mode` field; nothing reads it, and this write drops it.
           key: THEME_SETTING_KEY,
-          value: { mode: themeRef.current, paletteId, installed },
+          value: { paletteId, installed },
         }),
       });
       return res.ok;

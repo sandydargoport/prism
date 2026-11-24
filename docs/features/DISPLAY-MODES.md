@@ -106,7 +106,6 @@ The screensaver *layout*, meaning which widgets show and where, is arranged in t
 You choose which photos appear under *Settings > Photos:*
 
 - **Source filter**: which photo sources to use.
-- **Orientation filter**: landscape, portrait or square, set separately for each display context (gallery, wallpaper, screensaver).
 - **Pinned photo**: show one fixed photo in place of the slideshow, for places you want to stay the same.
 
 #### Activation behavior
@@ -313,7 +312,7 @@ The screen may be running at the Minimal performance level, where the Photo widg
 
 #### Wrong photo source on the screensaver
 
-The screensaver's photo filters (sources, orientation per context, pinned photo) are in *Settings > Photos* under the **screensaver** display context. Change them there.
+The photo sources and the pinned screensaver photo are in *Settings > Photos*. Change them there.
 
 #### Babysitter QR code for WiFi doesn't work
 

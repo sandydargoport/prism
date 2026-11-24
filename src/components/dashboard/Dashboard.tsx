@@ -289,13 +289,11 @@ export function Dashboard({
     }
   }, [layout.activeLayout, data.layouts, setScreenGuideOrientationState]);
 
-  const [enabledSizes, setEnabledSizes] = useState<string[]>(allSizeNames);
+  const [enabledSizes] = useState<string[]>(allSizeNames);
   const [gridScrollY, setGridScrollY] = useState(0);
   const [gridVisibleRows, setGridVisibleRows] = useState(GRID_COLS);
   const [gridScrollX, setGridScrollX] = useState(0);
   const [gridVisibleCols, setGridVisibleCols] = useState(GRID_COLS);
-  const [gridTotalRows, setGridTotalRows] = useState(GRID_COLS * 2);
-  const [gridTotalCols, setGridTotalCols] = useState(GRID_COLS);
   const scrollToGridRef = useRef<((row: number, col?: number) => void) | null>(null);
 
   const handleScrollInfo = useCallback((info: { scrollY: number; visibleRows: number; scrollX: number; visibleCols: number; totalRows: number; totalCols: number }) => {
@@ -303,14 +301,6 @@ export function Dashboard({
     setGridVisibleRows(info.visibleRows);
     setGridScrollX(info.scrollX);
     setGridVisibleCols(info.visibleCols);
-    setGridTotalRows(info.totalRows);
-    setGridTotalCols(info.totalCols);
-  }, []);
-
-  const handleToggleSize = useCallback((size: string) => {
-    setEnabledSizes(prev =>
-      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
-    );
   }, []);
 
   // Dashboard management callbacks for LayoutEditor
@@ -591,22 +581,17 @@ export function Dashboard({
               onSaveAs={onEditorSaveAs}
               onReset={layout.handleReset}
               onCancel={onEditorCancel}
-              onDeleteLayout={data.layouts.deleteLayout}
               layoutName={layout.activeLayout?.name}
-              savedLayouts={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
               editTab={layout.editTab}
               onEditTabChange={layout.setEditTab}
               dashboardDirty={layout.dashboardDirty}
               idleDirty={layout.idleDirty}
               editingScreensaver={layout.editingScreensaver}
               screensaverWidgets={layout.ssLayout}
-              onScreensaverWidgetToggle={layout.handleSsWidgetToggle}
               onScreensaverSaveAs={layout.handleSsSaveAs}
               onScreensaverReset={layout.handleSsReset}
               onSelectScreensaverTemplate={layout.handleSelectSsTemplate}
-              screensaverPresets={layout.ssPresets}
               onSelectScreensaverPreset={layout.handleSelectSsPreset}
-              onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
               idleBackground={layout.activeLayout ? layout.editingBackground : undefined}
               onIdleBackgroundChange={layout.setEditingBackground}
               idleHalf={layout.idleHalf}
@@ -621,14 +606,10 @@ export function Dashboard({
               onDeviceNamed={openNamedScreen}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
-              enabledSizes={enabledSizes}
-              onToggleSize={handleToggleSize}
               gridScrollY={gridScrollY}
               gridVisibleRows={gridVisibleRows}
               gridScrollX={gridScrollX}
               gridVisibleCols={gridVisibleCols}
-              gridTotalRows={gridTotalRows}
-              gridTotalCols={gridTotalCols}
               scrollToGridRef={scrollToGridRef}
               allDashboards={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, slug: l.slug, isDefault: l.isDefault, view: l.view }))}
               currentDashboardId={layout.activeLayout?.id}

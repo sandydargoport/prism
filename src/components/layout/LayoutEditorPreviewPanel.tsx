@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { LayoutPreview } from './LayoutPreview';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 
 interface LayoutEditorPreviewPanelProps {
   visibleWidgets: WidgetConfig[];
@@ -13,14 +12,6 @@ interface LayoutEditorPreviewPanelProps {
   gridScrollX: number;
   gridVisibleCols: number;
   scrollToGridRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
-  // Retained for compatibility with the toolbar caller; the multi-screen
-  // safe-zone toggles/borders were retired in favor of the device gallery, so
-  // these are no longer used here.
-  screenGuideOrientation?: 'landscape' | 'portrait';
-  effectiveEnabledSizes?: string[];
-  onToggleSize?: (size: string) => void;
-  allSizeNames?: string[];
-  zones?: ScreenSafeZones;
   validation: { errors: string[]; warnings: string[] };
 }
 

@@ -9,7 +9,7 @@ import { useDisplayTimestampFormat } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { useDisplayContextFilters, useTargetResolution } from '../SettingsView';
+import { useTargetResolution } from '../SettingsView';
 import { usePinnedPhoto } from '@/components/layout/WallpaperBackground';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { toast } from '@/components/ui/use-toast';
@@ -289,25 +289,14 @@ export function PhotosSettingsSection() {
     }
   };
 
-  const { filters, setFilters } = useDisplayContextFilters();
   const { resolution, setResolution, screenSize } = useTargetResolution();
-
-  type DisplayContextKey = keyof typeof filters;
-
-  const toggleOrientation = (context: DisplayContextKey, orientation: 'landscape' | 'portrait' | 'square') => {
-    const current = filters[context].orientation;
-    const updated = current.includes(orientation)
-      ? current.filter((o) => o !== orientation)
-      : [...current, orientation];
-    setFilters({ ...filters, [context]: { ...filters[context], orientation: updated } });
-  };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Photos</h2>
         <p className="text-muted-foreground">
-          Manage photo sources, display contexts, and resolution settings
+          Manage photo sources and resolution settings
         </p>
       </div>
 
@@ -344,41 +333,6 @@ export function PhotosSettingsSection() {
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning" /> &ge; 75%</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> &lt; 75%</span>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Display Context Filters</CardTitle>
-          <CardDescription>
-            Choose which photo orientations are allowed in each display context
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(['gallery', 'wallpaper', 'screensaver'] as const).map((ctx) => (
-            <div key={ctx} className="space-y-2">
-              <span className="text-sm font-medium capitalize">{ctx}</span>
-              <div className="flex gap-2">
-                {(['landscape', 'portrait', 'square'] as const).map((ori) => {
-                  const active = filters[ctx].orientation.includes(ori);
-                  return (
-                    <button
-                      key={ori}
-                      onClick={() => toggleOrientation(ctx, ori)}
-                      className={cn(
-                        'px-3 py-1 rounded text-xs font-medium border transition-colors',
-                        active
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-border text-muted-foreground hover:bg-accent'
-                      )}
-                    >
-                      {ori}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
         </CardContent>
       </Card>
 

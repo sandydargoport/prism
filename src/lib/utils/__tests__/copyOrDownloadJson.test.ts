@@ -68,7 +68,7 @@ describe('layout Export (#1147)', () => {
     const { result } = renderHook(() => useLayoutEditorState({
       editingScreensaver: false, layoutName: 'Kitchen', currentWidgets: widgets, visibleWidgets: widgets,
       onWidgetsChange: () => {}, onSave: () => {}, onSaveAs: () => {}, allDashboards: [],
-      confirmDelete: async () => true, setActivePopover: () => {},
+      confirmDelete: async () => true,
     }));
     await act(async () => {
       result.current.handleExport();

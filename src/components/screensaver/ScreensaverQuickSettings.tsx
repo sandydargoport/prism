@@ -12,18 +12,16 @@ import { useScreensaverInterval } from '@/components/layout/WallpaperBackground'
 /**
  * The screensaver's own settings, reachable from the screensaver.
  *
- * These live in Settings → Appearance → Screensaver, which is the right place
- * for them and the wrong place to be standing when you want to try something:
- * every adjustment meant leaving the screensaver, finding the page, changing
- * one value and waiting for the screensaver to come back. Tuning something you
- * can only judge by looking at it needs to happen in front of it.
+ * The same panel opens from the editor's Through the day > More, as
+ * Screensaver motion. Tuning something you can only judge by looking at it
+ * needs to happen in front of it, so the screensaver's corner opens it too.
  *
- * Only per-display preferences are here — which effect, how often, how many
- * widgets, outlines. Nothing that touches family data, so nothing that needs a
- * PIN. The timers stay in Settings, where a considered decision belongs.
+ * Only per-screen preferences are here: which effect, how often, how many
+ * widgets, outlines, when it starts. Nothing that touches family data, so
+ * nothing that needs a PIN.
  *
  * Everything inside is marked data-screensaver-keep, which is how the idle
- * watcher knows a tap in here is somebody using the display rather than
+ * watcher knows a tap in here is somebody using the screen rather than
  * somebody dismissing it.
  */
 /**

@@ -64,52 +64,7 @@ import { useResetOn } from '@/lib/hooks/useResetOn';
 
 // Exported hooks (consumed by other components)
 
-const DISPLAY_CONTEXTS_STORAGE_KEY = 'prism-display-contexts';
 const TARGET_RESOLUTION_STORAGE_KEY = 'prism-target-resolution';
-const ORIENTATION_OVERRIDE_KEY = 'prism-orientation-override';
-
-interface DisplayContextFilters {
-  gallery: { orientation: ('landscape' | 'portrait' | 'square')[]; usage: ('gallery' | 'all')[] };
-  wallpaper: { orientation: ('landscape' | 'portrait' | 'square')[]; usage: ('wallpaper' | 'all')[] };
-  screensaver: { orientation: ('landscape' | 'portrait' | 'square')[]; usage: ('screensaver' | 'all')[] };
-}
-
-const defaultDisplayContexts: DisplayContextFilters = {
-  gallery: { orientation: ['landscape', 'portrait', 'square'], usage: ['gallery', 'all'] },
-  wallpaper: { orientation: ['landscape'], usage: ['wallpaper', 'all'] },
-  screensaver: { orientation: ['landscape'], usage: ['screensaver', 'all'] },
-};
-
-export function useDisplayContextFilters() {
-  const [filters, setFiltersState] = React.useState<DisplayContextFilters>(() => {
-    if (typeof window === 'undefined') return defaultDisplayContexts;
-    try {
-      const stored = localStorage.getItem(DISPLAY_CONTEXTS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : defaultDisplayContexts;
-    } catch { return defaultDisplayContexts; }
-  });
-
-  const setFilters = React.useCallback((f: DisplayContextFilters) => {
-    setFiltersState(f);
-    localStorage.setItem(DISPLAY_CONTEXTS_STORAGE_KEY, JSON.stringify(f));
-  }, []);
-
-  return { filters, setFilters };
-}
-
-export function useOrientationOverride() {
-  const [override, setOverrideState] = React.useState<'auto' | 'landscape' | 'portrait'>(() => {
-    if (typeof window === 'undefined') return 'auto';
-    return (localStorage.getItem(ORIENTATION_OVERRIDE_KEY) as 'auto' | 'landscape' | 'portrait') || 'auto';
-  });
-
-  const setOverride = React.useCallback((v: 'auto' | 'landscape' | 'portrait') => {
-    setOverrideState(v);
-    localStorage.setItem(ORIENTATION_OVERRIDE_KEY, v);
-  }, []);
-
-  return { override, setOverride };
-}
 
 export function useTargetResolution() {
   const [resolution, setResState] = React.useState<{ width: number; height: number }>(() => {

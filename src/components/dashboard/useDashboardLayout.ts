@@ -13,14 +13,10 @@ import {
   legacyScreensaver,
   markScreensaverCarried,
   owesLegacyScreensaver,
-  getScreensaverPresets,
   saveScreensaverPreset,
-  deleteScreensaverPreset,
 } from '@/components/screensaver/screensaverStorage';
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
 import { idleSources, parseIdleBackground, sameIdleBackground, PHOTOS, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
-import { findNextFreeSlot } from '@/lib/utils/widgetPlacement';
-import { withSharedLook } from '@/components/layout/widgetLook';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useResetOn } from '@/lib/hooks/useResetOn';
@@ -36,19 +32,19 @@ interface LayoutsData {
 /** The query parameter that opens a dashboard in edit mode. */
 export const EDIT_PARAM = 'edit';
 
-/** The editor's two tabs (#782): the dashboard, and what shows when nobody is using it. */
+/** What the canvas shows (#782): the dashboard in use, or the screen idle (from Through the day). */
 export type EditTab = 'dashboard' | 'idle';
 
-/** Which half of a day and night pair the Idle screen tab previews and edits. */
+/** Which half of a day and night pair the idle view previews and edits. */
 export type IdleHalf = 'day' | 'night';
 
-/** The background the Idle screen tab shows: the one there is, or the previewed half. */
+/** The background the idle view shows: the one there is, or the previewed half. */
 export function shownIdleSource(bg: IdleBackground, half: IdleHalf): IdleSource {
   return 'source' in bg ? bg.source : bg[half];
 }
 
 /**
- * Whether the Idle screen tab edits a screensaver layout (shown over photos or
+ * Whether the idle view edits a screensaver layout (shown over photos or
  * the sky), rather than the dashboard's own Stays / Fades. A pair with photos
  * or the sky on either half has one to edit.
  */
@@ -56,7 +52,7 @@ export function editsIdleLayout(bg: IdleBackground): boolean {
   return idleSources(bg).some(s => s !== 'dashboard' && s !== 'off');
 }
 
-/** Whether a widget stays or fades when idle: the part of a widget the Idle screen tab owns. */
+/** Whether a widget stays or fades when idle: the part of a widget the idle view owns. */
 const withoutIdleTicks = (widgets: WidgetConfig[]) =>
   JSON.stringify(widgets.map(({ showWhenIdle: _ignored, ...w }) => w));
 const idleTicks = (widgets: WidgetConfig[]) => JSON.stringify(widgets.map(w => [w.i, w.showWhenIdle]));
@@ -110,9 +106,6 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // with the saved value only because the React compiler's memoization check
   // rejects a null start here; editing always begins by resetting it.)
   const [editedBackground, setEditedBackground] = useState<IdleBackground | null>(savedBackground);
-  const [ssPresets, setSsPresets] = useState(() =>
-    typeof window !== 'undefined' ? getScreensaverPresets() : []
-  );
   const editingBackground = editedBackground === null ? savedBackground : editedBackground;
 
   // Bridge: write active dashboard's screensaver to localStorage on layout change
@@ -307,27 +300,10 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setSsLayout(newLayout);
   }, []);
 
-  const handleSsWidgetToggle = useCallback((widgetType: string, visible: boolean) => {
-    setSsLayout(prev => {
-      const exists = prev.find(w => w.i === widgetType);
-      let updated: WidgetConfig[];
-      if (exists) {
-        updated = prev.map(w => w.i === widgetType ? { ...w, visible } : w);
-      } else if (visible) {
-        const { x, y } = findNextFreeSlot(prev, 3, 3);
-        updated = [...prev, withSharedLook(prev, { i: widgetType, x, y, w: 3, h: 3, visible: true })];
-      } else {
-        return prev;
-      }
-      return updated;
-    });
-  }, []);
-
   const handleSsSaveAs = useCallback(() => {
     const name = window.prompt('Preset name:', 'My Screensaver');
     if (!name) return;
     saveScreensaverPreset(name, ssLayout);
-    setSsPresets(getScreensaverPresets());
   }, [ssLayout]);
 
   const handleSsReset = useCallback(() => {
@@ -354,26 +330,21 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setSsLayout(presetWidgets);
   }, []);
 
-  const handleDeleteSsPreset = useCallback((name: string) => {
-    deleteScreensaverPreset(name);
-    setSsPresets(getScreensaverPresets());
-  }, []);
-
   return {
     isEditing, setIsEditing,
     editingWidgets, setEditingWidgets,
     editTab, setEditTab,
     idleHalf, setIdleHalf,
-    // The Idle screen tab showing a screensaver layout to edit, rather than
+    // The idle view showing a screensaver layout to edit, rather than
     // the dashboard's own Stays / Fades.
     editingScreensaver: isEditing && editTab === 'idle' && !['dashboard', 'off'].includes(shownIdleSource(editingBackground, idleHalf)),
     editingBackground, setEditingBackground: setEditedBackground,
     dashboardDirty, idleDirty,
-    ssLayout, ssPresets,
+    ssLayout,
     activeWidgets,
     activeLayout,
     handleEditStart, handleSave, handleSaveAs, handleReset, handleCancel,
-    handleSsLayoutChange, handleSsWidgetToggle, handleSsSaveAs,
-    handleSsReset, handleSelectSsTemplate, handleSelectSsPreset, handleDeleteSsPreset,
+    handleSsLayoutChange, handleSsSaveAs,
+    handleSsReset, handleSelectSsTemplate, handleSelectSsPreset,
   };
 }

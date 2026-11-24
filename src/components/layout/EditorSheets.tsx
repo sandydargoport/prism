@@ -285,7 +285,7 @@ export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
       <section data-screen-options>
         <h3 className={section}>This screen</h3>
         <div className="flex flex-col gap-1">
-          {SCREEN_SETTING_FIELDS.filter((f) => f.group === 'Screen').map((f) => <ScreenOption key={f.key} field={f} />)}
+          {SCREEN_SETTING_FIELDS.map((f) => <ScreenOption key={f.key} field={f} />)}
         </div>
       </section>
     </div>
