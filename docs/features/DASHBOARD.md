@@ -50,7 +50,7 @@ In the **Dashboard** panel Glance comes first, marked **Built in**. **Reset to d
 
 ### Built-in templates
 
-In the **Widgets** panel, **Start from a template** loads a ready-made arrangement for you to rearrange. There are six templates, each in a landscape and a portrait version, and the panel lists the ones for the current screen shape. The screensaver has its own set (see below).
+In the **Widgets** panel, **Start from a template** loads a ready-made arrangement for you to rearrange. It asks first, since it replaces every widget on the dashboard, with its place, fill, outline and text. There are six templates, each in a landscape and a portrait version, and the panel lists the ones for the current screen shape. The screensaver has its own set (see below).
 
 Every template follows the same plan. One widget is the hero of the board, usually the calendar; on photo boards the wallpaper itself is the hero. The other widgets are sized to their natural shape and grouped into two or three balanced zones, instead of an even grid of four.
 
@@ -74,7 +74,7 @@ In the **Widgets** panel, **Browse the community gallery** shows dashboard layou
 - **Search**: type in the search box and press **Enter** to match layouts by name or description. The **×** button clears the box.
 - **Filter by orientation**: tap **▭ Landscape** or **▯ Portrait** to see only those layouts, and tap again to clear it. The filter starts on the orientation of the dashboard you are editing. Layouts stretch to fill whatever screen shows them, so the exact resolution makes no difference. Orientation does matter, because a portrait layout gets bars down the sides on a landscape screen, and the other way round.
 - **Preview**: each card draws a small copy of the board on a neutral "photo field", turned to fit so portrait boards don't spill over, with a badge for the orientation.
-- **Apply layout**: puts that design on your dashboard.
+- **Apply layout**: puts that design on your dashboard, after asking, since it replaces every widget and its fill, outline and text.
 - **Clear filters**: appears when a search or orientation filter finds nothing.
 
 While you arrange the screensaver, the gallery shows screensaver layouts instead.
@@ -159,7 +159,7 @@ On the live dashboard the box around your widgets is stretched to fill the real 
 - **Drag** a widget to move it on the grid.
 - **Tap** a widget to select it; it is marked **Move**. Tap it again for resize mode, marked **Resize**, and drag the handles on its edges and corners. A third tap lets it go.
 - With a widget selected, **Delete** or **Backspace** removes it, with **Undo** in the message that follows. The arrow keys move it one cell, or in resize mode make it wider or taller (right, down) or narrower or shorter (left, up). No key acts while you type in a field or hold Ctrl, Alt or Cmd.
-- In the **Widgets** panel, **On this dashboard** lists each widget with its **X**, **Y**, **W** and **H**, for exact placement. Tap a widget's name there to pick it, as a tap on the screen does; the **×** beside the name hides it, and **+ Add widget** brings back a hidden one.
+- In the **Widgets** panel, **On this dashboard** lists each widget with its **X**, **Y**, **W** and **H**, for exact placement. Tap a widget's name there to pick it, as a tap on the screen does; the **×** beside the name hides it, and **+ Add widget** brings back a hidden one. A widget added new takes the fill, outline and text the other widgets all share; where they differ, it starts with the theme's default.
 
 The widgets are **Clock, Weather, Calendar, Tasks, Chores, Shopping, Meals, Messages, Photos, Points/Goals, Birthdays, Wishes, and Bus Tracker.**
 
@@ -171,6 +171,7 @@ Pick a widget on the screen or in the list in the **Widgets** panel (**More > Ed
 - **Fill**: **Default** (the theme's card), **Transparent** (no card: the words sit straight on the photo in light text with a soft shadow), **Frosted** (a white, blurred card), **Glass** (a see-through card over the photo, which the Ambient templates use), a colour from the palette, or **Custom**. Under the swatches, **Opacity** sets how strong the fill is, or **Blur** for Frosted.
 - **Outline**: the border's colour and opacity, including **None** to remove the widget's border.
 - **Text**: the text colour, and **Size** (S, M, L or XL).
+- **Apply to all widgets**, under each of **Fill**, **Outline** and **Text**: puts this widget's fill, outline, or text colour and size on every widget of the dashboard, hidden ones too. The line under it says how many widgets differ, or that every widget already matches. To turn outlines off everywhere, pick **None** under **Outline** on one widget, then **Apply to all widgets**.
 - **Align**, for the clock and the weather, under **Text**: **Across** (Auto, Left, Centre, Right) and **Up/down** (Auto, Top, Middle, Bottom) set where the contents sit. On **Auto**, a small tile (a third of the width or less) that touches a screen corner hugs that corner, and any other tile is centred. A small weather tile shows the icon, temperature and condition on one line each, and the rest once the tile is wide enough.
 - **Grid**, for the calendar: the strength of its grid lines and a background colour for its cells.
 - **Hide when empty**: Prism doesn't draw the widget while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and brings it back when something arrives. Its space stays blank, so nothing else moves. It is on by default on the screensaver and on a calm dashboard's idle screen, and off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't have this option. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.

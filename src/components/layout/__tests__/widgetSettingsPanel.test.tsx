@@ -217,6 +217,56 @@ describe("a selected widget's settings in the Widgets panel (#1323)", () => {
   });
 });
 
+describe('Apply to all widgets, the look a new widget takes, and templates asking first (#1339)', () => {
+  it("Apply to all widgets puts the selected widget's outline on every widget, and then says they all match", () => {
+    const onChange = jest.fn();
+    render(<Sheet selected="tasks" start={[LAYOUT[0]!, { ...LAYOUT[1]!, outlineColor: 'transparent', backgroundColor: 'glass' }, LAYOUT[2]!]} onChange={onChange} />);
+    const outline = document.querySelector('[data-apply-all="outline"]') as HTMLElement;
+    expect(outline.querySelector('[data-apply-all-note]')!.textContent).toBe('1 widget has a different outline.');
+    fireEvent.click(within(outline).getByRole('button', { name: 'Apply this outline to all widgets' }));
+    for (const w of last(onChange)) expect(w.outlineColor).toBe('transparent');
+    // Only the outline: the clock keeps its own fill.
+    expect(widget(onChange, 'clock').backgroundColor).toBeUndefined();
+    expect(outline.querySelector('[data-apply-all-note]')!.textContent).toBe('Every widget has this outline.');
+    expect((within(outline).getByRole('button', { name: 'Apply this outline to all widgets' }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply this fill to all widgets' }));
+    for (const w of last(onChange)) expect(w.backgroundColor).toBe('glass');
+  });
+
+  it('Apply to all widgets for Text carries the text size', () => {
+    const onChange = jest.fn();
+    render(<Sheet selected="tasks" start={[LAYOUT[0]!, { ...LAYOUT[1]!, textScale: 1.25 }]} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Apply this text colour and size to all widgets' }));
+    expect(widget(onChange, 'clock').textScale).toBe(1.25);
+  });
+
+  it('a widget added from the list takes the outline every widget shares', () => {
+    const onChange = jest.fn();
+    const start = LAYOUT.slice(0, 2).map((w) => ({ ...w, outlineColor: 'transparent' }));
+    render(<Sheet selected={null} start={start} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /Add widget/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weather' }));
+    expect(widget(onChange, 'weather').outlineColor).toBe('transparent');
+  });
+
+  it('a template asks before it replaces every widget, and Cancel leaves them be', async () => {
+    const onChange = jest.fn();
+    render(<Sheet selected={null} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Family Central' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toMatch(/replaces every widget on this dashboard/);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await act(async () => {});
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Family Central' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Replace' }));
+    await act(async () => {});
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('the editor: selecting a widget brings Widgets forward (#1323)', () => {
   const editor = (selectedWidgetId: string | null) => (
     <LayoutEditor

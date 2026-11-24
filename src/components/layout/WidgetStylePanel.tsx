@@ -17,6 +17,7 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { cn } from '@/lib/utils';
 import { canHideWhenEmpty, hidesWhenEmpty } from './grid/hideWhenEmpty';
 import { isTypingTarget } from './grid/editorKeys';
+import { applyLookToAll, countDiffering, type LookPart } from './widgetLook';
 
 /** A change to a widget's look. `null` puts a colour back to the default; a field left out is kept. */
 export type WidgetStyleUpdate = {
@@ -139,9 +140,13 @@ export type WidgetStylePanelProps = {
   hideEmptyByDefault?: boolean;
   /** Stays / Fades is on the canvas: a calm dashboard's idle screen, which hides an unset empty widget. */
   idleToggles?: boolean;
+  /** Every widget on the dashboard, for Apply to all widgets (#1339). Left out, there is no such button. */
+  allWidgets?: WidgetConfig[];
+  /** The dashboard's widgets with this widget's fill, outline or text on each. */
+  onAllChange?: (next: WidgetConfig[]) => void;
 };
 
-export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault = false, idleToggles = false }: WidgetStylePanelProps) {
+export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault = false, idleToggles = false, allWidgets, onAllChange }: WidgetStylePanelProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const [paletteId, setPaletteId] = useState<PaletteId>('seasonal');
@@ -211,6 +216,28 @@ export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault
             style={{ backgroundColor: hex }} title={hex} aria-label={`${what} ${hex}`} />
         ))}
         <CustomColour label={`Custom ${what}`} value={color} onPick={apply} />
+      </div>
+    );
+  };
+
+  // Apply to all widgets (#1339): this widget's fill, outline or text on
+  // every widget, hidden ones too. Says how many of the others differ, and
+  // that they all match once they do.
+  const applyToAll = (part: LookPart) => {
+    if (!allWidgets || !onAllChange || allWidgets.length < 2) return null;
+    const what = part === 'text' ? 'text colour and size' : TARGET_NAMES[part];
+    const differ = countDiffering(allWidgets, widget, part);
+    return (
+      <div className="flex flex-col gap-1" data-apply-all={part}>
+        <button type="button" disabled={differ === 0} className={cn(chip(false), 'self-start disabled:cursor-default disabled:opacity-50')}
+          onClick={() => onAllChange(applyLookToAll(allWidgets, widget, part))}
+          aria-label={`Apply this ${what} to all widgets`}>
+          Apply to all widgets
+        </button>
+        <p className={note} data-apply-all-note>
+          {differ === 0 ? `Every widget has this ${what}.`
+            : `${differ} ${differ === 1 ? 'widget has' : 'widgets have'} a different ${what}.`}
+        </p>
       </div>
     );
   };
@@ -322,6 +349,7 @@ export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault
           ) : bgColor && bgColor !== 'transparent' ? (
             <Choices name="Opacity" label="Fill opacity" value={bgOpacity} options={OPACITIES} onPick={(o) => style({ backgroundOpacity: o })} />
           ) : null}
+          {applyToAll('fill')}
         </div>
       </section>
 
@@ -332,6 +360,7 @@ export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault
           {olColor && olColor !== 'transparent' && (
             <Choices name="Opacity" label="Outline opacity" value={olOpacity} options={OPACITIES} onPick={(o) => style({ outlineOpacity: o })} />
           )}
+          {applyToAll('outline')}
         </div>
       </section>
 
@@ -341,6 +370,7 @@ export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault
           {colours('text')}
           <Choices name="Size" label="Text size" value={widget.textScale ?? 1} options={SIZES} onPick={(v) => style({ textScale: v })} />
           {align}
+          {applyToAll('text')}
         </div>
       </section>
 

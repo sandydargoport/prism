@@ -20,6 +20,7 @@ import {
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
 import { idleSources, parseIdleBackground, sameIdleBackground, PHOTOS, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
 import { findNextFreeSlot } from '@/lib/utils/widgetPlacement';
+import { withSharedLook } from '@/components/layout/widgetLook';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useResetOn } from '@/lib/hooks/useResetOn';
@@ -314,7 +315,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         updated = prev.map(w => w.i === widgetType ? { ...w, visible } : w);
       } else if (visible) {
         const { x, y } = findNextFreeSlot(prev, 3, 3);
-        updated = [...prev, { i: widgetType, x, y, w: 3, h: 3, visible: true }];
+        updated = [...prev, withSharedLook(prev, { i: widgetType, x, y, w: 3, h: 3, visible: true })];
       } else {
         return prev;
       }
