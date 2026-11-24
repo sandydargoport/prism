@@ -53,6 +53,8 @@ export type SceneInput = {
   away?: boolean;
   /** Sitter mode is on: the same. */
   sitter?: boolean;
+  /** A dashboard is being edited on this page: the screen never goes idle over the editor (#1342). */
+  editing?: boolean;
   /** Whether this screen can idle at all. */
   canIdle?: boolean;
 };
@@ -78,10 +80,10 @@ export type Scene = {
  * dim and the idle look wait for them to end.
  */
 export function screenStateAt({
-  idle, background, at, dimLevel = 0, away = false, sitter = false, canIdle = true,
+  idle, background, at, dimLevel = 0, away = false, sitter = false, editing = false, canIdle = true,
 }: SceneInput): Scene {
   const night = 'night' in at ? at.night : isNightAt(nightRule(background), at.now, at.lat, at.lon);
-  const resting = canIdle && shouldShowScreensaver({ idle, away, babysitter: sitter });
+  const resting = canIdle && shouldShowScreensaver({ idle, away, babysitter: sitter, editing });
   const state: ScreenState = !resting ? 'active' : night ? 'night' : 'resting';
   return { state, night, look: backdropFor(background, state), dim: resting && night ? dimLevel : 0 };
 }

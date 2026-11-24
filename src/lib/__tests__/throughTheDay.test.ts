@@ -69,6 +69,8 @@ describe('screenStateAt: what a screen shows (#1344)', () => {
     ['idle at night in Away', { idle: true, away: true, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
     ['idle at night with a sitter', { idle: true, sitter: true, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
     ['a screen that cannot idle', { idle: true, canIdle: false, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+    // Never idle, and never dimmed, over the editor (#1342).
+    ['idle at night while editing', { idle: true, editing: true, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
     // The editor's previews give night outright.
     ['the Resting preview', { idle: true, at: { night: false } }, { state: 'resting', night: false, look: 'photos', dim: 0 }],
     ['the Night preview', { idle: true, at: { night: true } }, { state: 'night', night: true, look: 'off', dim: 0.5 }],

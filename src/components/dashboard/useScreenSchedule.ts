@@ -11,6 +11,7 @@ import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { loadBase, planOf } from '@/lib/displays/displaySettingsSync';
 import { SCHEDULE_TRANSITION, switchAt, type BusTime, type ScreenPlan } from '@/lib/screenSwitches';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
+import { useScreenIdle } from '@/components/screensaver/useScreenIdle';
 
 /**
  * A named screen shows its dashboard, and switches to another for a while at
@@ -24,10 +25,12 @@ import { pageZoomVars } from '@/lib/utils/zoomVars';
  * CssGridDisplay). A change made from another device reaches it through the
  * heartbeat, which reloads it (DisplayHeartbeat).
  *
- *  - Someone opening another dashboard by hand keeps it until the next switch
- *    starts or ends; then the screen's own plan takes over again.
+ *  - Someone opening another dashboard by hand keeps it until the screen next
+ *    goes idle, or the next switch starts or ends, whichever comes first; then
+ *    the screen's own plan takes over again (#1342).
  *  - A change waits while the screen is in use: until nobody has touched it
- *    for a minute, and never while the layout is being edited.
+ *    for a minute (or it has gone idle), and never while the layout is being
+ *    edited.
  *
  * A named screen follows its plan at any address. A device nobody named shows
  * the dashboard at its address, the default on the home page, and switches
@@ -114,7 +117,7 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
    * undefined when it is the same.
    */
   zoomStyle: React.CSSProperties | undefined;
-  /** Someone chose this dashboard (by slug); it stays until the next switch starts or ends. */
+  /** Someone chose this dashboard (by slug); it stays until the screen goes idle or the next switch starts or ends. */
   pick: (slug: string) => void;
 } {
   // Read once the page is in the browser: a change to it reloads the page.
@@ -138,7 +141,7 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
   }, [plan, routeLayout, layouts, defaultLayout, householdTimezone, busTimes]);
 
   // While someone's own choice stands: the switch in force when they made
-  // it (-1 for none). It holds until that changes.
+  // it (-1 for none). It holds until that changes, or the screen goes idle.
   const holdRule = useRef<number | null>(null);
   const [shownId, setShownId] = useState<string | null>(null);
 
@@ -168,16 +171,20 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
 
   useEffect(listenForInput, []);
 
-  const check = useCallback(() => {
+  // Gone idle: nobody is at the screen, so a dashboard picked by hand gives
+  // way to the screen's own, even with no switch to end it (#1342).
+  const idle = useScreenIdle();
+
+  const check = useCallback((idleNow: boolean) => {
     if (loading || editing.current) return;
     const now = Date.now();
     const { rule, id } = wanted(now);
     if (holdRule.current !== null) {
-      if (rule === holdRule.current) return;
+      if (!idleNow && rule === holdRule.current) return;
       holdRule.current = null;
     }
     if (id === shownId) return;
-    if (now - lastInputAt < IN_USE_MS) return;
+    if (!idleNow && now - lastInputAt < IN_USE_MS) return;
     if (perfLevel === 'minimal') {
       setShownId(id);
       return;
@@ -188,7 +195,9 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
     });
   }, [loading, editing, wanted, shownId, perfLevel]);
 
-  useVisibilityPolling(check, CHECK_MS, { pollWhileIdle: true });
+  // It polls while idle too, so the change over happens behind the idle
+  // screen, at the first check after it goes idle.
+  useVisibilityPolling(() => check(idle), CHECK_MS, { pollWhileIdle: true });
 
   const shown = layouts.find((l) => l.id === shownId) ?? routeLayout;
   const shownScale = shown?.fontScale ?? 100;

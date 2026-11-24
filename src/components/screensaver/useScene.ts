@@ -15,15 +15,17 @@ import { dimLevel, useIdleDimSetting } from './idleDim';
  * minute while it is idle, so a screen left idle through the evening changes
  * over at dusk without being touched.
  */
-export function useWallScene({ idle, away, sitter, background }: {
+export function useWallScene({ idle, away, sitter, editing = false, background }: {
   idle: boolean;
   away: boolean;
   sitter: boolean;
+  /** A dashboard is being edited on this page (useEditing, #1342). */
+  editing?: boolean;
   background: IdleBackground;
 }): Scene & { lat: number; lon: number; eclipse?: ReturnType<typeof useSkyLocation>['eclipse'] } {
   const { lat, lon, eclipse } = useSkyLocation(needsLocation(background));
   const { level } = useIdleDimSetting();
-  const resting = idle && !away && !sitter;
+  const resting = idle && !away && !sitter && !editing;
   const [now, setNow] = useState(() => new Date());
   // The screensaver stays mounted all day, so the time it last looked is
   // stale by the moment it comes up.
@@ -34,7 +36,7 @@ export function useWallScene({ idle, away, sitter, background }: {
     return () => window.clearInterval(timer);
   }, [resting]);
   const scene = screenStateAt({
-    idle, away, sitter, background, at: { now, lat, lon }, dimLevel: dimLevel(level),
+    idle, away, sitter, editing, background, at: { now, lat, lon }, dimLevel: dimLevel(level),
   });
   return { ...scene, lat, lon, eclipse };
 }

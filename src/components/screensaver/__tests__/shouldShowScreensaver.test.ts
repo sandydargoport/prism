@@ -9,7 +9,7 @@
 import { shouldShowScreensaver } from '../shouldShowScreensaver';
 
 const state = (o: Partial<Parameters<typeof shouldShowScreensaver>[0]> = {}) => ({
-  idle: false, away: false, babysitter: false, ...o,
+  idle: false, away: false, babysitter: false, editing: false, ...o,
 });
 
 describe('shouldShowScreensaver', () => {
@@ -23,6 +23,10 @@ describe('shouldShowScreensaver', () => {
 
   it('does not show while Babysitter mode is on', () => {
     expect(shouldShowScreensaver(state({ idle: true, babysitter: true }))).toBe(false);
+  });
+
+  it('does not show while a dashboard is being edited (#1342)', () => {
+    expect(shouldShowScreensaver(state({ idle: true, editing: true }))).toBe(false);
   });
 
   it('does not show when both modes are on', () => {

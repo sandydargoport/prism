@@ -24,6 +24,11 @@ export function shouldShowScreensaver(state: {
   away: boolean;
   /** Babysitter mode is on. */
   babysitter: boolean;
+  /**
+   * A dashboard is being edited on this page (useEditing, #1342): the screen
+   * never goes idle over the editor, on the wall or in the editor's frame.
+   */
+  editing: boolean;
 }): boolean {
-  return state.idle && !state.away && !state.babysitter;
+  return state.idle && !state.away && !state.babysitter && !state.editing;
 }

@@ -35,6 +35,7 @@ import { useAutoPerformance, usePerformanceModeOn } from '@/lib/hooks/usePerform
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
+import { useEditing } from '@/lib/hooks/useEditing';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useWallScene } from './useScene';
@@ -92,12 +93,14 @@ export function Screensaver() {
   // has touched anything — so it yields to both.
   const { isAway } = useAwayMode();
   const { isActive: isBabysitter } = useBabysitterMode();
+  // Never idle while a dashboard is being edited here (#1342).
+  const editing = useEditing();
   // What shows behind it (#782), which can change with the time of day. When
   // it is the dashboard itself (calm mode, #691) this decides when, and the
   // dashboard does the showing, so there is no overlay to put up. One
   // function says what the screen shows (#1344): the look, night and the dim.
   const background = useActiveIdleBackground();
-  const scene = useWallScene({ idle: idleNow, away: isAway, sitter: isBabysitter, background });
+  const scene = useWallScene({ idle: idleNow, away: isAway, sitter: isBabysitter, editing, background });
   const { lat, lon, eclipse, night } = scene;
   const idle = scene.state !== 'active';
   const source = scene.look;

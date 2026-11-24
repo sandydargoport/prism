@@ -118,6 +118,12 @@ async function boxes(where: Page | FrameLocator, selector: string): Promise<Reco
   }, selector);
 }
 
+/** The canvas size each orientation is edited at: the screen's own size. */
+const CANVAS = {
+  landscape: { width: 1920, height: 1080 },
+  portrait: { width: 800, height: 1280 },
+} as const;
+
 async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'portrait', outlines?: 'off') {
   const login = await page.request.post('/api/auth/login', {
     data: { userId: getSeededParentId(), pin: PIN },
@@ -136,7 +142,8 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
   const frame = await openEditor(page, 'clock');
   // The canvas is the screen: its size and shape for this orientation, the
   // portrait one near the size this measured at before (#1283).
-  await page.locator('[data-canvas-size]').selectOption(orientation === 'landscape' ? '1920x1080' : '800x1280');
+  const { width, height } = CANVAS[orientation];
+  await page.locator('[data-canvas-size]').selectOption(`${width}x${height}`);
   await frame.locator('[data-editor-widget="clock"]').waitFor({ timeout: 90_000 });
   // The seeded dashboard shows the screensaver over photos, so the resting
   // screen (See it on Through the day's Resting row, #1294) arranges its
@@ -188,11 +195,17 @@ for (const [orientation, viewport] of [
       // Its shortcut, Control+Shift+M, is heard where the editor runs: the frame.
       await canvas.locator('body').evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'M', ctrlKey: true, shiftKey: true })));
 
-      await canvas.locator('body').evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
-      const liveCell = canvas.locator('.fixed.inset-0 .widget-cell[data-widget="clock"]');
+      // The screen never goes idle while its editor is open (#1342), so the
+      // live screensaver is measured on the wall, out of the editor, at the
+      // canvas's own size: the frame and this page are then the same screen.
+      await page.setViewportSize(CANVAS[orientation]);
+      await page.goto('/');
+      await page.locator('.widget-cell[data-widget]').first().waitFor({ timeout: 60_000 });
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      const liveCell = page.locator('.fixed.inset-0 .widget-cell[data-widget="clock"]');
       await liveCell.waitFor();
       await page.waitForTimeout(1500);
-      const live = await boxes(canvas, '.fixed.inset-0 .widget-cell[data-widget]');
+      const live = await boxes(page, '.fixed.inset-0 .widget-cell[data-widget]');
       // The live frame is the grid's content box: the canvas inside its padding.
       const liveFrame = await liveCell.evaluate((el) => {
         const grid = el.parentElement!;

@@ -35,6 +35,7 @@ import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { changedSettings, REMOTE_EDIT_GLOBAL, type RemoteEditHost } from '@/lib/displays/remoteEdit';
 import { ownScreenId, SCREENS_LIST as LIST } from '@/lib/displays/editPlace';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
+import { useHoldEditing } from '@/lib/hooks/useEditing';
 import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/hooks/useIsMobile';
 import { syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 
@@ -145,6 +146,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
   const original = useRef<ScreenSettings>({});
   const originalPlan = useRef<ScreenPlan>({ dashboardId: null, switches: [] });
   const finishing = useRef(false);
+  // The screen does not go idle over the editor (#1342): taps in the frame never reach this page.
+  useHoldEditing(true);
 
   // A parent only, as on the screen itself.
   useEffect(() => {

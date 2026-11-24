@@ -258,6 +258,7 @@ function ScreensHelp() {
         <Li><strong>When nobody is using it</strong>: <strong>Rest after</strong>, how long nobody touches the screen before it rests, and <strong>How dark</strong>, how far it dims at night</Li>
         <Li><strong>Light and photos</strong>: <strong>Light or dark</strong>, <strong>Photos behind the dashboard</strong> (Shown or Hidden) and <strong>New photo every</strong></Li>
       </Ul>
+      <P>A dashboard you open by hand stays until the screen next goes idle, or until a switch starts or ends; then the screen shows its own again. The screen never goes idle while its editor is open, on the screen or from a phone.</P>
       <P>These belong to the screen, and so do its seasonal theme, its pinned photos and which time zone it shows, set on the screen in Settings. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the Screen drop-down says <strong>No screen</strong> (or <strong>This device (not named)</strong>, with <strong>Name this device</strong> below it) and lists the screens.</P>
 
       <H2>Through the day</H2>
