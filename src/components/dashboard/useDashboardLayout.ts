@@ -2,6 +2,7 @@
 
 import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { editorLink, editsOnCanvas } from '@/lib/displays/editPlace';
+import { useHoldEditing } from '@/lib/hooks/useEditing';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
@@ -87,6 +88,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const { activeUser, requireAuth } = useAuth();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  // The screen does not go idle while its dashboard is in edit mode (#1342).
+  useHoldEditing(isEditing);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
   const [preEditWidgets, setPreEditWidgets] = useState<WidgetConfig[]>([]);
   const [preEditSs, setPreEditSs] = useState<WidgetConfig[]>([]);

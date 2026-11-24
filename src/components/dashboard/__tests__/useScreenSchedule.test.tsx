@@ -4,9 +4,9 @@
 /**
  * A named screen following its own dashboard and switches while it stays on
  * (#692, #1282): which dashboard it shows on opening, at set times and at bus
- * time, when someone picks another by hand, and when the layout is being
- * edited. A device nobody named shows the default and switches nothing. The
- * change waiting for an untouched screen, and the morph, are measured in the
+ * time, when someone picks another by hand (until the screen next goes idle,
+ * #1342), and when the layout is being edited. A device nobody named shows
+ * the default and switches nothing. The change waiting for an untouched screen, and the morph, are measured in the
  * browser (e2e/display-registry.spec.ts).
  */
 import * as React from 'react';
@@ -22,6 +22,21 @@ let check: () => void = () => {};
 jest.mock('@/lib/hooks/useVisibilityPolling', () => ({
   useVisibilityPolling: (callback: () => void) => { check = callback; },
 }));
+
+// Whether the screen has gone idle, as the Screensaver publishes it; the test says when.
+const mockIdle = { value: false, listeners: new Set<() => void>() };
+jest.mock('@/components/screensaver/useScreenIdle', () => ({
+  useScreenIdle: () => jest.requireActual<typeof import('react')>('react').useSyncExternalStore(
+    (l: () => void) => { mockIdle.listeners.add(l); return () => { mockIdle.listeners.delete(l); }; },
+    () => mockIdle.value,
+  ),
+}));
+function goIdle(value: boolean) {
+  act(() => {
+    mockIdle.value = value;
+    for (const l of mockIdle.listeners) l();
+  });
+}
 
 /** The bus routes the status endpoint answers with. */
 let routes: Array<{ scheduledTime: string; activeDays: number[] }> = [];
@@ -52,6 +67,7 @@ beforeEach(() => {
   localStorage.clear();
   plan({ dashboardId: null, switches: [{ when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING }] });
   routes = [];
+  mockIdle.value = false;
   global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes }) })) as never;
 });
 
@@ -114,6 +130,39 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBe('evening');
     tick('08:00');
     expect(result.current.slug).toBeUndefined();
+  });
+
+  it('a dashboard picked by hand returns to the screen\'s own when it goes idle, with no switches (#1342)', () => {
+    plan({ dashboardId: null, switches: [] });
+    const { result } = open(undefined, '12:00');
+    act(() => result.current.pick('evening'));
+    tick('13:00');
+    expect(result.current.slug).toBe('evening');
+    goIdle(true);
+    tick('13:01');
+    expect(result.current.slug).toBeUndefined();
+    // Woken and picked again: it stays until the next idle.
+    goIdle(false);
+    act(() => result.current.pick('evening'));
+    tick('14:00');
+    expect(result.current.slug).toBe('evening');
+    goIdle(true);
+    tick('14:01');
+    expect(result.current.slug).toBeUndefined();
+  });
+
+  it('a dashboard picked by hand returns to the switch in force when it goes idle (#1342)', () => {
+    const { result } = open(undefined, '07:10');
+    expect(result.current.slug).toBe('morning');
+    act(() => result.current.pick('evening'));
+    tick('07:30');
+    expect(result.current.slug).toBe('evening');
+    // Touched a moment ago, but gone idle: nobody is at the screen.
+    jest.setSystemTime(at('07:31'));
+    act(() => { window.dispatchEvent(new Event('pointerdown')); });
+    goIdle(true);
+    tick('07:31');
+    expect(result.current.slug).toBe('morning');
   });
 
   it('a dashboard opened later from inside the app counts as picked by hand', () => {

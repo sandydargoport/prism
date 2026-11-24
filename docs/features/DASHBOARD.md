@@ -121,7 +121,7 @@ A named screen shows one dashboard, and can switch to another for a while. Both 
 
 A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Screen** > **Name this device**.
 
-Make a dashboard to switch to with **Make a copy** in the Dashboard panel and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next switch starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
+Make a dashboard to switch to with **Make a copy** in the Dashboard panel and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until it next goes idle, or until a switch starts or ends, and then shows its own again. This works with no switches too. The screen never goes idle while its editor is open, on the screen or from a phone, so nothing dims or covers the editor. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
 #### Notices
 
