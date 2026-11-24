@@ -5,7 +5,6 @@ import { focalOf } from '@/lib/photos/focalPoint';
 import { CENTRED, photoFrame } from '@/lib/photos/frame';
 import { coveredRects } from '@/lib/photos/frameDom';
 import { PhotoStage } from '@/components/layout/PhotoStage';
-import { isNightAt, nightRule } from '@/lib/throughTheDay';
 import { usePhotoTone } from '@/components/layout/WallpaperBackground';
 import { waterVars } from '@/lib/design/water';
 import * as React from 'react';
@@ -25,7 +24,6 @@ import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { loadScreensaverLayout } from './screensaverStorage';
 import { hidesWhenEmpty } from '@/components/layout/grid/hideWhenEmpty';
-import { shouldShowScreensaver } from './shouldShowScreensaver';
 import { rotate, showingCount } from './screensaverRotation';
 import { useScreensaverMotion } from './useScreensaverMotion';
 import { WidgetStage } from './WidgetStage';
@@ -39,9 +37,8 @@ import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
-import { useIdleSource, useSkyLocation } from './useIdleBackground';
+import { useWallScene } from './useScene';
 import { setCalmIdle, useActiveIdleBackground } from './calmMode';
-import { needsLocation } from '@/lib/idleBackground';
 import { IdleDim } from './idleDim';
 
 // Only displays that choose the sky load its star catalogue.
@@ -95,13 +92,15 @@ export function Screensaver() {
   // has touched anything — so it yields to both.
   const { isAway } = useAwayMode();
   const { isActive: isBabysitter } = useBabysitterMode();
-  const idle = shouldShowScreensaver({ idle: idleNow, away: isAway, babysitter: isBabysitter });
   // What shows behind it (#782), which can change with the time of day. When
   // it is the dashboard itself (calm mode, #691) this decides when, and the
-  // dashboard does the showing, so there is no overlay to put up.
+  // dashboard does the showing, so there is no overlay to put up. One
+  // function says what the screen shows (#1344): the look, night and the dim.
   const background = useActiveIdleBackground();
-  const { lat, lon, eclipse } = useSkyLocation(needsLocation(background));
-  const source = useIdleSource(background, lat, lon, idle);
+  const scene = useWallScene({ idle: idleNow, away: isAway, sitter: isBabysitter, background });
+  const { lat, lon, eclipse, night } = scene;
+  const idle = scene.state !== 'active';
+  const source = scene.look;
   const calm = source === 'dashboard';
   const showSky = source === 'sky';
   // Under the sky or a black screen there are no photos to load.
@@ -166,21 +165,13 @@ export function Screensaver() {
       ? `/api/photos/${photos[currentIndex]!.id}/file`
       : '';
 
-  // Night by the dashboard's one rule (#1152): the warm ink (#929) and the dim.
-  const [nowTick, setNowTick] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNowTick(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-  useResetOn(idle, () => setNowTick(Date.now()));
-  const night = isNightAt(nightRule(background), new Date(nowTick), lat, lon);
   const tone = usePhotoTone(isIdle && src ? src : null);
   const shadeVars = waterVars(tone, 0.25);
 
   // Over both idle screens, so it is outside the overlay below and stays
   // mounted while a calm dashboard is idle. Same place in both returns, so it
   // keeps its state and eases out on waking.
-  const dim = <IdleDim idle={idle} night={night} />;
+  const dim = <IdleDim opacity={scene.dim} />;
   if (!isIdle) return <>{dim}{null}</>;
 
   // Night look "off" (#1152): nothing but black until a touch.

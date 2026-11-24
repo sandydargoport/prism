@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useResetOn } from '@/lib/hooks/useResetOn';
+import { useState } from 'react';
 import { useWeather } from '@/lib/hooks/useWeather';
-import { idleSourceAt, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
-import { isNightAt } from '@/lib/throughTheDay';
 import type { Eclipse } from '@/lib/integrations/eclipse';
 
 /**
@@ -23,40 +20,4 @@ export function useSkyLocation(enabled: boolean): { lat: number; lon: number; ec
   const eclipse = data?.eclipse;
   if (data?.lat !== undefined && data?.lon !== undefined) return { lat: data.lat, lon: data.lon, eclipse };
   return { lat: 40, lon: zoneLon, eclipse, guessed: true };
-}
-
-/**
- * Which background shows now, rechecked each minute while the display is idle
- * so one left idle through the evening changes over at dusk without being
- * touched.
- */
-export function useIdleSource(
-  bg: IdleBackground, lat: number, lon: number, active: boolean,
-): IdleSource {
-  const [now, setNow] = useState(() => new Date());
-  // The screensaver stays mounted all day, so the time it last looked is stale
-  // by the moment it comes up.
-  useResetOn(active, () => setNow(new Date()));
-  const changes = 'switch' in bg;
-  useEffect(() => {
-    if (!active || !changes) return;
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, [active, changes]);
-  return idleSourceAt(bg, now, lat, lon);
-}
-
-/**
- * Whether it is night now by `rule` (#1152), rechecked each minute: what
- * Today's veil and warm ink go by, the same rule the dim and the night
- * backdrop use.
- */
-export function useNightNow(rule: IdleSwitch): boolean {
-  const { lat, lon } = useSkyLocation(rule.by === 'sun');
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  return isNightAt(rule, now, lat, lon);
 }

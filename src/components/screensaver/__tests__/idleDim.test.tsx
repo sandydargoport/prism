@@ -27,15 +27,11 @@ describe('dimAt', () => {
 });
 
 describe('IdleDim', () => {
+  // When and how dark is the scene's (screenStateAt, #1344); the layer draws it.
   const opacity = (c: HTMLElement) => (c.querySelector('[data-idle-dim]') as HTMLElement).style.opacity;
-  beforeEach(() => localStorage.setItem('prism-screensaver-dim', '0.75'));
-  afterEach(() => localStorage.clear());
 
-  it('darkens a resting screen at night', () => {
-    expect(opacity(render(<IdleDim idle night />).container)).toBe('0.75');
-  });
-  it('leaves it alone by day, and while someone is using it', () => {
-    expect(opacity(render(<IdleDim idle night={false} />).container)).toBe('0');
-    expect(opacity(render(<IdleDim idle={false} night />).container)).toBe('0');
+  it('draws the scene\'s dim', () => {
+    expect(opacity(render(<IdleDim opacity={0.75} />).container)).toBe('0.75');
+    expect(opacity(render(<IdleDim opacity={0} />).container)).toBe('0');
   });
 });

@@ -62,9 +62,8 @@ import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
-import { useNightNow } from '@/components/screensaver/useIdleBackground';
-import { dimLevel, useIdleDimSetting } from '@/components/screensaver/idleDim';
-import { backdropFor, nightRule, type ScreenState } from '@/lib/throughTheDay';
+import { usePreviewScene } from '@/components/screensaver/useScene';
+import type { ScreenState } from '@/lib/throughTheDay';
 import { useScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 
 class WidgetBoundary extends React.Component<
@@ -258,12 +257,14 @@ export function Dashboard({
     : layout.editTab !== 'idle' ? 'active'
       : layout.idleHalf === 'night' ? 'night' : 'resting';
   const shownBackground = layout.isEditing ? layout.editingBackground : idleBackground;
-  // One night for the veil, the dim and the backdrop: the dashboard's rule.
-  const nightNow = useNightNow(nightRule(shownBackground));
-  const sceneNight = previewState === 'night' || (previewState !== 'resting' && nightNow);
-  const previewBackdrop = previewState ? backdropFor(shownBackground, previewState) : null;
-  const { level: dimRaw } = useIdleDimSetting();
-  const previewDim = previewState === 'night' && previewBackdrop === 'dashboard' ? dimLevel(dimRaw) : 0;
+  // One function says what the screen shows (#1344): the veil, the dim and
+  // the backdrop all go by the dashboard's rule.
+  const scene = usePreviewScene({ previewState, calmIdle, background: shownBackground });
+  const sceneNight = scene.night;
+  const previewBackdrop = previewState ? scene.look : null;
+  // The preview draws the dim over the dashboard look only; the wall dims
+  // every look (#1348).
+  const previewDim = previewState === 'night' && previewBackdrop === 'dashboard' ? scene.dim : 0;
 
   // Orientation from active layout (DB), fallback to landscape
   // A choice made here holds until the active layout's orientation changes.
@@ -695,7 +696,7 @@ export function Dashboard({
             // on it as they are made (#1151).
             <WidgetErrorBoundary>
               {todayScene(layout.activeWidgets, {
-                idle: calmIdle || previewState === 'resting' || previewState === 'night',
+                idle: scene.state !== 'active',
                 night: sceneNight,
                 drift: idleDrift,
               })}

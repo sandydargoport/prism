@@ -54,12 +54,11 @@ export function useIdleDimSetting() {
  * The black layer itself, over everything and never in the way of a tap.
  *
  * It eases in slowly, so the room notices the screen settling rather than a
- * switch, and lifts quickly on a touch. The screensaver says when it is
- * night, rechecked each minute, so a screen already idle at dusk dims then.
+ * switch, and lifts quickly on a touch. How dark comes from the screen's
+ * scene (`screenStateAt`, #1344), rechecked each minute, so a screen already
+ * idle at dusk dims then.
  */
-export function IdleDim({ idle, night }: { idle: boolean; night: boolean }) {
-  const { level } = useIdleDimSetting();
-  const opacity = idle ? dimAt(level, night) : 0;
+export function IdleDim({ opacity }: { opacity: number }) {
   return (
     <div
       aria-hidden
