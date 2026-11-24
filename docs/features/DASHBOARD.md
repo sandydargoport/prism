@@ -16,7 +16,7 @@ The editor looks the same on every device. It opens on a canvas: the dashboard l
 
 - **On a named screen** (named in **Screen**, listed in *Settings > Screens*) **Edit layout** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
 - **On a laptop or any other device** it opens at the size of a screen that shows the dashboard. **Shown at** above the canvas picks another: a named screen or a common screen size.
-- **For another named screen**, **Edit** on its row in *Settings > Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**. This is how you edit from a phone, whose **More** has no **Edit layout**.
+- **For another named screen**, **Edit** on its row in *Settings > Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**. From a phone, **More > Edit a screen** gets there: one named screen opens its editor, two or more open *Settings > Screens*, and with none it opens the default dashboard's editor.
 
 What each panel holds:
 

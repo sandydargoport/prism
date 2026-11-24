@@ -5,7 +5,7 @@
  * first on a wall and last on a phone, and This screen on every page, with
  * Edit layout going to the screen's dashboard with the editor open.
  */
-import { render, fireEvent, act, waitFor, screen } from '@testing-library/react';
+import { render, fireEvent, act, waitFor, screen, cleanup } from '@testing-library/react';
 
 let pathname = '/chores';
 let narrow = false;
@@ -65,10 +65,10 @@ describe('the More panel (#1257)', () => {
     for (const tile of tiles) for (const c of MORE_TILE.split(' ')) expect(tile.className.split(' ')).toContain(c);
   });
 
-  it('on a phone: Pages, Prism, This screen, with no Edit layout or screensaver', () => {
+  it('on a phone: Pages, Screens, Prism, This screen, with no Edit layout or screensaver', () => {
     narrow = true;
     const panel = openMore();
-    expect(groups(panel)).toEqual(['pages', 'prism', 'screen']);
+    expect(groups(panel)).toEqual(['pages', 'screens', 'prism', 'screen']);
     expect(job(panel, 'reload')).not.toBeNull();
     expect(job(panel, 'away')).not.toBeNull();
     expect(job(panel, 'edit')).toBeNull();
@@ -126,6 +126,69 @@ describe('the More panel (#1257)', () => {
     const panel = document.querySelector<HTMLElement>('[data-dock-more-panel]')!;
     expect(job(panel, 'own')).not.toBeNull();
     expect(job(panel, 'reload')).toBeNull();
+  });
+});
+
+describe('a phone edits a screen from More (#1353)', () => {
+  /** /api/displays and /api/layouts answer with these. */
+  const serve = (screens: Array<{ id: string }>, layouts: Array<{ id: string; isDefault: boolean }> = []) => {
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () => (url === '/api/displays' ? { displays: screens } : url === '/api/layouts' ? { layouts } : {}),
+    }));
+  };
+  const tile = (panel: HTMLElement) => panel.querySelector<HTMLElement>('[data-dock-more-group="screens"] [data-screen-job="edit-a-screen"]');
+  const press = async () => {
+    const panel = openMore();
+    expect(tile(panel)?.textContent).toBe('Edit a screen');
+    await act(async () => { fireEvent.click(tile(panel)!); });
+  };
+
+  beforeEach(() => { narrow = true; });
+
+  it('one named screen opens its editor', async () => {
+    activeUser = { role: 'parent' };
+    serve([{ id: 'hall' }]);
+    await press();
+    expect(push).toHaveBeenCalledWith('/screens/hall');
+  });
+
+  it('two or more open Settings > Screens', async () => {
+    activeUser = { role: 'parent' };
+    serve([{ id: 'hall' }, { id: 'kitchen' }]);
+    await press();
+    expect(push).toHaveBeenCalledWith('/settings?section=displays');
+  });
+
+  it("none opens the default dashboard's editor", async () => {
+    activeUser = { role: 'parent' };
+    serve([], [{ id: 'other', isDefault: false }, { id: 'main', isDefault: true }]);
+    await press();
+    expect(push).toHaveBeenCalledWith('/edit/main');
+  });
+
+  it("signed out, it asks for a parent's PIN first, and a child goes nowhere", async () => {
+    serve([{ id: 'hall' }]);
+    requireAuth.mockResolvedValueOnce({ role: 'child' });
+    await press();
+    expect(requireAuth).toHaveBeenCalledWith('Sign in to edit', expect.any(String), { parentsOnly: true });
+    expect(push).not.toHaveBeenCalled();
+    requireAuth.mockResolvedValueOnce({ role: 'parent' });
+    await act(async () => { fireEvent.click(document.querySelector('[data-dock-more]')!); });
+    await act(async () => { fireEvent.click(tile(document.querySelector<HTMLElement>('[data-dock-more-panel]')!)!); });
+    expect(push).toHaveBeenCalledWith('/screens/hall');
+  });
+
+  it('a signed-in child has no Edit a screen, and a wall has no Screens group', () => {
+    activeUser = { role: 'child' };
+    let panel = openMore();
+    expect(tile(panel)).toBeNull();
+    expect(groups(panel)).not.toContain('screens');
+    cleanup();
+    activeUser = { role: 'parent' };
+    narrow = false;
+    panel = openMore();
+    expect(groups(panel)).not.toContain('screens');
   });
 });
 

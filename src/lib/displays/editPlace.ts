@@ -26,6 +26,20 @@ export function screenEditLink(screenId: string, dashboardId?: string): string {
   return `/screens/${encodeURIComponent(screenId)}${at}`;
 }
 
+/** Settings > Screens, the list of the household's screens. */
+export const SCREENS_LIST = '/settings?section=displays';
+
+/**
+ * Where More > Edit a screen goes from a phone (#1353): a phone edits a
+ * screen, never itself. One named screen opens its editor, two or more the
+ * list to pick from, and with none the default dashboard's editor.
+ */
+export function phoneEditPlace(screens: ReadonlyArray<{ id: string }>, defaultDashboardId: string | null): string {
+  if (screens.length === 1) return screenEditLink(screens[0]!.id);
+  if (screens.length > 1) return SCREENS_LIST;
+  return defaultDashboardId ? canvasEditLink(defaultDashboardId) : '/?edit=1';
+}
+
 /** The screen this browser is, when it is a named one and knows its id. */
 export function ownScreenId(): string | null {
   if (!isNamedScreen()) return null;
