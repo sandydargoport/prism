@@ -33,7 +33,7 @@ describe('bundler per script', () => {
   it('runs the browser tests on webpack, the bundler the build uses', () => {
     expect(scripts['dev:webpack']).toMatch(/^next dev\b.*--webpack/);
     const config = readFileSync(resolve(__dirname, '../../../playwright.config.ts'), 'utf8');
-    expect(config).toMatch(/command:\s*'npm run dev:webpack'/);
+    expect(config).toMatch(/command:\s*['`]npm run dev:webpack\b/);
   });
 
   // npm runs `pre<name>` only for the script of that exact name, so each dev

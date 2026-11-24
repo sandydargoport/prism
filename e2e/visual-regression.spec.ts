@@ -47,7 +47,7 @@
  */
 
 import { test, expect, Page, type Locator } from '@playwright/test';
-import { execSync } from 'child_process';
+import { runTestDb } from './helpers/testDb';
 import { loginViaAPI, verifySettingsPinViaAPI } from './helpers/auth';
 import { resetAll } from './helpers/reset';
 import { waitForQuiet } from './helpers/network';
@@ -61,14 +61,11 @@ import { waitForQuiet } from './helpers/network';
  * DB sidesteps the issue and keeps the parent's name out of the test source.
  *
  * Two execution paths (matching the pattern in reverse-proxy.spec.ts):
- *   - Local: docker exec into prism-db.
+ *   - Local: DATABASE_URL or E2E_DB_CONTAINER, never a default (#1360).
  *   - CI: postgres is a service container on localhost; use DATABASE_URL.
  */
 function getSeededParentName(): string {
-  const cmd = process.env.DATABASE_URL
-    ? `psql "${process.env.DATABASE_URL}" -At -c "SELECT name FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1"`
-    : `docker exec prism-db psql -U prism -d ${process.env.E2E_DB_NAME || 'prism'} -At -c "SELECT name FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1"`;
-  const out = execSync(cmd, { encoding: 'utf-8' }).trim();
+  const out = runTestDb("SELECT name FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1", { tuplesOnly: true });
   if (!out) throw new Error('No seeded parent in DB — did seeds run?');
   return out;
 }

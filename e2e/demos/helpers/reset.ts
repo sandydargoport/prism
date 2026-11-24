@@ -2,19 +2,17 @@ import { execSync } from 'child_process';
 import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { testDbFileCommand, testRedisFlushCommand } from '../../helpers/testDb';
 
 /**
- * Run SQL against the Prism database via docker exec.
- * Uses a temp file piped to stdin to avoid shell escaping issues on Windows.
+ * Run SQL against the demo database: DATABASE_URL, or the container named by
+ * E2E_DB_CONTAINER. There is no default container (#1360).
  */
 function runSQL(sql: string) {
   const tmpFile = join(tmpdir(), `prism-demo-${Date.now()}.sql`);
   writeFileSync(tmpFile, sql, 'utf-8');
   try {
-    execSync(`docker exec -i prism-db psql -U prism -d prism < "${tmpFile}"`, {
-      stdio: 'pipe',
-      shell: 'cmd.exe',
-    });
+    execSync(testDbFileCommand(tmpFile), { stdio: 'pipe' });
   } finally {
     try { unlinkSync(tmpFile); } catch { /* ignore */ }
   }
@@ -35,7 +33,7 @@ export function resetDemoData() {
   `);
 
   // Flush Redis sessions so login state is clean
-  execSync('docker exec prism-redis redis-cli FLUSHDB', { stdio: 'pipe' });
+  execSync(testRedisFlushCommand(), { stdio: 'pipe' });
 }
 
 /**
