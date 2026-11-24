@@ -57,4 +57,31 @@ test.describe('editor drag (#1265)', () => {
       await expect.poll(() => blurOf(frame, 'tasks')).toMatch(/blur/);
     } finally { await cleanup(); }
   });
+
+  // #1338: every edit happens on this canvas, so a dashed frame round every
+  // widget made the dashboard look outlined the whole time it was edited.
+  test('a widget has a dashed frame only while it is pointed at or selected (#1338)', async ({ page }) => {
+    const { frame, cleanup } = await editLayout(page);
+    try {
+      const frameStyle = (id: string) => frame.locator(`[data-editor-widget="${id}"] > [data-editor-frame]`)
+        .evaluate((e) => getComputedStyle(e).borderTopStyle);
+      // Nothing pointed at, nothing selected: no frame on either.
+      await page.mouse.move(1, 1);
+      await expect.poll(() => frameStyle('tasks')).toBe('none');
+      await expect.poll(() => frameStyle('clock')).toBe('none');
+
+      // Pointing at one frames that one only.
+      await frame.locator('[data-editor-widget="tasks"]').hover();
+      await expect.poll(() => frameStyle('tasks')).toBe('dashed');
+      expect(await frameStyle('clock')).toBe('none');
+
+      // Selected keeps its frame with the pointer gone; the other loses it.
+      const clock = frame.locator('[data-editor-widget="clock"]');
+      await clock.click();
+      await expect(clock).toHaveClass(/ring-blue-500/);
+      await page.mouse.move(1, 1);
+      await expect.poll(() => frameStyle('clock')).toBe('dashed');
+      await expect.poll(() => frameStyle('tasks')).toBe('none');
+    } finally { await cleanup(); }
+  });
 });

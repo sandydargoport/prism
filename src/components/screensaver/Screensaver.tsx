@@ -56,11 +56,21 @@ const NightSky = React.lazy(() => import('./nightSky/NightSky').then((m) => ({ d
  */
 export const SCREENSAVER_WIDGET_CLASS =
   'h-full w-full ' +
-  '**:bg-transparent! [&_.bg-card]:bg-white/10! [&_.border-border]:border-white/20! ' +
+  '**:bg-transparent! [&_.bg-card]:bg-white/10! ' +
   // Force white text for legibility over the photo — EXCEPT elements marked
   // data-keep-color (e.g. the birthdays "days until" urgency coloring), which
   // keep their own color but still get the shadow.
-  '[&_*:not([data-keep-color])]:text-(--ss-ink)! **:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)]';
+  '[&_*:not([data-keep-color])]:text-(--ss-ink)! **:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)] ';
+
+/**
+ * The widget outlines on the photo frame, as the screen's "Widget outlines"
+ * setting says: light borders when on, only the perimeter cleared when off
+ * (see .prism-no-outline in globals.css). The wall and the editor's preview
+ * both use this, so the preview shows what the wall will.
+ */
+export function screensaverOutlineClass(outlines: boolean): string {
+  return outlines ? '[&_.border-border]:border-white/20!' : 'prism-no-outline';
+}
 
 // Re-export storage utilities for consumers
 export {
@@ -442,13 +452,10 @@ function ScreensaverGrid() {
           className={'h-full w-full prism-screensaver-flat '
             // Only the waterline cuts into a widget, so only it needs the room.
             + (waterClear && motion === 'liquid' ? 'prism-water-clear ' : '') + '[&_*:not([data-keep-bg])]:bg-transparent! [&_.bg-card]:bg-white/10! '
-            + (outlines
-              ? '[&_.border-border]:border-white/20!'
-              // Only the perimeter — see .prism-no-outline in globals.css. This
-              // was `**:border-transparent!`, which is every element in the
-              // widget: it wiped the rules between table rows and left the
-              // outline of the card, the exact opposite of what it says.
-              : 'prism-no-outline')}
+            // Only the perimeter when off. This was `**:border-transparent!`,
+            // which is every element in the widget: it wiped the rules between
+            // table rows and left the outline of the card.
+            + screensaverOutlineClass(outlines)}
           prepare={giveItBody}
         >
           <Component {...props} />
