@@ -23,7 +23,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { execSync } from 'child_process';
+import { runTestDb } from './helpers/testDb';
 import { mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 import { loginViaAPI } from './helpers/auth';
@@ -62,18 +62,12 @@ interface Finding {
 
 /** Run a DB statement through the same channel resetAll/getSeededParentName use. */
 function execDb(sql: string): void {
-  const cmd = process.env.DATABASE_URL
-    ? `psql "${process.env.DATABASE_URL}" -c "${sql}"`
-    : `docker exec prism-db psql -U prism -d ${process.env.E2E_DB_NAME || 'prism'} -c "${sql}"`;
-  execSync(cmd, { encoding: 'utf-8' });
+  runTestDb(sql);
 }
 
 function getSeededParentName(): string {
   const sel = "SELECT name FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1";
-  const cmd = process.env.DATABASE_URL
-    ? `psql "${process.env.DATABASE_URL}" -At -c "${sel}"`
-    : `docker exec prism-db psql -U prism -d ${process.env.E2E_DB_NAME || 'prism'} -At -c "${sel}"`;
-  const out = execSync(cmd, { encoding: 'utf-8' }).trim();
+  const out = runTestDb(sel, { tuplesOnly: true });
   if (!out) throw new Error('No seeded parent in DB — did seeds run?');
   return out;
 }

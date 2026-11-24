@@ -2,31 +2,17 @@ import { execSync } from 'child_process';
 import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { testDbFileCommand, testRedisFlushCommand } from './testDb';
 
 /**
- * Run SQL against the Prism database.
- *
- * Two execution paths because dev and CI hold the DB differently:
- *   - Local (Windows dev): postgres lives in the `prism-db` Docker container;
- *     `psql` may not be installed on the host. Reach in via `docker exec`.
- *   - CI: postgres is a GitHub Actions service container exposed on
- *     localhost:5432; the runner has `psql`. Use DATABASE_URL directly.
+ * Run SQL against the e2e test database: DATABASE_URL, or the container named
+ * by E2E_DB_CONTAINER. There is no default container (#1360), see `testDb.ts`.
  */
 export function runSQL(sql: string) {
   const tmpFile = join(tmpdir(), `prism-e2e-${Date.now()}.sql`);
   writeFileSync(tmpFile, sql, 'utf-8');
   try {
-    if (process.env.DATABASE_URL) {
-      execSync(`psql "${process.env.DATABASE_URL}" -f "${tmpFile}"`, {
-        stdio: 'pipe',
-      });
-    } else {
-      const dbName = process.env.E2E_DB_NAME || 'prism';
-      execSync(`docker exec -i prism-db psql -U prism -d ${dbName} < "${tmpFile}"`, {
-        stdio: 'pipe',
-        shell: 'cmd.exe',
-      });
-    }
+    execSync(testDbFileCommand(tmpFile), { stdio: 'pipe' });
   } finally {
     try { unlinkSync(tmpFile); } catch { /* ignore */ }
   }
@@ -36,11 +22,7 @@ export function runSQL(sql: string) {
  * Flush Redis to clear sessions and caches.
  */
 function flushRedis() {
-  if (process.env.REDIS_URL) {
-    execSync(`redis-cli -u "${process.env.REDIS_URL}" FLUSHDB`, { stdio: 'pipe' });
-  } else {
-    execSync('docker exec prism-redis redis-cli FLUSHDB', { stdio: 'pipe' });
-  }
+  execSync(testRedisFlushCommand(), { stdio: 'pipe' });
 }
 
 /**

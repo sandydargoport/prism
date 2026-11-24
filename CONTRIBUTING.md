@@ -57,6 +57,11 @@ npx jest
 npx playwright test
 ```
 
+E2E specs that seed or reset data need a test database and Redis, named
+explicitly: `DATABASE_URL` and `REDIS_URL`, or `E2E_DB_CONTAINER` and
+`E2E_REDIS_CONTAINER` for containers to `docker exec` into. There is no default,
+so a run cannot reach the database of a Prism install on the same machine.
+
 ### Every fix and feature comes with its test
 
 A `fix:` or `feat:` pull request includes a test that fails if the change is
