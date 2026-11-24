@@ -17,7 +17,8 @@ jest.mock('../useMobileCardOrder', () => ({
   useMobileCardOrder: () => ({ order: ['busTracking'], setOrder: jest.fn() }),
   useHiddenCards: () => [[]],
 }));
-jest.mock('@/lib/hooks/usePullToRefresh', () => ({ usePullToRefresh: () => ({ pullDistance: 0, refreshing: false }) }));
+let pullDistance = 0;
+jest.mock('@/lib/hooks/usePullToRefresh', () => ({ usePullToRefresh: () => ({ pullDistance, refreshing: false }) }));
 jest.mock('@/lib/hooks/useMobileLayout', () => ({ useMobileLayout: () => ({ layout: 'rows' }) }));
 
 let busTracking: { routes: BusRouteStatus[]; allRoutes: BusRouteStatus[] };
@@ -56,6 +57,7 @@ const data = new Proxy({}, { get: () => ({}) }) as React.ComponentProps<typeof M
 beforeEach(() => {
   jest.useFakeTimers({ now: NOW });
   busTracking = { routes: [route], allRoutes: [route] };
+  pullDistance = 0;
 });
 afterEach(() => jest.useRealTimers());
 
@@ -71,5 +73,19 @@ describe('phone dashboard bus card', () => {
     busLive = { tracks: [waiting], provider: false };
     render(<MobileDashboard data={data} />);
     expect(screen.getByText('En route from school')).toBeTruthy();
+  });
+});
+
+// #1355: the page's own native drag carries the motion of a pull; the cards
+// do not slide on top of it, and the reload indicator still opens.
+describe('phone dashboard pull to reload', () => {
+  it('shows the indicator without sliding the cards', () => {
+    busLive = { tracks: [], provider: null };
+    pullDistance = 60;
+    const { container } = render(<MobileDashboard data={data} />);
+    const cards = container.querySelector<HTMLElement>('[data-mobile-cards]')!;
+    expect(cards.style.transform).toBe('');
+    const indicator = cards.previousElementSibling as HTMLElement;
+    expect(indicator.style.height).toBe('30px');
   });
 });

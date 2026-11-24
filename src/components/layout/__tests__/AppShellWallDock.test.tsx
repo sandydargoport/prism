@@ -10,11 +10,12 @@
 import { render, act, fireEvent } from '@testing-library/react';
 
 let householdScenery: boolean | null = false;
+let mobile = false;
 let settingsAnswer: Promise<unknown> = Promise.resolve();
 
 jest.mock('next-intl', () => ({ useTranslations: () => (_k: string, o?: { defaultValue?: string }) => o?.defaultValue ?? _k }));
 jest.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ push: jest.fn() }) }));
-jest.mock('@/lib/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+jest.mock('@/lib/hooks/useIsMobile', () => ({ useIsMobile: () => mobile }));
 jest.mock('@/components/screensaver/calmMode', () => ({ useCalmIdle: () => false }));
 jest.mock('@/lib/hooks/useHiddenPages', () => ({ useHiddenPages: () => ({ filterNavItems: <T,>(i: T) => i, dockPages: null }) }));
 jest.mock('@/lib/hooks/useReturnSlug', () => ({ useReturnSlug: () => null }));
@@ -25,7 +26,6 @@ jest.mock('@/components/layout/WallpaperBackground', () => ({ WallpaperBackgroun
 jest.mock('@/components/layout/MobileFab', () => ({ MobileFab: () => null }));
 jest.mock('@/components/layout/WhatsNew', () => ({ WhatsNew: () => null }));
 jest.mock('@/lib/hooks/useInactivityRedirect', () => ({ useInactivityRedirect: () => {} }));
-jest.mock('@/lib/hooks/useNoRubberBand', () => ({ useNoRubberBand: () => {} }));
 // The household's settings: the scenery look (#808) hides navigation on a
 // screen that never chose. Answered when `settingsAnswer` settles.
 jest.mock('@/lib/utils/sharedGet', () => ({
@@ -57,6 +57,7 @@ beforeEach(() => {
   window.localStorage.clear();
   resetSceneryOnCache();
   householdScenery = false;
+  mobile = false;
   settingsAnswer = Promise.resolve();
   // The household read is skipped where there is no fetch; the request itself
   // goes through the sharedGet stand-in above.
@@ -108,5 +109,30 @@ describe('the dock on a dashboard and Auto-hide navigation (#1232)', () => {
     expect(menuTab(container)).not.toBeNull();
     await act(async () => { answer(); await settingsAnswer; await Promise.resolve(); await Promise.resolve(); });
     expect(menuTab(container)).not.toBeNull();
+  });
+});
+
+// #1355: a phone page drags and springs back natively. Nothing cancels a
+// vertical drag, even on a page with nothing to scroll (this reverses #1076).
+describe('a drag on a phone page (#1355)', () => {
+  const drag = (target: Element, dy: number) => {
+    const at = (y: number) => [{ identifier: 0, target, clientX: 100, clientY: y }];
+    const ev = (type: string, y: number) => {
+      const e = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(e, 'touches', { value: at(y) });
+      return e;
+    };
+    target.dispatchEvent(ev('touchstart', 300));
+    const move = ev('touchmove', 300 + dy);
+    target.dispatchEvent(move);
+    return move.defaultPrevented;
+  };
+
+  it('is not cancelled, down or up', async () => {
+    mobile = true;
+    const { container } = render(<AppShell><div data-page>page</div></AppShell>);
+    await act(async () => { await Promise.resolve(); });
+    const page = container.querySelector('[data-page]')!;
+    expect({ down: drag(page, 40), up: drag(page, -40) }).toEqual({ down: false, up: false });
   });
 });

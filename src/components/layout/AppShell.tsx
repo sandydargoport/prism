@@ -31,7 +31,6 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useInactivityRedirect } from '@/lib/hooks/useInactivityRedirect';
-import { useNoRubberBand } from '@/lib/hooks/useNoRubberBand';
 
 /**
  * APP SHELL PROPS
@@ -119,8 +118,6 @@ export function AppShell({
   cardTools = true,
 }: AppShellProps) {
   const isMobile = useIsMobile();
-  // Every phone page: no drag past the ends, none at all on a page that fits.
-  useNoRubberBand(isMobile);
   const { uiHidden, wallDockTucked } = useAutoHideUI();
   useInactivityRedirect();
   const [measureHideNav, setMeasureHideNav] = React.useState(false);
