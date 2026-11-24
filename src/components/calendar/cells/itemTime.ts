@@ -17,6 +17,25 @@ export function getMealTime(meal: Meal): string {
   return meal.mealTime ?? MEAL_TIME_DEFAULTS[meal.mealType];
 }
 
+/** How long after its time a meal still counts as the next one (being eaten). */
+export const MEAL_OVER_AFTER_MINUTES = 60;
+
+/**
+ * Whether a meal planned for `dateKey` (YYYY-MM-DD, local) is over at `now`
+ * (#1370). A meal on an earlier day is over. A meal today is over an hour
+ * after its time: the time set on it, or else its type's usual time
+ * (breakfast 7:00, lunch 12:00, snack 15:00, dinner 18:00). So dinner is the
+ * next meal until 19:00. Marking a meal cooked does not end it: it is eaten
+ * after it is cooked.
+ */
+export function isMealOver(dateKey: string, meal: Meal, now: Date): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  const minutes = parseTimeOfDay(getMealTime(meal));
+  if (!m || minutes === null) return false;
+  const at = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, minutes + MEAL_OVER_AFTER_MINUTES);
+  return now.getTime() >= at.getTime();
+}
+
 /**
  * Effective HH:mm for a chore, or null when the chore has no time-of-day
  * (renders at the top of the day like an all-day item).

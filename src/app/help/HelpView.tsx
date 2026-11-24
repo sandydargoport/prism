@@ -534,6 +534,7 @@ function MealsHelp() {
         <Li><strong>Drag meals between days</strong> to reschedule (touch supported)</Li>
         <Li><strong>Mark as cooked</strong> to track what&apos;s been prepared</Li>
         <Li>Days follow your <strong>Week Starts On</strong> setting (Settings &gt; General)</Li>
+        <Li>On a dashboard, a Meals widget too small for the whole week opens at the next meal: the next one today not yet eaten, or the first meal of the next day that has one. Meals that are over are greyed and sit above it; scroll up to see them. A meal is over an hour after its time (the time set on it, or else breakfast 7am, lunch 12pm, snack 3pm, dinner 6pm). As the day goes on the list follows; after you scroll it, it goes back about 30 seconds after you stop. The Meals page still shows the whole week.</Li>
         <Li><strong>Sync a meal plan</strong> with Tandoor or Mealie from the <strong>Add ▾</strong> menu (on a phone, the <strong>…</strong> menu). The review lists what changed there and, with a token that can write, the changes made in Prism to send back</Li>
       </Ul>
     </>
