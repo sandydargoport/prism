@@ -652,6 +652,107 @@ test.describe('Now & Next widget', () => {
 });
 
 /**
+ * The agenda widget opens at the next event (#1369). Same far date and noon
+ * UTC clock as Now & Next, with every event between 06:00 and 15:00 UTC, so
+ * "today" is one day in UTC and Chicago. A small tile: the list overflows, the
+ * event in progress is the top row, the ones that are over are dimmed above
+ * it and reached by scrolling up, and the list returns to the next event after
+ * a quiet spell and follows it when it ends.
+ */
+test.describe('agenda widget starts at the next event', () => {
+  test('the next event is the top row, past events dimmed above', async ({ page }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(150_000);
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const parentId = getSeededParentId();
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const T = new Date('2028-03-15T12:00:00Z');
+    const at = (min: number) => new Date(T.getTime() + min * 60_000).toISOString();
+    // Each project runs in parallel against one database: own titles.
+    const tag = `${info.project.name} ${Date.now()}`;
+    const plan: Array<[string, number, number]> = [
+      [`Agenda e2e past 1 ${tag}`, -360, -330],
+      [`Agenda e2e past 2 ${tag}`, -300, -270],
+      [`Agenda e2e past 3 ${tag}`, -240, -210],
+      [`Agenda e2e past 4 ${tag}`, -180, -150],
+      [`Agenda e2e past 5 ${tag}`, -120, -90],
+      [`Agenda e2e now ${tag}`, -10, 20],
+      [`Agenda e2e later 1 ${tag}`, 60, 90],
+      [`Agenda e2e later 2 ${tag}`, 120, 150],
+      [`Agenda e2e later 3 ${tag}`, 180, 210],
+    ];
+    const created: string[] = [];
+    const layout = await (await page.request.post('/api/layouts', {
+      data: { name: `Agenda next e2e ${Date.now()}`, widgets: [
+        { i: 'calendar', x: 0, y: 0, w: 12, h: 10, visible: true },
+        { i: 'clock', x: 12, y: 0, w: 36, h: 32, visible: true },
+        { i: 'messages', x: 0, y: 10, w: 12, h: 22, visible: true },
+      ] },
+    })).json();
+    try {
+      for (const [title, start, end] of plan) {
+        const res = await postEvent(page, { title, startTime: at(start), endTime: at(end), allDay: false, createdBy: parentId });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      await page.addInitScript(() => {
+        localStorage.setItem('prism-calendar-view', 'agenda');
+        localStorage.setItem('prism-calendar-display-mode', 'inline');
+      });
+      await page.clock.install({ time: T });
+      await page.goto(`/d/${layout.slug}`);
+      const list = page.locator('.widget-cell[data-widget="calendar"] [data-agenda-list]');
+      const row = (name: string) => list.locator('[data-scroll-anchor]').filter({ hasText: `${name} ${tag}` }).last();
+      await expect(row('Agenda e2e later 3')).toBeAttached({ timeout: 60_000 });
+      await page.clock.runFor(2_000);
+
+      // The top row: the other project's twin may sit level with ours, so
+      // read which row is at the top rather than assume it is ours.
+      const top = () => list.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const rows = [...el.querySelectorAll('[data-scroll-anchor]:not([data-scroll-anchor^="day-"])')];
+        const first = rows.find((r) => r.getBoundingClientRect().bottom > box.top + 1);
+        return first ? { text: first.textContent ?? '', offset: Math.abs(first.getBoundingClientRect().top - box.top) } : null;
+      });
+      const size = await list.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+      expect(size.scroll, 'premise: the list is longer than the widget').toBeGreaterThan(size.client);
+      await expect.poll(async () => (await top())?.offset ?? 99, 'a row sits exactly at the top').toBeLessThanOrEqual(1);
+      expect((await top())?.text, 'the event in progress is the top row').toContain('Agenda e2e now');
+
+      // Past events: dimmed, above the top, reached by scrolling up.
+      const past = row('Agenda e2e past 5');
+      await expect(past).toHaveAttribute('data-ended', 'true');
+      expect(Number(await past.evaluate((el) => getComputedStyle(el).opacity))).toBeLessThan(1);
+      const offset = (r: ReturnType<typeof row>) => r.evaluate((el) =>
+        el.getBoundingClientRect().top - el.closest('[data-agenda-list]')!.getBoundingClientRect().top);
+      expect(await offset(past), 'a past event sits above the top').toBeLessThan(0);
+      await list.hover();
+      await page.mouse.wheel(0, -3000);
+      await expect.poll(() => list.evaluate((el) => el.scrollTop), 'scrolled to the top').toBe(0);
+      expect(await offset(row('Agenda e2e past 1'))).toBeGreaterThanOrEqual(0);
+
+      // Held while it was just used; back at the next event after the quiet spell.
+      await page.clock.runFor(15_000);
+      expect(await list.evaluate((el) => el.scrollTop), 'not moved while recently touched').toBe(0);
+      await page.clock.runFor(20_000);
+      await expect.poll(async () => (await top())?.text ?? '', 'back at the next event').toContain('Agenda e2e now');
+
+      // 12:25: the event in progress has ended; the next one moves to the top.
+      await page.clock.fastForward('25:00');
+      await page.clock.runFor(31_000);
+      await expect(row('Agenda e2e now')).toHaveAttribute('data-ended', 'true');
+      await expect.poll(async () => (await top())?.text ?? '', 'the next event follows').toContain('Agenda e2e later 1');
+      expect((await top())?.offset).toBeLessThanOrEqual(1);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+});
+
+/**
  * The clock fits its tile (#808 hero). A tablet is a touch screen at 1180px, so
  * it gets the 20px wall root; at that size "4:10 PM" in a small tile wrapped
  * onto two lines and the date ran out of the box. The clock now sizes from its
