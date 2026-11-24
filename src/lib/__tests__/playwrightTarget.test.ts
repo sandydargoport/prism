@@ -10,7 +10,7 @@ jest.mock('@playwright/test', () => ({
   devices: { 'Desktop Chrome': {} },
 }));
 
-type Cfg = { use: { baseURL: string }; webServer: { url: string; reuseExistingServer: boolean; command: string } };
+type Cfg = { workers?: number; use: { baseURL: string }; webServer: { url: string; reuseExistingServer: boolean; command: string } };
 
 function load(env: Record<string, string | undefined>): Cfg {
   const saved = { ...process.env };
@@ -40,5 +40,10 @@ describe('Playwright test server target', () => {
     expect(cfg.use.baseURL).toBe('http://localhost:3251');
     expect(cfg.webServer.url).toBe('http://localhost:3251');
     expect(cfg.webServer.command).toContain('-p 3251');
+  });
+
+  it('runs at most two browsers locally and one in CI', () => {
+    expect(load({}).workers).toBe(2);
+    expect(load({ CI: 'true' }).workers).toBe(1);
   });
 });
