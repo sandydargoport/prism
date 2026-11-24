@@ -1,0 +1,113 @@
+{
+  "docs/HELP.md": {
+    "How dark": 1,
+    "screensaver": 7,
+    "Through the day": 1
+  },
+  "docs/features/BUS.md": {
+    "screensaver": 2
+  },
+  "docs/features/CALENDAR.md": {
+    "screensaver": 2
+  },
+  "docs/features/DASHBOARD.md": {
+    "Base dashboard": 2,
+    "calm": 1,
+    "How dark": 1,
+    "Idle screen": 3,
+    "Make the default": 3,
+    "Rest after": 2,
+    "Resting": 6,
+    "screensaver": 16,
+    "See it": 1,
+    "Through the day": 3
+  },
+  "docs/features/DISPLAY-MODES.md": {
+    "calm": 3,
+    "Dim this dashboard": 2,
+    "How dark": 3,
+    "Idle screen": 1,
+    "Rest after": 3,
+    "Resting": 10,
+    "screensaver": 40,
+    "See it": 2,
+    "Start after": 1,
+    "Through the day": 8
+  },
+  "docs/features/MOBILE.md": {
+    "screensaver": 4
+  },
+  "docs/features/PHOTOS.md": {
+    "Idle screen": 1,
+    "screensaver": 18
+  },
+  "docs/features/TASKS.md": {
+    "screensaver": 1
+  },
+  "docs/features/TRAVEL.md": {
+    "screensaver": 2
+  },
+  "src/app/help/HelpView.tsx": {
+    "Base dashboard": 2,
+    "calm": 1,
+    "Dim this dashboard": 2,
+    "How dark": 2,
+    "Make the default": 2,
+    "Rest after": 4,
+    "Resting": 14,
+    "screensaver": 6,
+    "See it": 3,
+    "Through the day": 8
+  },
+  "src/app/photos/PhotosView.tsx": {
+    "screensaver": 1
+  },
+  "src/app/settings/sections/DisplaySection.tsx": {
+    "screensaver": 1
+  },
+  "src/app/settings/sections/PhotosSettingsSection.tsx": {
+    "screensaver": 1
+  },
+  "src/components/layout/DashboardGrid.tsx": {
+    "screensaver": 3
+  },
+  "src/components/layout/EditorBar.tsx": {
+    "Through the day": 1
+  },
+  "src/components/layout/EditorSheets.tsx": {
+    "Make the default": 1,
+    "Resting": 1
+  },
+  "src/components/layout/LayoutEditor.tsx": {
+    "Idle screen": 1,
+    "screensaver": 1
+  },
+  "src/components/layout/LayoutEditorDashboardManager.tsx": {
+    "screensaver": 1
+  },
+  "src/components/layout/LayoutEditorShareDialog.tsx": {
+    "screensaver": 1
+  },
+  "src/components/layout/ScreenSheet.tsx": {
+    "Base dashboard": 1,
+    "How dark": 2,
+    "Rest after": 1
+  },
+  "src/components/layout/ThroughTheDaySheet.tsx": {
+    "Dim this dashboard": 2,
+    "Resting": 3,
+    "screensaver": 1,
+    "See it": 2,
+    "Through the day": 1
+  },
+  "src/components/photos/PhotoLightbox.tsx": {
+    "screensaver": 1
+  },
+  "src/components/screensaver/ScreensaverQuickSettings.tsx": {
+    "screensaver": 3,
+    "Start after": 1
+  },
+  "src/components/today/TodayPartsPanel.tsx": {
+    "Resting": 2
+  }
+}

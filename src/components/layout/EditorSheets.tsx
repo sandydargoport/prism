@@ -184,7 +184,7 @@ export function WidgetsSheet({
   // outline and text, so it asks first (#1339).
   const askToReplace = (name: string) => confirm(
     `Use ${name}?`,
-    `${name} replaces every widget on this ${editingScreensaver ? 'idle screen' : 'dashboard'}, with its place, fill, outline and text.`,
+    `${name} replaces every widget on this ${editingScreensaver ? 'photo frame' : 'dashboard'}, with its place, fill, outline and text.`,
     { confirmLabel: 'Replace', variant: 'destructive' },
   );
   const applyCommunity = async (next: WidgetConfig[], name: string) => {
