@@ -12,6 +12,17 @@ jest.mock('@/components/providers', () => ({
   useTimeFormat: () => ({ timeFormat: '12h', displayTimezone: 'America/Chicago' }),
 }));
 
+// Where the list would open (#1369): the scroll itself needs a real layout
+// and is measured in e2e/calendar-geometry.spec.ts; this records the anchor.
+const mockAnchors: Array<string | null> = [];
+jest.mock('@/lib/hooks/useStartAtNext', () => ({
+  useStartAtNext: (anchor: string | null) => {
+    mockAnchors.push(anchor);
+    return () => {};
+  },
+}));
+const lastAnchor = () => mockAnchors[mockAnchors.length - 1];
+
 const CACHE_KEY = 'prism:calendar-past-events';
 
 function event(id: string, title: string, start: string, end: string): CalendarEvent {
@@ -137,5 +148,58 @@ describe('AgendaView past events', () => {
     settingsFromServer = { calendarPastEvents: 'nonsense' };
     await renderAgenda();
     expect(screen.getByText('Emma dentist')).toBeTruthy();
+  });
+});
+
+describe('AgendaView starts at the next event (#1369)', () => {
+  async function renderStart(list: CalendarEvent[] = events) {
+    mockAnchors.length = 0;
+    render(<AgendaView events={list} days={7} onEventClick={() => {}} startAtNext />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  it('opens at the event in progress, below the ones that are over', async () => {
+    await renderStart();
+    // 3:00 PM: the dentist (9-10 AM) is over, practice (2:30-4 PM) is on.
+    expect(lastAnchor()).toBe('2026-11-03:event-practice');
+    const anchored = document.querySelector('[data-scroll-anchor="2026-11-03:event-practice"]');
+    expect(anchored?.textContent).toContain('Soccer practice');
+  });
+
+  it('moves on when an event ends, without new data', async () => {
+    await renderStart();
+    await act(async () => {
+      jest.setSystemTime(new Date('2026-11-03T22:01:00.000Z')); // 4:01 PM
+      jest.advanceTimersByTime(61_000);
+    });
+    expect(lastAnchor()).toBe('2026-11-03:event-dinner');
+  });
+
+  it('opens at the day heading when nothing that day is over', async () => {
+    window.localStorage.setItem(CACHE_KEY, 'hide');
+    await renderStart();
+    expect(lastAnchor()).toBe('day-2026-11-03');
+  });
+
+  it('passes over all-day events: the backdrop is never the next thing', async () => {
+    const allDay: CalendarEvent = { ...event('fair', 'School book fair', '2026-11-03T06:00:00Z', '2026-11-04T06:00:00Z'), allDay: true };
+    await renderStart([allDay, ...events]);
+    expect(lastAnchor()).toBe('2026-11-03:event-practice');
+  });
+
+  it('opens at the next day when today is over', async () => {
+    const tomorrow = event('swim', 'Swim lesson', '2026-11-04T15:00:00Z', '2026-11-04T16:00:00Z');
+    jest.setSystemTime(new Date('2026-11-04T02:00:00.000Z')); // 8:00 PM on the 3rd
+    await renderStart([...events, tomorrow]);
+    expect(lastAnchor()).toBe('day-2026-11-04');
+  });
+
+  it('does nothing on the Calendar page (no startAtNext)', () => {
+    mockAnchors.length = 0;
+    render(<AgendaView events={events} days={7} onEventClick={() => {}} />);
+    expect(lastAnchor()).toBeNull();
   });
 });

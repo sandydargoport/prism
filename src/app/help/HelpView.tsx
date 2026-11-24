@@ -402,6 +402,7 @@ function CalendarHelp({ isMobile }: { isMobile: boolean }) {
 
       <H2>Past Events</H2>
       <P>Events that have ended are dimmed in every view. In Manage calendars, <strong>Past Events</strong> &gt; <strong>Hide ended events in the agenda and list</strong> clears them out of the agenda and list views.</P>
+      <P>On a dashboard, a calendar widget showing the agenda opens at the next event: the one happening now, or the next to start. Events that are over sit above it, dimmed; scroll up to see them. All-day events never count as the next event. When an event ends, the list moves on by itself; after you scroll it, it goes back about 30 seconds after you stop. A list that fits does not scroll. The Calendar page agenda still starts at the top.</P>
 
       <H2>Calendar Groups &amp; Columns</H2>
       <P>In Day and List views, events are organized into <strong>columns by calendar group</strong>. Groups are created automatically based on your calendar assignments:</P>

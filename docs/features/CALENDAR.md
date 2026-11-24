@@ -157,6 +157,8 @@ Multi-day events, such as trips and holidays, draw as one continuous bar across 
 
 Events that have ended are dimmed in every view, the agenda included. To clear them out of the agenda and list views instead, turn on **Hide ended events in the agenda and list** under **Past Events** in **Manage calendars**. A short agenda then shows only what is still to come. The day, week and month grids keep ended events dimmed, so a past day never looks empty. The setting is the household's, and changing it needs a parent.
 
+On a dashboard, a calendar widget showing the agenda opens at the next event: the one happening now, or the next to start (on a later day when today's are all over). Events that are over stay above it, dimmed, and scrolling up shows them. All-day events never count as the next event. When an event ends, the list moves to the new next event by itself. After you scroll it, it stays put while you use it and goes back about 30 seconds after you stop. A widget that fits the whole list does not scroll. The agenda on the Calendar page still starts at the top.
+
 ### Display modes: inline vs cards
 
 The **View Options** gear next to the view dropdown switches between two layouts for the events in each day cell:
