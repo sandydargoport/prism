@@ -20,6 +20,10 @@
  * settings as stored. The server merges per key, so an edit here and one from
  * a phone to different settings both survive. Two edits to the same setting:
  * the later one wins.
+ *
+ * Light or dark is kept as Light or Dark, never "follow the system" (#1340):
+ * a laptop editing the screen cannot know the wall's system setting, so the
+ * wall settles it before each round, as what it shows now.
  */
 import { readStored, writeStored } from '@/lib/hooks/useStoredValue';
 import { diffSettings, SCREEN_SETTING_KEYS, type ScreenSettings } from './screenSettings';
@@ -48,6 +52,39 @@ export function readLocalSettings(): ScreenSettings {
     if (raw !== null) out[key] = raw;
   }
   return out;
+}
+
+const THEME_KEY = 'prism-theme';
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/**
+ * The Light or Dark a named screen stores in place of what it has (#1340), or
+ * null when it already has one. `system` becomes what the system says now; no
+ * value (or one nobody wrote) becomes what the screen shows now, which is the
+ * household's "New screens start as", copied once.
+ */
+export function concreteThemeMode(stored: string | null, systemDark: boolean, showsDark: boolean): 'light' | 'dark' | null {
+  if (stored === 'light' || stored === 'dark') return null;
+  if (stored === 'system') return systemDark ? 'dark' : 'light';
+  return showsDark ? 'dark' : 'light';
+}
+
+function themeToSettle(): 'light' | 'dark' | null {
+  try {
+    return concreteThemeMode(
+      readStored(THEME_KEY),
+      window.matchMedia(DARK_QUERY).matches,
+      document.documentElement.classList.contains('dark'),
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Write this screen's light or dark as Light or Dark, if it is not one yet. */
+export function settleThemeMode(): void {
+  const next = themeToSettle();
+  if (next) writeStored(THEME_KEY, next);
 }
 
 export function loadBase(): SyncBase | null {
@@ -83,7 +120,7 @@ export function resetSyncBase(): void {
 /** Does this browser have changes the server has not seen? */
 export function hasLocalChanges(): boolean {
   const base = loadBase();
-  if (!base) return true;
+  if (!base || themeToSettle() !== null) return true;
   return Object.keys(diffSettings(base.settings, readLocalSettings())).length > 0;
 }
 
@@ -127,6 +164,7 @@ async function post(changes: Record<string, string | null>, baseDisplayId: strin
  * another screen, which the server sees from baseDisplayId.
  */
 export async function syncScreenSettings(): Promise<SyncResult> {
+  settleThemeMode();
   const base = loadBase();
   const local = readLocalSettings();
 

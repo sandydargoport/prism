@@ -230,7 +230,7 @@ describe('PATCH and DELETE /api/displays/:id', () => {
   });
 
   it('refuses settings that are not screen settings', async () => {
-    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { settings: { 'prism-theme': 'dark' } }), params(HALL));
+    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { settings: { 'prism:timezone': 'Europe/Paris' } }), params(HALL));
     expect(res.status).toBe(400);
     expect(mockApply).not.toHaveBeenCalled();
   });

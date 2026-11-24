@@ -18,6 +18,9 @@ import { useWallpaperSettings, useAutoOrientationSetting } from '@/components/la
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { AWAY_AUTO_OPTIONS } from '@/lib/awayMode/autoAfter';
 import { AURORA_SETTING } from '@/lib/integrations/aurora';
+import { DEFAULT_MODE_SETTING_KEY } from '@/lib/looks';
+import { isNamedScreen } from '@/lib/displays/namedScreen';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -59,6 +62,8 @@ export function DisplaySection() {
   // The palette in use as one row; the full set only when changing it (#1017).
   const [choosing, setChoosing] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  // Read after hydrating: the marker is a cookie the server render cannot see.
+  const named = useHydrated() && isNamedScreen();
 
   const mode: 'auto' | 'manual' | 'off' =
     seasonalTheme === 'none' ? 'off' :
@@ -88,12 +93,14 @@ export function DisplaySection() {
       <Card>
         <CardHeader>
           <CardTitle>Color Scheme</CardTitle>
-          <CardDescription>
-            Choose your preferred color scheme
+          <CardDescription data-color-scheme-scope>
+            {named
+              ? 'Light or dark for this screen, kept with it. Also in its editor: More > Edit layout > Screen.'
+              : 'Light or dark for this browser.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3">
+          <div className="flex gap-3" role="group" aria-label="Light or dark">
             <Button
               variant={theme === 'light' ? 'default' : 'outline'}
               onClick={() => setTheme('light')}
@@ -110,23 +117,29 @@ export function DisplaySection() {
               <Moon className="h-4 w-4 mr-2" />
               Dark
             </Button>
-            <Button
-              variant={theme === 'system' ? 'default' : 'outline'}
-              onClick={() => setTheme('system')}
-              className="flex-1"
-            >
-              <Monitor className="h-4 w-4 mr-2" />
-              System
-            </Button>
+            {/* A named screen keeps Light or Dark (#1340): a laptop editing it
+                cannot know what the screen's own system prefers. */}
+            {!named && (
+              <Button
+                variant={theme === 'system' ? 'default' : 'outline'}
+                onClick={() => setTheme('system')}
+                className="flex-1"
+              >
+                <Monitor className="h-4 w-4 mr-2" />
+                System
+              </Button>
+            )}
           </div>
+
+          <NewScreensStartAs />
 
           <div className="mt-6 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-48 flex-1">
                 <h4 className="text-sm font-medium">Palette</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Applies to every screen in the house. Light and dark above stay
-                  per-screen.
+                  Applies to every screen in the house. Light or dark is each
+                  screen&apos;s own, or this browser&apos;s on one that is not named.
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-2">
@@ -495,13 +508,65 @@ function AuroraToggle() {
   );
 }
 
+/**
+ * The household's starting light or dark (#1340): a screen named with no
+ * choice of its own copies it once, and a browser nobody named uses it until
+ * it chooses. Light or Dark only, as a named screen keeps; a household that
+ * never chose follows each device's system, as before.
+ */
+export function NewScreensStartAs() {
+  const [mode, setMode] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let live = true;
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (live) setMode((data?.settings?.[DEFAULT_MODE_SETTING_KEY] as string | undefined) ?? null); })
+      .catch(() => { if (live) setMode(null); });
+    return () => { live = false; };
+  }, []);
+
+  const save = useCallback(async (next: 'light' | 'dark') => {
+    setMode(next);
+    try {
+      await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: DEFAULT_MODE_SETTING_KEY, value: next }),
+      });
+    } catch { /* shown already; the next load reads what was kept */ }
+  }, []);
+
+  if (mode === undefined) return null;
+
+  return (
+    <div className="mt-6" data-new-screens-start-as>
+      <h4 className="text-sm font-medium" id="new-screens-start-as">New screens start as</h4>
+      <div className="mt-2 flex gap-3" role="group" aria-labelledby="new-screens-start-as">
+        {(['light', 'dark'] as const).map((m) => (
+          <Button key={m} variant={mode === m ? 'default' : 'outline'} aria-pressed={mode === m}
+            onClick={() => void save(m)} className="flex-1">
+            {m === 'light' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+            {m === 'light' ? 'Light' : 'Dark'}
+          </Button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        {mode === 'light' || mode === 'dark'
+          ? 'A screen named from now on starts as this, unless its browser already chose. Browsers that are not named use it too. Screens already named keep theirs.'
+          : 'Not chosen: a new screen starts as its own system prefers.'}
+      </p>
+    </div>
+  );
+}
+
 /** The night sky's household switches, in a card of their own since the screensaver card left (#1159). */
 function NightSkyCard() {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Night sky</CardTitle>
-        <CardDescription>All screens. Which screens show it, and when, is set on each screen.</CardDescription>
+        <CardDescription>All screens. Whether the night sky shows, and when, is chosen for each dashboard in its editor.</CardDescription>
       </CardHeader>
       <CardContent>
         <AuroraToggle />

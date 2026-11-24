@@ -4,6 +4,14 @@ import { eq } from 'drizzle-orm';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from './appThemes';
 import { isInstallableTheme, type Theme } from './tokens';
 import { DEFAULT_MODE_SETTING_KEY, isDefaultMode, type DefaultMode } from '@/lib/looks';
+import { SCREEN_SETTING_KEYS } from '@/lib/displays/screenSettings';
+
+/**
+ * Where the editor page puts the screen being edited, for its frame (#1153).
+ * The same word as REMOTE_EDIT_GLOBAL in remoteEdit.ts, which is a client
+ * module this server code cannot read a value from; a test keeps them equal.
+ */
+export const FIRST_PAINT_HOST_GLOBAL = '__prismRemoteEdit';
 
 const THEME_SETTING_KEY = 'theme';
 
@@ -61,8 +69,19 @@ export async function getServerDefaultMode(): Promise<DefaultMode> {
  * The blocking script that sets the dark and performance classes before the
  * first paint. `defaultMode` is one of three fixed words (checked above), so it
  * is safe to place in the script.
+ *
+ * In the editor's frame for a named screen (#1340), the screen's own settings
+ * are read from the editor page, as remoteEdit's storage does once the app
+ * runs: a Light screen edited on a laptop set to dark paints light from the
+ * first frame, and so does its performance class. A screen key the screen
+ * has not set reads as unset there, never as the laptop's own value.
  */
 export function firstPaintScript(defaultMode: DefaultMode, perfScript: string): string {
   const fallback = isDefaultMode(defaultMode) ? defaultMode : 'system';
-  return `(function(){try{var t=localStorage.getItem('prism-theme')||'${fallback}';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');${perfScript}}catch(e){}})()`;
+  const keys = JSON.stringify(SCREEN_SETTING_KEYS);
+  const store =
+    `var s=localStorage;try{var h=window.parent!==window&&window.parent['${FIRST_PAINT_HOST_GLOBAL}'];` +
+    `if(h&&h.displayId){var v=h.settings||{},k=${keys};` +
+    `s={getItem:function(n){return k.indexOf(n)<0?localStorage.getItem(n):typeof v[n]==='string'?v[n]:null}}}}catch(e){}`;
+  return `(function(){try{${store}(function(localStorage){var t=localStorage.getItem('prism-theme')||'${fallback}';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');${perfScript}})(s)}catch(e){}})()`;
 }

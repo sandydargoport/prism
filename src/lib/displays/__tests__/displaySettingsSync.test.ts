@@ -6,7 +6,7 @@
  * screen, takes what was changed elsewhere, and says so, against a stand-in
  * server that merges the way the real route does.
  */
-import { loadBase, hasLocalChanges, syncScreenSettings, resetSyncBase } from '../displaySettingsSync';
+import { concreteThemeMode, loadBase, hasLocalChanges, syncScreenSettings, resetSyncBase } from '../displaySettingsSync';
 import type { ScreenSwitch } from '@/lib/screenSwitches';
 import { mergeSettings, type ScreenSettings } from '../screenSettings';
 
@@ -46,13 +46,14 @@ describe('syncScreenSettings', () => {
     localStorage.setItem('prism-screensaver-timeout', '300');
     localStorage.setItem('prism-perf-mode', 'true');
     localStorage.setItem('prism-theme', 'dark');
+    localStorage.setItem('prism-quick-edit', 'on'); // not a screen setting
 
     const result = await syncScreenSettings();
     expect(requests[0]).toEqual({
-      changes: { 'prism-screensaver-timeout': '300', 'prism-perf-mode': 'true' },
+      changes: { 'prism-screensaver-timeout': '300', 'prism-perf-mode': 'true', 'prism-theme': 'dark' },
       baseDisplayId: null,
     });
-    expect(row.settings).toEqual({ 'prism-screensaver-timeout': '300', 'prism-perf-mode': 'true' });
+    expect(row.settings).toEqual({ 'prism-screensaver-timeout': '300', 'prism-perf-mode': 'true', 'prism-theme': 'dark' });
     expect(result).toEqual({ applied: [], planChanged: false });
     expect(loadBase()?.displayId).toBe(KITCHEN);
     expect(hasLocalChanges()).toBe(false);
@@ -141,5 +142,57 @@ describe('syncScreenSettings', () => {
     resetSyncBase();
     await syncScreenSettings();
     expect(requests[1]!.baseDisplayId).toBeNull();
+  });
+});
+
+// #1340: a laptop editing the screen cannot know the wall's system setting,
+// so a named screen keeps Light or Dark, never "follow the system".
+describe('light or dark on a named screen', () => {
+  const prefersDark = (dark: boolean) => {
+    window.matchMedia = ((q: string) => ({ matches: dark && q.includes('dark') })) as unknown as typeof window.matchMedia;
+  };
+  afterEach(() => {
+    delete (window as { matchMedia?: unknown }).matchMedia;
+    document.documentElement.className = '';
+  });
+
+  it('concreteThemeMode: system is what the system says, none is what the screen shows', () => {
+    expect(concreteThemeMode('system', true, false)).toBe('dark');
+    expect(concreteThemeMode('system', false, true)).toBe('light');
+    expect(concreteThemeMode(null, false, true)).toBe('dark');
+    expect(concreteThemeMode(null, true, false)).toBe('light');
+    expect(concreteThemeMode('light', true, true)).toBeNull();
+    expect(concreteThemeMode('dark', false, false)).toBeNull();
+  });
+
+  it('a screen following the system sends what it resolves to, and keeps it', async () => {
+    prefersDark(true);
+    localStorage.setItem('prism-theme', 'system');
+    await syncScreenSettings();
+    expect(requests[0]!.changes['prism-theme']).toBe('dark');
+    expect(row.settings['prism-theme']).toBe('dark');
+    expect(localStorage.getItem('prism-theme')).toBe('dark');
+    expect(hasLocalChanges()).toBe(false);
+  });
+
+  it('a screen set to system after naming has a change to send', async () => {
+    prefersDark(false);
+    localStorage.setItem('prism-theme', 'dark');
+    await syncScreenSettings();
+    localStorage.setItem('prism-theme', 'system');
+    expect(hasLocalChanges()).toBe(true);
+    await syncScreenSettings();
+    expect(requests[1]!.changes).toEqual({ 'prism-theme': 'light' });
+  });
+
+  it('a newly named screen with no value takes what it shows, the household starting value, once', async () => {
+    prefersDark(false);
+    document.documentElement.classList.add('dark'); // the household starts screens dark
+    await syncScreenSettings();
+    expect(row.settings['prism-theme']).toBe('dark');
+    expect(localStorage.getItem('prism-theme')).toBe('dark');
+    // Later it is the screen's own: the household value no longer moves it.
+    document.documentElement.classList.remove('dark');
+    expect(hasLocalChanges()).toBe(false);
   });
 });

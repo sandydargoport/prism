@@ -13,8 +13,13 @@ describe('SCREEN_SETTING_FIELDS', () => {
   it('covers every synced setting a person chooses', () => {
     // The motion marker is written with the effect; nothing edits safe zones yet;
     // the attention panel has its own editor.
+    // Light or dark and the photos behind the dashboard are on the Screen
+    // sheet; the rest of #1340's are set on the screen itself (#1340).
     const notOnTheForm = [
       'prism-screensaver-motion-v2', 'prism:screen-safe-zones', 'prism-screen-attention',
+      'prism-theme', 'prism-seasonal-theme', 'prism-wallpaper-enabled', 'prism-wallpaper-interval',
+      'prism-wallpaper-auto-orientation', 'prism-pinned-wallpaper', 'prism-pinned-screensaver',
+      'prism:display-timezone-mode',
     ];
     expect(SCREEN_SETTING_FIELDS.map((f) => f.key).sort())
       .toEqual(SCREEN_SETTING_KEYS.filter((k) => !notOnTheForm.includes(k)).sort());
