@@ -8,7 +8,8 @@
  * picking another opens its editor, and a pencil beside it renames it in
  * place, saved on Enter or on leaving the field as Settings > Screens saves
  * it. Then the Base dashboard; its Switches to other dashboards for a while (#1282), at bus time or
- * at set times, a bus switch with its routes and minutes (#1291); and, When
+ * at set times, a bus switch with its routes and minutes (#1291), each one
+ * able to keep the screen awake while it is in force (#1347); and, When
  * nobody is using it, how long until it rests and how dark it goes at night.
  * Then Light or dark and the photos behind the dashboard (#1340).
  * They belong to the screen, not the dashboard: two screens can show one
@@ -29,7 +30,7 @@ import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import type { IdleBackground } from '@/lib/idleBackground';
 import { asDayAndNight } from '@/lib/throughTheDay';
 import {
-  BUS_MINUTE_CHOICES, busWindowOf, daysShort, EVERY_DAY, MAX_SWITCHES, routesOf,
+  BUS_MINUTE_CHOICES, busWindowOf, daysShort, EVERY_DAY, MAX_SWITCHES, routesOf, staysAwake,
   type BusSwitch, type ScreenPlan, type ScreenSwitch,
 } from '@/lib/screenSwitches';
 import { screenEditLink } from '@/lib/displays/editPlace';
@@ -37,6 +38,7 @@ import { NameThisDevice } from './NameThisDevice';
 import { keepPanelFor } from './canvasPanel';
 import { busWindowsInWords, chip, dayChip, field, Fold, hhmm, iconButton, note, useBusRoutes } from './sheetRows';
 import type { DashboardInfo } from './LayoutEditorTypes';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 const THEME_KEY = 'prism-theme';
@@ -266,9 +268,10 @@ export function ScreenSheet({
     const due = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
     return followed.map((r) => `${r.label} ${clock(hhmm(due(r.scheduledTime) - window.before))}–${clock(hhmm(due(r.scheduledTime) + window.after))}`).join(', ');
   };
-  /** When first, as that is what tells two switches apart, then the dashboard. */
+  /** When first, as that is what tells two switches apart, then the dashboard, then whether it stays awake. */
   const switchInShort = (sw: ScreenSwitch) => `${sw.when === 'bus' ? busInShort(sw)
-    : `${sw.days.length === 7 ? '' : `${daysShort(sw.days)} `}${clock(sw.from)}–${clock(sw.to)}`} · ${dashboardName(sw.dashboardId)}`;
+    : `${sw.days.length === 7 ? '' : `${daysShort(sw.days)} `}${clock(sw.from)}–${clock(sw.to)}`} · ${dashboardName(sw.dashboardId)}${
+    staysAwake(sw) ? ' · stays awake' : ''}`;
 
   /** A bus switch's routes and minutes, and the windows they make. */
   const busDetails = (sw: BusSwitch, i: number) => {
@@ -355,6 +358,11 @@ export function ScreenSheet({
           </div>
         </>
       )}
+      {/* While it is in force the screen does not go idle, and wakes if it was (#1347). */}
+      <label className="flex items-center gap-2 text-body" data-switch-awake>
+        <Switch checked={staysAwake(sw)} onCheckedChange={(on) => editSwitch(i, { staysAwake: on })} />
+        Stays awake
+      </label>
       <div className="flex flex-wrap items-center gap-2">
         {openButton(sw.dashboardId)}
         {i > 0 && (

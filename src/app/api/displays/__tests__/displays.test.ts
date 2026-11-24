@@ -242,6 +242,9 @@ describe('PATCH and DELETE /api/displays/:id', () => {
       // One that follows the morning route only, from 10 minutes before to 5 after (#1291).
       { when: 'bus', dashboardId: KITCHEN, routeIds: ['dddddddd-dddd-4ddd-8ddd-dddddddddddd'], before: 10, after: 5 },
       { when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '07:45', dashboardId: KITCHEN },
+      // Whether each keeps the screen awake, either way (#1347).
+      { when: 'bus', dashboardId: BUS, staysAwake: false },
+      { when: 'times', days: [6], from: '09:00', to: '10:00', dashboardId: KITCHEN, staysAwake: true },
     ];
     mockSelectWhere.mockReturnValue([{ id: KITCHEN }, { id: BUS }]);
     mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: KITCHEN, switches, settings: {} }]);
@@ -268,6 +271,9 @@ describe('PATCH and DELETE /api/displays/:id', () => {
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, before: 121 }] }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, routeIds: ['morning'] }] }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: thirteen }), params(HALL))).status).toBe(400);
+    // Stays awake is on or off, nothing else (#1347).
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, staysAwake: 'yes' }] }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: BUS, staysAwake: 1 }] }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', {}), params(HALL))).status).toBe(400);
     expect(mockUpdateSet).not.toHaveBeenCalled();
   });

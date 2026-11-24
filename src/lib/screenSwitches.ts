@@ -20,6 +20,10 @@ import { todayKey, wallTimeAt, wallTimeToday, weekdayOfKey } from '@/lib/utils/z
  * The first switch that matches wins. A device nobody named shows the default
  * dashboard and has no switches.
  *
+ * A switch can keep the screen awake while it is in force (#1347): the screen
+ * does not go idle, and wakes if it was. Bus time does unless it says not to,
+ * set times do not unless they say to (`staysAwake`).
+ *
  * Plain functions with no browser in them: the home page picks the dashboard
  * on the server before the screen has loaded anything.
  */
@@ -52,6 +56,8 @@ export type TimesSwitch = {
   /** `HH:mm`, exclusive. */
   to: string;
   dashboardId: string;
+  /** Keeps the screen awake while in force; absent is off for set times (#1347). */
+  staysAwake?: boolean;
 };
 
 export type BusSwitch = {
@@ -63,6 +69,8 @@ export type BusSwitch = {
   before?: number;
   /** Minutes after; absent is BUS_AFTER_MINUTES. */
   after?: number;
+  /** Keeps the screen awake while in force; absent is on for bus time (#1347). */
+  staysAwake?: boolean;
 };
 
 export type ScreenSwitch = TimesSwitch | BusSwitch;
@@ -95,6 +103,7 @@ function cleanSwitch(raw: unknown): ScreenSwitch | null {
     if (ids.length > 0) bus.routeIds = ids;
     if (isMinutes(r.before)) bus.before = r.before;
     if (isMinutes(r.after)) bus.after = r.after;
+    if (typeof r.staysAwake === 'boolean') bus.staysAwake = r.staysAwake;
     return bus;
   }
   if (r.when !== 'times') return null;
@@ -103,7 +112,14 @@ function cleanSwitch(raw: unknown): ScreenSwitch | null {
   if (!Array.isArray(r.days)) return null;
   const days = [...new Set(r.days.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
   if (days.length === 0) return null;
-  return { when: 'times', days, from: r.from, to: r.to, dashboardId: r.dashboardId };
+  const times: TimesSwitch = { when: 'times', days, from: r.from, to: r.to, dashboardId: r.dashboardId };
+  if (typeof r.staysAwake === 'boolean') times.staysAwake = r.staysAwake;
+  return times;
+}
+
+/** Whether a switch keeps the screen awake while it is in force: its own say, or on for bus time and off for set times. */
+export function staysAwake(s: ScreenSwitch): boolean {
+  return s.staysAwake ?? s.when === 'bus';
 }
 
 /** The switches in a stored value, in order. Anything unreadable is left out rather than failing the lot. */
@@ -120,6 +136,7 @@ export const switchesSchema = z.array(z.discriminatedUnion('when', [
     routeIds: z.array(z.guid()).min(1).max(50).optional(),
     before: z.number().int().min(0).max(MAX_BUS_MINUTES).optional(),
     after: z.number().int().min(0).max(MAX_BUS_MINUTES).optional(),
+    staysAwake: z.boolean().optional(),
   }).strict(),
   z.object({
     when: z.literal('times'),
@@ -127,6 +144,7 @@ export const switchesSchema = z.array(z.discriminatedUnion('when', [
     from: z.string().regex(HHMM),
     to: z.string().regex(HHMM),
     dashboardId: z.guid(),
+    staysAwake: z.boolean().optional(),
   }).strict(),
 ])).max(MAX_SWITCHES);
 

@@ -9,7 +9,8 @@ import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { loadBase, planOf } from '@/lib/displays/displaySettingsSync';
-import { SCHEDULE_TRANSITION, switchAt, type BusTime, type ScreenPlan } from '@/lib/screenSwitches';
+import { SCHEDULE_TRANSITION, staysAwake, switchAt, type BusTime, type ScreenPlan } from '@/lib/screenSwitches';
+import { setStayAwake } from '@/lib/hooks/stayAwake';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
 import { useScreenIdle } from '@/components/screensaver/useScreenIdle';
 
@@ -31,6 +32,10 @@ import { useScreenIdle } from '@/components/screensaver/useScreenIdle';
  *  - A change waits while the screen is in use: until nobody has touched it
  *    for a minute (or it has gone idle), and never while the layout is being
  *    edited.
+ *  - While a switch that stays awake is in force (bus time unless it says
+ *    not, #1347), the screen does not go idle, and one that starts while it
+ *    is idle wakes it, as a touch would, after the change over (stayAwake.ts).
+ *    Waking is not a pick: the screen still follows its plan.
  *
  * A named screen follows its plan at any address. A device nobody named shows
  * the dashboard at its address, the default on the home page, and switches
@@ -175,10 +180,9 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
   // way to the screen's own, even with no switch to end it (#1342).
   const idle = useScreenIdle();
 
-  const check = useCallback((idleNow: boolean) => {
+  // Which dashboard to show now.
+  const follow = useCallback((idleNow: boolean, now: number, { rule, id }: { rule: number; id: string | null }) => {
     if (loading || editing.current) return;
-    const now = Date.now();
-    const { rule, id } = wanted(now);
     if (holdRule.current !== null) {
       if (!idleNow && rule === holdRule.current) return;
       holdRule.current = null;
@@ -193,7 +197,29 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
       addTransitionType(SCHEDULE_TRANSITION);
       setShownId(id);
     });
-  }, [loading, editing, wanted, shownId, perfLevel]);
+  }, [loading, editing, shownId, perfLevel]);
+
+  // A switch that stays awake and starts while the screen is idle wakes it
+  // once its dashboard is up, so the wall wakes on the bus board, not on
+  // what it showed before.
+  const wakeOnShown = useRef(false);
+  const check = useCallback((idleNow: boolean) => {
+    const now = Date.now();
+    const want = wanted(now);
+    follow(idleNow, now, want);
+    const rule = want.rule >= 0 ? plan?.switches[want.rule] : undefined;
+    const awake = !!rule && staysAwake(rule);
+    wakeOnShown.current = awake && idleNow && want.id !== shownId;
+    if (!wakeOnShown.current) setStayAwake(awake);
+  }, [wanted, follow, plan, shownId]);
+  useEffect(() => {
+    if (!wakeOnShown.current) return;
+    wakeOnShown.current = false;
+    setStayAwake(true);
+  }, [shownId]);
+
+  // Nothing keeps the screen awake once this page is gone.
+  useEffect(() => () => setStayAwake(false), []);
 
   // It polls while idle too, so the change over happens behind the idle
   // screen, at the first check after it goes idle.

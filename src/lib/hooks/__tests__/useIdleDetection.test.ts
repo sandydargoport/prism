@@ -11,6 +11,7 @@
 
 import { renderHook, act } from '@testing-library/react';
 import { useIdleDetection } from '../useIdleDetection';
+import { setStayAwake } from '../stayAwake';
 
 // Suppress fetch calls from the away mode auto-check
 beforeAll(() => {
@@ -227,5 +228,35 @@ describe('useIdleDetection', () => {
       window.dispatchEvent(new Event('mousedown'));
     });
     expect(result.current.isIdle).toBe(false);
+  });
+
+  describe('a switch that keeps the screen awake (#1347)', () => {
+    afterEach(() => act(() => setStayAwake(false)));
+
+    it('wakes an idle screen when it starts, without counting as someone at it', () => {
+      const { result } = renderHook(() => useIdleDetection(60));
+      act(() => { jest.advanceTimersByTime(60_000); });
+      expect(result.current.isIdle).toBe(true);
+      const before = localStorage.getItem('prism-last-activity');
+      act(() => setStayAwake(true));
+      expect(result.current.isIdle).toBe(false);
+      // Away Mode's clock is for people.
+      expect(localStorage.getItem('prism-last-activity')).toBe(before);
+    });
+
+    it('keeps it from going idle while in force, and counts down again from its end', () => {
+      const { result } = renderHook(() => useIdleDetection(60));
+      act(() => setStayAwake(true));
+      act(() => { jest.advanceTimersByTime(10 * 60_000); });
+      expect(result.current.isIdle).toBe(false);
+      // A mouse moving past restarts nothing while it is in force.
+      act(() => { window.dispatchEvent(new Event('mousemove')); jest.advanceTimersByTime(60_000); });
+      expect(result.current.isIdle).toBe(false);
+      act(() => setStayAwake(false));
+      act(() => { jest.advanceTimersByTime(59_000); });
+      expect(result.current.isIdle).toBe(false);
+      act(() => { jest.advanceTimersByTime(1_000); });
+      expect(result.current.isIdle).toBe(true);
+    });
   });
 });
