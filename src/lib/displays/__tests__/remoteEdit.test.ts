@@ -4,7 +4,8 @@
  * settings are read and written in the host, and nothing the frame writes
  * reaches the phone's own storage.
  */
-import { changedSettings, installRemoteStorage, REMOTE_EDIT_GLOBAL, remoteStorage, resetRemoteEditHost, type RemoteEditHost } from '../remoteEdit';
+import { changedSettings, installRemoteStorage, releaseHeldSettings, REMOTE_EDIT_GLOBAL, remoteStorage, resetRemoteEditHost, type RemoteEditHost } from '../remoteEdit';
+import { writeStored } from '@/lib/hooks/useStoredValue';
 import { screenSummary } from '../screenSummary';
 
 function host(settings: Record<string, string>): RemoteEditHost {
@@ -92,6 +93,60 @@ describe('a device nobody has named, editing its own dashboard (#1341)', () => {
       resetRemoteEditHost();
     }
     expect(window.localStorage.getItem('prism-perf-mode')).toBeNull();
+  });
+
+  /** Runs `fn` as the editor's frame, with `parent` as the editor page's window. */
+  function asFrame(parent: object | null, fn: (real: Storage) => void) {
+    const real = window.localStorage;
+    const realParent = Object.getOwnPropertyDescriptor(window, 'parent');
+    const realStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    if (parent) Object.defineProperty(window, 'parent', { configurable: true, get: () => parent });
+    resetRemoteEditHost();
+    try {
+      installRemoteStorage();
+      fn(real);
+    } finally {
+      if (realParent) Object.defineProperty(window, 'parent', realParent);
+      if (realStorage) Object.defineProperty(window, 'localStorage', realStorage);
+      else delete (window as { localStorage?: unknown }).localStorage;
+      resetRemoteEditHost();
+    }
+  }
+
+  it('a normal page, not the editor, keeps the settings the sync writes in this browser', () => {
+    asFrame(null, (real) => {
+      // No layer: the page's storage is the browser's own.
+      expect(window.localStorage).toBe(real);
+      writeStored('prism-screensaver-timeout', '600');
+      releaseHeldSettings();
+    });
+    expect(localStorage.getItem('prism-screensaver-timeout')).toBe('600');
+  });
+
+  it('named from the editor, it lets them go: the settings of a screen named before land in this browser', () => {
+    const h = own({ 'prism-perf-mode': 'full' });
+    asFrame({ [REMOTE_EDIT_GLOBAL]: h }, (real) => {
+      writeStored('prism-perf-mode', 'minimal');
+      expect(real.getItem('prism-perf-mode')).toBeNull();
+      // NameThisDevice, once the server has named it, before it syncs.
+      releaseHeldSettings();
+      expect(real.getItem('prism-perf-mode')).toBe('minimal');
+      // What the sync then writes, the screen's own settings, reaches the browser.
+      writeStored('prism-screensaver-timeout', '600');
+      expect(real.getItem('prism-screensaver-timeout')).toBe('600');
+      expect(window.localStorage.getItem('prism-screensaver-timeout')).toBe('600');
+    });
+    expect(localStorage.getItem('prism-screensaver-timeout')).toBe('600');
+  });
+
+  it('a named screen being edited is never let go', () => {
+    const h = host({});
+    asFrame({ [REMOTE_EDIT_GLOBAL]: h }, (real) => {
+      releaseHeldSettings();
+      writeStored('prism-screensaver-timeout', '600');
+      expect(real.getItem('prism-screensaver-timeout')).toBeNull();
+      expect(h.settings['prism-screensaver-timeout']).toBe('600');
+    });
   });
 });
 

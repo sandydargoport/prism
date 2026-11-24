@@ -28,7 +28,7 @@
  * them to this browser, and Cancel drops them. Everything else it writes goes
  * to its own storage, as it always has.
  */
-import { isScreenSettingKey, type ScreenSettings } from './screenSettings';
+import { isScreenSettingKey, SCREEN_SETTING_KEYS, type ScreenSettingKey, type ScreenSettings } from './screenSettings';
 import type { ScreenSwitch } from '@/lib/screenSwitches';
 
 export const REMOTE_EDIT_GLOBAL = '__prismRemoteEdit';
@@ -99,14 +99,21 @@ export function resetRemoteEditHost(): void {
   cached = undefined;
 }
 
+/** For a device with no name, its real storage, and whether naming it let the held settings go. */
+const ownReal = new WeakMap<RemoteEditHost, Storage>();
+const released = new WeakSet<RemoteEditHost>();
+
 /**
  * A Storage that answers this screen's settings from the host and keeps every
  * other write in memory, reading through to the real one for the rest.
  */
 export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
   const memory = new Map<string, string | null>();
-  // A device editing its own dashboard (#1341): only its screen settings are held.
+  // A device editing its own dashboard (#1341): only its screen settings are
+  // held, and only until it is named.
   const own = host.displayId === null;
+  if (own) ownReal.set(host, real);
+  const held = (key: string): key is ScreenSettingKey => isScreenSettingKey(key) && !released.has(host);
   const base = () => JSON.stringify({
     displayId: host.displayId,
     dashboardId: host.dashboardId,
@@ -115,7 +122,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
     settingsUpdatedAt: host.settingsUpdatedAt,
   });
   const get = (key: string): string | null => {
-    if (isScreenSettingKey(key)) return host.settings[key] ?? null;
+    if (held(key)) return host.settings[key] ?? null;
     if (own) return real.getItem(key);
     if (key === BASE_KEY) return base();
     if (memory.has(key)) return memory.get(key) ?? null;
@@ -125,12 +132,12 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
     getItem: get,
     setItem(key: string, value: string) {
       const v = String(value);
-      if (isScreenSettingKey(key)) host.settings[key] = v;
+      if (held(key)) host.settings[key] = v;
       else if (own) real.setItem(key, v);
       else if (key !== BASE_KEY) memory.set(key, v);
     },
     removeItem(key: string) {
-      if (isScreenSettingKey(key)) delete host.settings[key];
+      if (held(key)) delete host.settings[key];
       else if (own) real.removeItem(key);
       else if (key !== BASE_KEY) memory.set(key, null);
     },
@@ -142,6 +149,25 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
       return real.length;
     },
   };
+}
+
+/**
+ * A device with no name was just named from the editor (#1341): it is a
+ * screen now, and its settings live in its own browser again. What the editor
+ * holds is written there, and from then on the sync code reads and writes the
+ * browser itself, so the settings a screen named before brings land there.
+ * Does nothing anywhere else.
+ */
+export function releaseHeldSettings(): void {
+  const host = remoteEditHost();
+  const real = host ? ownReal.get(host) : undefined;
+  if (!host || !real || released.has(host)) return;
+  for (const key of SCREEN_SETTING_KEYS) {
+    const value = host.settings[key];
+    if (value === undefined) real.removeItem(key);
+    else real.setItem(key, value);
+  }
+  released.add(host);
 }
 
 /**

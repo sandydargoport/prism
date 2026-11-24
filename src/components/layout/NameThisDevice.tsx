@@ -13,6 +13,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
+import { releaseHeldSettings } from '@/lib/displays/remoteEdit';
 import { cn } from '@/lib/utils';
 
 const NAME_MAX = 60;
@@ -84,6 +85,9 @@ export function NameThisDevice({ shows, onNamed, chip, field }: {
       // A new screen takes what this device has as its settings, sent now; a
       // screen named before brings its own. Either way it then opens as that
       // screen (#1282), which loads them afresh.
+      // In the editor's frame its settings were held until Done (#1341);
+      // named, they are its browser's again, where the sync writes them.
+      releaseHeldSettings();
       resetSyncBase();
       await syncScreenSettings();
       setOpen(false);
