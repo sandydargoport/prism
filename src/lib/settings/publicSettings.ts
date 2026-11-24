@@ -1,5 +1,6 @@
 import { PHOTO_DATE_SETTING, PHOTO_ON_THIS_DAY_SETTING, PHOTO_PLACE_SETTING } from '@/lib/photos/caption';
 import { SCENERY_SETTING_KEY } from '@/lib/scenery';
+import { HOUSEHOLD_DAY_SETTING } from '@/lib/screenDay';
 
 /**
  * The settings a caller who may not change settings gets to read (#809, #1224).
@@ -24,6 +25,7 @@ const PUBLIC_KEYS = new Set<string>([
   'calendarPastEvents', // usePastEventsMode: agenda and list hide ended events
   'shoppingCategories', // useShoppingCategories: the shopping list
   SCENERY_SETTING_KEY, // useSceneryOn: wallpaper and auto-hide
+  HOUSEHOLD_DAY_SETTING, // useHouseholdDay: how a screen with no day of its own idles (#1345)
   PHOTO_DATE_SETTING, // usePhotoSettings: photo caption
   PHOTO_PLACE_SETTING, // usePhotoSettings: photo caption
   PHOTO_ON_THIS_DAY_SETTING, // usePhotoSettings: wallpaper photo pick

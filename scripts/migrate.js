@@ -61,7 +61,12 @@ async function main() {
   const sql = postgres(DATABASE_URL, {
     max: 1,
     connect_timeout: 10,
-    onnotice: () => {},
+    // Postgres says "already exists, skipping" for every IF NOT EXISTS, so
+    // notices stay quiet, except those a migration means for the log: they
+    // start with its number, as "0057: ...".
+    onnotice: (notice) => {
+      if (/^\d{4}: /.test(notice.message || '')) console.log(`[migrate] ${notice.message}`);
+    },
     connection: { TimeZone: 'UTC' },
   });
 

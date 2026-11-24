@@ -360,7 +360,15 @@ test.describe('Time-of-day layouts', () => {
 
       // The wall's clock, ninety seconds before the window. Drift off, so an
       // idle screen's widgets stand still to be measured.
-      await wall.evaluate(() => localStorage.setItem('prism-screensaver-drift', 'off'));
+      // The screen idles as its dashboard, quieter (#1345): how it idles is
+      // the screen's own whichever dashboard is up, and the seeded household
+      // day is a photo frame, whose clock would stand beside the dashboard's.
+      await wall.evaluate(() => {
+        localStorage.setItem('prism-screensaver-drift', 'off');
+        localStorage.setItem('prism-screen-day', JSON.stringify({
+          day: 'dashboard', night: 'dashboard', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 0,
+        }));
+      });
       await wall.clock.install({ time: start - 90_000 });
       await wall.goto('/');
       const cell = (id: string) => wall.locator(`[data-widget="${id}"]`);

@@ -157,7 +157,9 @@ describe('the Screen tab (#1326)', () => {
     fireEvent.change(screen.getByLabelText('Rest after'), { target: { value: '3600' } });
     expect(localStorage.getItem('prism-screensaver-timeout')).toBe('3600');
     fireEvent.change(screen.getByLabelText('How dark at night'), { target: { value: '0.75' } });
-    expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.75');
+    // How much darker is part of the screen's day (#1345).
+    expect(JSON.parse(localStorage.getItem('prism-screen-day')!)).toMatchObject({ nightLevel: 75 });
+    expect(localStorage.getItem('prism-screensaver-dim')).toBeNull();
   });
 
   // #1340: light or dark and the photos behind the dashboard are the screen's own.

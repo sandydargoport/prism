@@ -2,11 +2,12 @@ import * as SunCalc from 'suncalc';
 import { z } from 'zod';
 
 /**
- * What a dashboard shows behind it when nobody is using the display (#782).
+ * What a screen shows behind it when nobody is using it (#782).
  *
- * Stored with the dashboard. Either one background all the time, or one by day
- * and one after dark, switching at dusk and dawn (each moved by an offset) or
- * at set times on the clock.
+ * Part of the screen's own day since #1345 (lib/screenDay); before, it was
+ * stored with the dashboard (`layouts.idle_background`, now unread). Either
+ * one background all the time, or one by day and one after dark, switching at
+ * dusk and dawn (each moved by an offset) or at set times on the clock.
  *
  *  - dashboard: the dashboard itself stays up, with only the widgets marked to
  *    stay showing (calm mode, #691).
@@ -41,15 +42,6 @@ export const idleBackgroundSchema = z.union([
 
 export type IdleSwitch = z.infer<typeof idleSwitchSchema>;
 export type IdleBackground = z.infer<typeof idleBackgroundSchema>;
-
-/** What a display with no dashboard of its own shows: the photo screensaver, as before. */
-export const PHOTOS: IdleBackground = { source: 'photos' };
-
-/** A stored value, or photos if it is missing or not one we know. */
-export function parseIdleBackground(raw: unknown): IdleBackground {
-  const parsed = idleBackgroundSchema.safeParse(raw);
-  return parsed.success ? parsed.data : PHOTOS;
-}
 
 /**
  * Whether two values mean the same. The database hands JSON back with its keys

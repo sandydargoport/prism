@@ -20,7 +20,7 @@ Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitch
 
 A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. Tapping a switch's dot opens that switch in the **Screen** panel, where switches are set. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
 
-The panel is a few rows, all the dashboard's own: **Resting** (what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. Which dashboard a screen shows, its switches, how soon it rests and how dark it goes are the screen's own, in the editor's **Screen** panel (More > Edit layout > Screen; see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)).
+The panel is a few rows, all the screen's own: **Resting** (what it shows idle by day) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it. Idle and night belong to the screen, not to the dashboard it shows, and **Done** saves them to the screen, so a switch to another dashboard does not change how the screen idles. Which dashboard a screen shows, its switches, how soon it goes idle and how much darker it goes at night are in the editor's **Screen** panel (More > Edit layout > Screen; see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)).
 
 #### A calm dashboard is its own idle screen
 
@@ -30,7 +30,7 @@ Tap **See it** on the **Resting** row of the Through the day panel and each widg
 
 #### Resting, night and what shows
 
-The Through the day panel sets what shows while the screen rests (**This dashboard**, **Photos** or **Night sky**, on the Resting row) and what night looks like (**Dim this dashboard**, **Night sky**, **Photos** or **Screen off**, on the At night row). Both belong to the dashboard, so every screen showing it rests the same. If one screen should idle differently, have it show another dashboard.
+The Through the day panel sets what shows while the screen rests (**This dashboard**, **Photos** or **Night sky**, on the Resting row) and what night looks like (**Dim this dashboard**, **Night sky**, **Photos** or **Screen off**, on the At night row). Both belong to the screen, so two screens showing the same dashboard can idle differently, and a switch changes what a screen shows but not how it idles.
 
 - **Photos**: the slideshow.
 - **Night sky**: the stars, Milky Way, constellation figures and moon as they are outside right now, worked out from the household location in *Settings > General* and drawn over a treeline on the horizon. As at a real dusk, the Milky Way is the last thing to appear, and it fades when the moon is bright. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside). Then it is named, with what the name means and the names of its brightest stars, for about twenty seconds. The next one follows after a pause. Each display remembers which constellations it has shown and picks the one shown longest ago, best known first, skipping any that a widget would cover, so over the nights of a season it gets through all of them. The brightest stars twinkle, and a shooting star crosses every few minutes. On the nights around the peak of one of the ten major yearly meteor showers (the Quadrantids, Lyrids, Eta Aquariids, Southern Delta Aquariids, Perseids, Draconids, Orionids, Leonids, Geminids and Ursids), while its radiant (the point the meteors seem to come from) is above the horizon, a line at the top says so, for example "Geminids peak tonight, up to 150 an hour", and mentions whether a bright moon will hide the fainter ones. A small ring marks the radiant when it is in view, and shooting stars come more often and streak away from it. During a lunar eclipse visible from home, the moon turns copper as it moves into the Earth's shadow. If **Say when aurora may be visible** is ticked in *Settings > Appearance > Night sky* (off by default, one switch for every display), a second line says when NOAA's aurora forecast gives a chance of aurora overhead or low on the horizon toward the pole ("Aurora possible now, low in the northern sky"). When the device is set to reduced motion, or the performance level is Reduced or Minimal, the twinkling and shooting stars stop and each constellation appears whole instead of being traced. In the daytime it shows a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and visitors see no family photos.
@@ -60,7 +60,11 @@ All widgets move together, so the gaps between them stay as you designed them. T
 
 #### Dim at night
 
-At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night is the dashboard's own, set in the Through the day panel, and **How dark**, in the Screen panel, sets the darkness for this screen. Each screen sets its own. Dimming is off until you choose **Dim this dashboard** or a darkness.
+At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night and the darkness are the screen's own: night is set in the Through the day panel and the darkness in the Screen panel. Choosing a night look never changes the darkness.
+
+#### New and unnamed screens
+
+The household keeps a starting day: what a screen shows idle by day and at night, when night is, and how much darker. A device with no name idles by it until something is changed in its own editor. When a device is named, the screen keeps the day the device had, once, and holds its own from then on. On a new install the starting day is the dashboard, quieter, by day and at night, from dusk to dawn, 50% darker at night. On an upgrade it is what the default dashboard showed idle, not darker, and each named screen keeps how it idled on its normal dashboard and how dark it went.
 
 A web page can't change the panel's own brightness or turn it off. On an OLED panel the black layer really does dim it. On an LCD the backlight stays on, though less light reaches the room. A screen that should go fully dark at night still needs the computer's own display sleep.
 
@@ -71,7 +75,7 @@ A screen's own idle settings are in its editor, More > Edit layout. From a phone
 In **Screen** (More > Edit layout > Screen), under **When nobody is using it**:
 
 - **Rest after**: how long nobody touches the screen before it rests. 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests** (default 2 minutes).
-- **How dark**: **Not dimmed**, or 25%, 50% or 75% darker at night. Not dimmed by default. It isn't offered when the night look is **Screen off**.
+- **How dark**: **Not dimmed**, or 25%, 50% or 75% darker at night. A new install starts at 50%; a screen that never set one is not dimmed. It isn't offered when the night look is **Screen off**.
 
 In **Through the day**, **More** > **Screensaver motion** opens the screensaver's own panel:
 

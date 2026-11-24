@@ -41,7 +41,7 @@ const rows = (page: Page) => page.locator('[data-editor-sheet="screen"] [data-sw
  * A screen named from a browser of its own, with `plan` set, and a laptop
  * signed in to edit it.
  */
-async function namedScreen(browser: Browser, name: string, plan: Partial<Pick<Screen, 'dashboardId' | 'switches'>> = {}) {
+async function namedScreen(browser: Browser, name: string, plan: Partial<Pick<Screen, 'dashboardId' | 'switches'>> & { settings?: Record<string, string> } = {}) {
   const probe = await browser.newPage();
   const parent = await getFirstParent(probe);
   await probe.close();
@@ -343,10 +343,10 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     const tag = Date.now().toString(36);
     const setup = await browser.newPage();
     await signIn(setup);
-    // Kitchen goes dark from 9 pm to 6:30 am; School run has tasks where Kitchen has a clock.
+    // The screen goes dark from 9 pm to 6:30 am (its own day, #1345); School
+    // run has tasks where Kitchen has a clock.
     const kitchenRes = await setup.request.post('/api/layouts', { data: {
       name: `Kitchen ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }],
-      idleBackground: { day: 'dashboard', night: 'off', switch: { by: 'clock', from: '21:00', to: '06:30' } },
     } });
     expect(kitchenRes.ok()).toBe(true);
     const kitchen: { id: string; slug: string } = await kitchenRes.json();
@@ -358,7 +358,9 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       { when: 'times', days: every, from: '07:00', to: '08:00', dashboardId: school.id },
       { when: 'times', days: every, from: '15:00', to: '15:45', dashboardId: school.id },
       { when: 'times', days: every, from: '01:45', to: '02:45', dashboardId: school.id },
-    ] });
+    ], settings: {
+      'prism-screen-day': JSON.stringify({ day: 'dashboard', night: 'off', switch: { by: 'clock', from: '21:00', to: '06:30' }, nightLevel: 0 }),
+    } });
     const laptop = await screen.edit();
     try {
       const { page } = laptop;

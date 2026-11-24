@@ -296,7 +296,6 @@ export function LayoutEditor({
             previewDashboardId={previewDashboardId}
             onPreviewDashboardChange={onPreviewDashboardChange}
             screenId={screenId}
-            forScreen={forScreen}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onOpenLook={() => setSheet('look')}

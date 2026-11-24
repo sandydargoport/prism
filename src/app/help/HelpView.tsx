@@ -262,13 +262,13 @@ function ScreensHelp() {
       <P>These belong to the screen, and so do its seasonal theme, its pinned photos and which time zone it shows, set on the screen in Settings. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the Screen drop-down says <strong>No screen</strong> (or <strong>This device (not named)</strong>, with <strong>Name this device</strong> below it) and lists the screens.</P>
 
       <H2>Through the day</H2>
-      <P>More &gt; Edit layout &gt; Through the day sets how the dashboard rests and sleeps.</P>
+      <P>More &gt; Edit layout &gt; Through the day sets how the screen idles and what it shows at night.</P>
       <Ul>
         <Li><strong>The day&apos;s line</strong> has a dot wherever what the screen shows changes: night starting and ending, and each of the screen&apos;s switches. Tap a dot, or step with ◀ ▶, to see the screen at that moment. Tapping a switch&apos;s dot opens it in Screen</Li>
         <Li><strong>Resting</strong>: what shows when nobody is using the screen: <strong>This dashboard</strong>, <strong>Photos</strong> or <strong>Night sky</strong>. <strong>See it</strong> shows it on the canvas</Li>
         <Li><strong>At night</strong>: <strong>Dim this dashboard</strong>, <strong>Night sky</strong>, <strong>Photos</strong> or <strong>Screen off</strong>. Night runs from dusk to dawn, moved earlier or later if you like, or at set times</Li>
       </Ul>
-      <P>Resting and At night belong to the dashboard, so every screen showing it rests and sleeps the same way.</P>
+      <P>Idle and night belong to the screen, not to the dashboard it shows, so a switch to another dashboard does not change how the screen idles. Done saves them to the screen. A device with no name uses the household&apos;s starting day until it sets its own; a screen named on it keeps that day. On a new install that is the dashboard, quieter, from dusk to dawn, 50% darker at night.</P>
       <P><strong>Notices</strong>, small cards at the side of the screen when something is close, are in the editor&apos;s <strong>More</strong>.</P>
     </>
   );
@@ -659,7 +659,7 @@ function BabysitterHelp() {
 function ScreensaverHelp() {
   return (
     <>
-      <P>When nobody touches a screen for a while, it rests. What it shows resting and at night is set in More &gt; Edit layout &gt; Through the day.</P>
+      <P>When nobody touches a screen for a while, it goes idle. What it shows idle and at night is the screen&apos;s own, whichever dashboard is up, set in More &gt; Edit layout &gt; Through the day.</P>
       <Ul>
         <Li><strong>Rest after</strong>: in Screen, how long the screen waits: 30 seconds, 1 minute, 2 minutes (the default), 10 minutes, 1 hour, or Never rests</Li>
         <Li><strong>Resting</strong>: This dashboard, Photos, or a <strong>Night sky</strong> (the stars, Milky Way and moon as they are outside now, naming one constellation at a time)</Li>

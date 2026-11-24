@@ -22,6 +22,10 @@
  * photos and which time zone it shows joined 2026-11-24 (#1340), so a laptop
  * editing a screen draws it as the screen does. A named screen stores Light or
  * Dark, never `system`: see `concreteThemeMode` in displaySettingsSync.
+ * The screen's day (idle look by day and at night, when night is, how much
+ * darker) joined 2026-11-24 (#1345), taking over from the dashboard's idle
+ * background and from `prism-screensaver-dim`, which stays listed so 0057's
+ * removal of it reaches each browser and a browser with no name keeps it.
  * Derived values (the screensaver layout bridged from the dashboard) and
  * per-browser memory (which constellation was last taught) are left out.
  */
@@ -42,6 +46,8 @@ export const SCREEN_SETTING_KEYS = [
   'prism-screensaver-speed',
   'prism-screensaver-water-clear',
   'prism-screensaver-dim',
+  // The screen's day: idle look by day and at night, night rule, how much darker (#1345).
+  'prism-screen-day',
   // Performance mode.
   'prism-perf-mode',
   // Keyboard and the shape of the screen.

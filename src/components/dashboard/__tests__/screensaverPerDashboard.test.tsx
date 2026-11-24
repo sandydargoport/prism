@@ -10,6 +10,9 @@ import { act, renderHook } from '@testing-library/react';
 import { useDashboardLayout } from '../useDashboardLayout';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
+import { backgroundOf, parseScreenDay, serializeScreenDay } from '@/lib/screenDay';
+import { DEFAULT_NIGHT } from '@/lib/throughTheDay';
+import type { IdleSource } from '@/lib/idleBackground';
 
 let activeUser: { id: string; role: string } | null = null;
 jest.mock('@/components/providers/AuthProvider', () => ({
@@ -39,6 +42,11 @@ const data = (all: Layout[]) => ({
 });
 
 const stored = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
+/** This screen's day (#1345): one look by day and night, how much darker. */
+const DAY_KEY = 'prism-screen-day';
+const screenIdles = (look: IdleSource, nightLevel: 0 | 25 | 50 | 75 = 0) =>
+  localStorage.setItem(DAY_KEY, serializeScreenDay({ day: look, night: look, switch: DEFAULT_NIGHT, nightLevel }));
+const screenDay = () => parseScreenDay(localStorage.getItem(DAY_KEY));
 
 beforeEach(() => { localStorage.clear(); activeUser = null; mockInFrame = false; });
 
@@ -76,7 +84,12 @@ describe('screensaver per dashboard', () => {
 
 describe('the upgrade from v1.30.1 (#1154)', () => {
   const fetchMock = jest.fn();
-  beforeEach(() => { fetchMock.mockReset(); global.fetch = fetchMock as unknown as typeof fetch; });
+  beforeEach(() => {
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
+    // 0039 set every dashboard to photos, and 0057 gave each screen that day.
+    screenIdles('photos');
+  });
 
   it('shows a dashboard with none of its own the arrangement this browser kept, and carries it there once', async () => {
     localStorage.setItem(KEY, JSON.stringify(custom));
@@ -102,10 +115,10 @@ describe('the upgrade from v1.30.1 (#1154)', () => {
     expect(localStorage.getItem('prism-screensaver-carried')).toBeNull();
   });
 
-  it('carries nothing to a dashboard that rests as itself', () => {
+  it('carries nothing to a screen that idles as its dashboard', () => {
     localStorage.setItem(KEY, JSON.stringify(custom));
-    const calm = { ...dashboard('b', null), idleBackground: { source: 'dashboard' } } as Layout;
-    renderHook(() => useDashboardLayout(data([dashboard('a', custom), calm]), 'b'));
+    screenIdles('dashboard');
+    renderHook(() => useDashboardLayout(data([dashboard('a', custom), dashboard('b', null)]), 'b'));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(localStorage.getItem('prism-screensaver-carried')).toBe('1');
   });
@@ -124,7 +137,8 @@ describe('one editor, two tabs, one Save (#782)', () => {
     await act(async () => { await hook.result.current.handleEditStart(); });
     return { layouts, result: hook.result };
   }
-  const photos = () => ({ ...dashboard('a', custom), idleBackground: { source: 'photos' } }) as Layout;
+  // The screen idles over photos; the dashboard's own old look is not read.
+  const photos = () => { screenIdles('photos', 50); return { ...dashboard('a', custom), idleBackground: { source: 'sky' } } as Layout; };
 
   it('keeps unsaved edits in both tabs when switching between them, and Save stores both', async () => {
     const { layouts, result } = await editing(photos());
@@ -141,8 +155,12 @@ describe('one editor, two tabs, one Save (#782)', () => {
     await act(async () => { await result.current.handleSave(); });
     expect(layouts.saveLayout).toHaveBeenCalledTimes(1);
     expect(layouts.saveLayout).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'a', widgets: edited, screensaverWidgets: idleEdited, idleBackground: { source: 'sky' },
+      id: 'a', widgets: edited, screensaverWidgets: idleEdited,
     }));
+    // The idle look is the screen's (#1345): saved to its day, how much darker
+    // kept, and never to the dashboard.
+    expect(layouts.saveLayout.mock.calls[0]![0]).not.toHaveProperty('idleBackground');
+    expect(screenDay()).toEqual({ day: 'sky', night: 'sky', switch: DEFAULT_NIGHT, nightLevel: 50 });
     expect(result.current.isEditing).toBe(false);
     // The running screensaver gets the new layout once saved.
     expect(stored()).toEqual(idleEdited);
@@ -158,6 +176,7 @@ describe('one editor, two tabs, one Save (#782)', () => {
 
     act(() => { result.current.handleCancel(); });
     expect(layouts.saveLayout).not.toHaveBeenCalled();
+    expect(backgroundOf(screenDay()!)).toEqual({ source: 'photos' });
     expect(result.current.isEditing).toBe(false);
     expect(result.current.editTab).toBe('dashboard');
     expect(result.current.activeWidgets).toEqual([]);
@@ -182,21 +201,25 @@ describe('one editor, two tabs, one Save (#782)', () => {
     expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, true]);
   });
 
-  it('takes the background of a dashboard that finishes loading after editing starts', async () => {
+  it('takes the screen\'s day when it arrives after editing starts', async () => {
     activeUser = { id: 'p1', role: 'parent' };
-    const empty = data([]);
-    const loaded = data([{ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout]);
-    const { result, rerender } = renderHook(({ layouts }) => useDashboardLayout(layouts, 'a'), {
-      initialProps: { layouts: empty },
-    });
+    const layouts = data([dashboard('a', custom)]);
+    const { result } = renderHook(() => useDashboardLayout(layouts, 'a'));
     await act(async () => { await result.current.handleEditStart(); });
-    rerender({ layouts: loaded });
-    expect(result.current.editingBackground).toEqual({ source: 'dashboard' });
+    act(() => { screenIdles('sky'); window.dispatchEvent(new StorageEvent('storage', { key: DAY_KEY })); });
+    expect(result.current.editingBackground).toEqual({ source: 'sky' });
     expect(result.current.idleDirty).toBe(false);
   });
 
+  it('edits the screen\'s day, not the day of the dashboard open (#1345)', async () => {
+    screenIdles('photos');
+    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'sky' } } as Layout);
+    expect(result.current.editingBackground).toEqual({ source: 'photos' });
+  });
+
   it('arranges the previewed half of a day and night pair', async () => {
-    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
+    screenIdles('dashboard');
+    const { result } = await editing(dashboard('a', custom));
     act(() => { result.current.setEditTab('idle'); });
     act(() => {
       result.current.setEditingBackground({ day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } });
@@ -208,7 +231,8 @@ describe('one editor, two tabs, one Save (#782)', () => {
   });
 
   it('arranges a screensaver layout on the Idle screen tab only behind photos or the sky', async () => {
-    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
+    screenIdles('dashboard');
+    const { result } = await editing(dashboard('a', custom));
     act(() => { result.current.setEditTab('idle'); });
     expect(result.current.editingScreensaver).toBe(false);
     act(() => { result.current.setEditingBackground({ source: 'photos' }); });

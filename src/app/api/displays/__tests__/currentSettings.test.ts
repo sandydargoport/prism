@@ -16,9 +16,19 @@ jest.mock('@/lib/displays/displaySettingsStore', () => ({
   applySettingChanges: (...a: unknown[]) => mockApply(...a),
 }));
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
+// The household's starting day (#1345), as a new install seeds it.
+const mockHouseholdDay = jest.fn();
+jest.mock('@/lib/displays/startingDay', () => ({
+  ...jest.requireActual('@/lib/displays/startingDay'),
+  readHouseholdDay: () => mockHouseholdDay(),
+}));
 
 import { NextRequest } from 'next/server';
 import { POST } from '../current/settings/route';
+import { DEFAULT_NIGHT } from '@/lib/throughTheDay';
+import { serializeScreenDay, type ScreenDay } from '@/lib/screenDay';
+
+const HOUSEHOLD: ScreenDay = { day: 'dashboard', night: 'dashboard', switch: DEFAULT_NIGHT, nightLevel: 50 };
 
 const KITCHEN = '22222222-2222-4222-8222-222222222222';
 const HALL = '33333333-3333-4333-8333-333333333333';
@@ -32,6 +42,7 @@ const post = (body: unknown) =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockHouseholdDay.mockResolvedValue(HOUSEHOLD);
   mockApply.mockImplementation(async (_id: string, changes: Record<string, string>) => ({
     settings: changes,
     settingsUpdatedAt: UPDATED,
@@ -75,7 +86,39 @@ describe('POST /api/displays/current/settings', () => {
   it('a newly named screen with nothing stored takes the browser\'s settings', async () => {
     mockCurrentDisplay.mockResolvedValue(screen({}));
     await post({ changes: { 'prism-screensaver-timeout': '300' }, baseDisplayId: null });
-    expect(mockApply).toHaveBeenCalledWith(KITCHEN, { 'prism-screensaver-timeout': '300' });
+    expect(mockApply).toHaveBeenCalledWith(KITCHEN, expect.objectContaining({ 'prism-screensaver-timeout': '300' }));
+  });
+
+  describe('a newly named screen copies its day once (#1345)', () => {
+    it('writes the household\'s starting day, 50% darker on a new install, when the browser had none', async () => {
+      mockCurrentDisplay.mockResolvedValue(screen({}));
+      await post({ changes: {}, baseDisplayId: null });
+      expect(mockApply).toHaveBeenCalledWith(KITCHEN, { 'prism-screen-day': serializeScreenDay(HOUSEHOLD) });
+    });
+
+    it('carries up a browser\'s old dim value as the night level, and drops the old key', async () => {
+      mockCurrentDisplay.mockResolvedValue(screen({}));
+      await post({ changes: { 'prism-screensaver-dim': '0.25' }, baseDisplayId: null });
+      expect(mockApply).toHaveBeenCalledWith(KITCHEN, {
+        'prism-screen-day': serializeScreenDay({ ...HOUSEHOLD, nightLevel: 25 }),
+      });
+    });
+
+    it('carries up a day the browser set for itself as it is', async () => {
+      const own = serializeScreenDay({ day: 'photos', night: 'off', switch: DEFAULT_NIGHT, nightLevel: 0 });
+      mockCurrentDisplay.mockResolvedValue(screen({}));
+      await post({ changes: { 'prism-screen-day': own }, baseDisplayId: null });
+      expect(mockApply).toHaveBeenCalledWith(KITCHEN, { 'prism-screen-day': own });
+    });
+
+    it('leaves a screen that already has settings, and later syncs, alone', async () => {
+      mockCurrentDisplay.mockResolvedValue(screen({ 'prism-perf-mode': 'true' }));
+      await post({ changes: {}, baseDisplayId: null });
+      await post({ changes: { 'prism-perf-mode': 'false' }, baseDisplayId: KITCHEN });
+      expect(mockApply).toHaveBeenCalledTimes(1);
+      expect(mockApply).toHaveBeenCalledWith(KITCHEN, { 'prism-perf-mode': 'false' });
+      expect(mockHouseholdDay).not.toHaveBeenCalled();
+    });
   });
 
   it.each([

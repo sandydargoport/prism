@@ -27,6 +27,7 @@ import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim'
 import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import type { IdleBackground } from '@/lib/idleBackground';
+import { backgroundOf, DEFAULT_SCREEN_DAY } from '@/lib/screenDay';
 import { asDayAndNight } from '@/lib/throughTheDay';
 import {
   BUS_MINUTE_CHOICES, busWindowOf, daysShort, EVERY_DAY, MAX_SWITCHES, routesOf,
@@ -198,7 +199,7 @@ export function ScreenSheet({
 
   const plan = screenId ? screenPlan : null;
   const switches = plan?.switches ?? [];
-  const night = asDayAndNight(idleBackground ?? { source: 'photos' }).night;
+  const night = asDayAndNight(idleBackground ?? backgroundOf(DEFAULT_SCREEN_DAY)).night;
 
   const exists = (id: string) => allDashboards.some((d) => d.id === id);
   const dashboardName = (id: string | undefined) => allDashboards.find((d) => d.id === id)?.name ?? 'this dashboard';

@@ -17,7 +17,9 @@ import {
   saveScreensaverPreset,
 } from '@/components/screensaver/screensaverStorage';
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
-import { idleSources, parseIdleBackground, sameIdleBackground, PHOTOS, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
+import { idleSources, sameIdleBackground, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
+import { backgroundOf, withBackground } from '@/lib/screenDay';
+import { useScreenDay } from '@/components/screensaver/useScreenDay';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useResetOn } from '@/lib/hooks/useResetOn';
@@ -101,9 +103,12 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     if (activeLayout) return screensaverForDashboard(activeLayout, layouts.allLayouts);
     return loadScreensaverLayout();
   });
-  // What shows behind it when idle, as saved and as being edited. Nothing is
-  // stored until Save, so Cancel only has to put these back.
-  const savedBackground = activeLayout ? parseIdleBackground(activeLayout.idleBackground) : PHOTOS;
+  // What shows behind it when idle, as saved and as being edited. It is the
+  // screen's own day (#1345), whichever dashboard is open; the dashboard's
+  // old `idleBackground` is no longer read. Nothing is stored until Save, so
+  // Cancel only has to put these back.
+  const { day: screenDay, setDay: setScreenDay } = useScreenDay();
+  const savedBackground = backgroundOf(screenDay);
   // Null from the start of editing until it is changed, so it follows the
   // saved value: the dashboard can finish loading after editing starts. (Seeded
   // with the saved value only because the React compiler's memoization check
@@ -125,7 +130,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     // it only while the dashboard still has none. Until that works (a wall
     // nobody signed in to cannot save) it keeps showing here, as before.
     const legacy = remoteEditHost() ? null : legacyScreensaver();
-    const owed = owesLegacyScreensaver(activeLayout, editsIdleLayout(parseIdleBackground(activeLayout.idleBackground)), legacy);
+    const owed = owesLegacyScreensaver(activeLayout, editsIdleLayout(savedBackground), legacy);
     const widgets = owed ? legacy : screensaverForDashboard(activeLayout, layouts.allLayouts);
     if (owed) {
       void carryScreensaver(activeLayout.id, legacy).then((ok) => { if (ok) markScreensaverCarried(); });
@@ -137,7 +142,9 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     // that finishes loading after editing starts.
     setPreEditSs(widgets);
     saveScreensaverLayout(widgets);
-  }, [activeLayout, layouts.allLayouts]);
+    // Runs once per dashboard (the ref above); the screen's day at that
+    // moment decides whether a carried arrangement is owed.
+  }, [activeLayout, layouts.allLayouts, savedBackground]);
 
   // Switching dashboards from the editor opens the next one with ?edit=1, and
   // it opens in edit mode once its layout has loaded. Only for a parent, so a
@@ -234,8 +241,10 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
       if (activeLayout?.screensaverWidgets || JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)) {
         saveData.screensaverWidgets = ssLayout;
       }
-      if (activeLayout?.idleBackground || !sameIdleBackground(editingBackground, savedBackground)) {
-        saveData.idleBackground = editingBackground;
+      // The idle and night looks are the screen's (#1345): Done writes them
+      // to its day, keeping how much darker, and never to the dashboard.
+      if (!sameIdleBackground(editingBackground, savedBackground)) {
+        setScreenDay(withBackground(screenDay, editingBackground));
       }
       await layouts.saveLayout(saveData);
     } catch (err) {
@@ -243,7 +252,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, screenDay, setScreenDay, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
@@ -268,7 +277,6 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         widgets: editingWidgets,
         isDefault: target.isDefault,
         screensaverWidgets: ssLayout,
-        idleBackground: editingBackground,
         orientation: target.orientation || 'landscape',
       });
     } else {
@@ -279,12 +287,15 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         widgets: editingWidgets,
         isDefault: false,
         screensaverWidgets: ssLayout,
-        idleBackground: editingBackground,
         orientation: activeLayout?.orientation || 'landscape',
       });
     }
+    // The idle and night looks are the screen's, whichever dashboard it saves to.
+    if (!sameIdleBackground(editingBackground, savedBackground)) {
+      setScreenDay(withBackground(screenDay, editingBackground));
+    }
     finishEditing();
-  }, [editingWidgets, ssLayout, editingBackground, activeLayout, layouts, finishEditing]);
+  }, [editingWidgets, ssLayout, editingBackground, savedBackground, screenDay, setScreenDay, activeLayout, layouts, finishEditing]);
 
   const handleReset = useCallback(() => {
     setEditingWidgets(DEFAULT_TEMPLATE.widgets);

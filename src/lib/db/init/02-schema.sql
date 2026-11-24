@@ -2791,3 +2791,11 @@ CREATE TABLE IF NOT EXISTS public.bus_stop_visits (
 CREATE UNIQUE INDEX IF NOT EXISTS bus_stop_visits_route_date_stop_idx
   ON public.bus_stop_visits (route_id, trip_date, stop_key);
 CREATE INDEX IF NOT EXISTS bus_stop_visits_trip_date_idx ON public.bus_stop_visits (trip_date);
+
+-- The household's starting day (#1345): how a new or unnamed screen idles.
+-- The dashboard quieter by day and at night, dusk to dawn, 50% darker at
+-- night. A newly named screen copies it once. Migration 0057 seeds the same
+-- row on an upgraded install (not darker there) and leaves this one alone.
+INSERT INTO public.settings (key, value)
+VALUES ('screenStartingDay', '{"day": "dashboard", "night": "dashboard", "switch": {"by": "sun", "duskOffset": 30, "dawnOffset": -30}, "nightLevel": 50}'::jsonb)
+ON CONFLICT (key) DO NOTHING;

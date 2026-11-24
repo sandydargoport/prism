@@ -46,7 +46,12 @@ const CONTROLS: Record<ScreenSettingKey, { on: Place; label: RegExp } | { none: 
   'prism-screensaver-wobble': { on: 'Screensaver motion', label: /^Surface wobble/ },
   'prism-screensaver-speed': { on: 'Screensaver motion', label: /^Transition length/ },
   'prism-screensaver-water-clear': { on: 'Screensaver motion', label: /^Keep text clear of the waterline/ },
-  'prism-screensaver-dim': { on: 'Screen', label: /^How dark at night/ },
+  // Moved into the screen's day by 0057 (#1345); still read on a browser
+  // with no day of its own, never written.
+  'prism-screensaver-dim': { none: 'moved into prism-screen-day; read only as a fallback' },
+  // The screen's day (#1345): how much darker here; its looks and night rule
+  // are on Through the day, which saves them on Done.
+  'prism-screen-day': { on: 'Screen', label: /^How dark at night/ },
   'prism-perf-mode': { on: 'Look', label: /^Performance$/ },
   'prism:keyboard-on-this-device': { on: 'Look', label: /^On-screen keyboard$/ },
   'prism-orientation-override': { on: 'Look', label: /^Orientation$/ },

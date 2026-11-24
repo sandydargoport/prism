@@ -12,11 +12,11 @@
  * night's here, a switch's on the Screen sheet, where the screen's switches
  * are set (#1326).
  *
- * Then the dashboard's own day: what it shows while resting, with See it to
+ * Then the screen's own day (#1345): what it shows idle by day, with See it to
  * arrange what shows over the photos or the sky, and At night, a row shaped
  * like a switch: its look, when night is, tonight's times and the offsets. It
- * belongs to the dashboard, so every screen showing it rests and sleeps the
- * same way, and Done saves it with the dashboard. At night folds to one line
+ * belongs to the screen, so a switch to another dashboard does not change how
+ * it idles, and Done saves it to the screen. At night folds to one line
  * that says what it does, and opens on a tap. Every row has its name in one
  * column and its choices in the next, so they line up and wrap within their
  * own column.
@@ -27,9 +27,9 @@ import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
 import { useSkyLocation } from '@/components/screensaver/useIdleBackground';
-import { useIdleDimSetting } from '@/components/screensaver/idleDim';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, type ScreenState } from '@/lib/throughTheDay';
+import { backgroundOf, DEFAULT_SCREEN_DAY } from '@/lib/screenDay';
 import type { ScreenPlan } from '@/lib/screenSwitches';
 import { dayStops, nightSpans, sceneAt, switchSpans, type Scene, type Stop } from '@/lib/dayWaypoints';
 import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
@@ -77,7 +77,7 @@ type OpenRow = 'night' | null;
 export function ThroughTheDaySheet({
   idleBackground, onIdleBackgroundChange, idleHalf, onIdleHalfChange, editTab, onEditTabChange, idleCheck,
   allDashboards = [], currentDashboardId,
-  screenPlan = null, screenId = null, forScreen = true,
+  screenPlan = null, screenId = null,
   previewDashboardId = null, onPreviewDashboardChange, onOpenLook, onOpenSwitch,
 }: {
   idleBackground?: IdleBackground;
@@ -93,8 +93,6 @@ export function ThroughTheDaySheet({
   screenPlan?: ScreenPlan | null;
   /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
-  /** The editor is for a screen (this one, or one edited from here): a dimmed night turns its dimming on. */
-  forScreen?: boolean;
   /** Another dashboard the canvas shows as it is saved, for a stop in its switch; null is this one. */
   previewDashboardId?: string | null;
   onPreviewDashboardChange?: (id: string | null) => void;
@@ -106,7 +104,6 @@ export function ThroughTheDaySheet({
   const { timeFormat, householdTimezone } = useTimeFormat();
   const [moreOpen, setMoreOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
-  const { level: dim, setLevel: setDim } = useIdleDimSetting();
   // Folded when the editor opens.
   const [openRow, setOpenRow] = useState<OpenRow>(null);
   const toggle = () => setOpenRow((o) => (o === 'night' ? null : 'night'));
@@ -119,7 +116,7 @@ export function ThroughTheDaySheet({
   const plan = screenId ? screenPlan : null;
   const switches = plan?.switches ?? [];
 
-  const pair = asDayAndNight(idleBackground ?? { source: 'photos' });
+  const pair = asDayAndNight(idleBackground ?? backgroundOf(DEFAULT_SCREEN_DAY));
   const rule = pair.switch;
   const { lat, lon, guessed } = useSkyLocation(rule.by === 'sun');
   const time = (d: Date) => formatTimeOfDay(clockOf(d), timeFormat);
@@ -197,8 +194,6 @@ export function ThroughTheDaySheet({
     return `${look} · dusk to dawn${night ? `, tonight ${time(night.start)}–${time(night.end)}` : ''}`;
   };
 
-  const lookName = dashboardName(currentDashboardId);
-
   return (
     <div className="flex flex-col gap-5 pointer-fine:gap-4" data-day-sheet data-day-shows={state}
       data-day-at={shownStop === null ? undefined : stops[shownStop]!.minute}>
@@ -220,7 +215,7 @@ export function ThroughTheDaySheet({
         />
       </section>
 
-      {/* The dashboard's own day: what it shows resting and at night, and when night is. */}
+      {/* The screen's own day: what it shows idle and at night, and when night is. */}
       <section className="flex flex-col gap-2 pointer-fine:gap-1.5" aria-label="Resting and night" data-day-look>
         <Row name="Resting">
           <select className={field} value={pair.day} aria-label="While resting" data-resting-look
@@ -238,9 +233,9 @@ export function ThroughTheDaySheet({
             <select className={field} value={pair.night} aria-label="Night look" data-night-look
               onChange={(e) => {
                 const look = e.target.value as IdleSource;
+                // Only the look: how much darker is the screen's own choice,
+                // set beside it, and never changed from here (#1345).
                 change({ night: look });
-                // Dimming a screen that is set not to dim would show no change.
-                if (forScreen && look === 'dashboard' && dim === '0') setDim('0.5');
                 show('night');
               }}>
               {NIGHT_LOOKS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -288,7 +283,7 @@ export function ThroughTheDaySheet({
           <p role="alert" className="m-0 text-body text-destructive" data-idle-crossed>Night must start and end at different times.</p>
         )}
         <p className={note} data-day-shared>
-          Every screen showing {lookName} rests and sleeps this way. Done saves it with the dashboard.
+          This is the screen&apos;s own: it idles this way whichever dashboard is up. Done saves it to this screen.
         </p>
       </section>
 

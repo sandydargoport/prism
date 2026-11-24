@@ -1,5 +1,5 @@
 import {
-  firstCrossedNight, idleBackgroundSchema, idleSourceAt, sameIdleBackground, isNight, parseIdleBackground, tonight, usesSource, withoutDashboard,
+  firstCrossedNight, idleBackgroundSchema, idleSourceAt, sameIdleBackground, isNight, tonight, usesSource, withoutDashboard,
   type IdleBackground, type IdleSwitch,
 } from '../idleBackground';
 
@@ -33,12 +33,6 @@ describe('idle background values', () => {
       pair({ by: 'clock', from: '24:00', to: '06:00' } as IdleSwitch),
       pair({ by: 'clock', from: '21:00', to: '21:00' }),
     ]) expect(idleBackgroundSchema.safeParse(bg).success).toBe(false);
-  });
-
-  it('reads anything it does not know as the photo screensaver', () => {
-    expect(parseIdleBackground(undefined)).toEqual({ source: 'photos' });
-    expect(parseIdleBackground('calm')).toEqual({ source: 'photos' });
-    expect(parseIdleBackground({ source: 'sky' })).toEqual({ source: 'sky' });
   });
 
   it('compares by meaning, whatever order the keys come back in', () => {
