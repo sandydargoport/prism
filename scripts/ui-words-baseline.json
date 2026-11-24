@@ -1,7 +1,7 @@
 {
   "docs/HELP.md": {
     "How dark": 1,
-    "screensaver": 8,
+    "screensaver": 7,
     "Through the day": 1
   },
   "docs/features/BUS.md": {
@@ -29,7 +29,7 @@
     "Idle screen": 1,
     "Rest after": 3,
     "Resting": 10,
-    "screensaver": 43,
+    "screensaver": 42,
     "See it": 2,
     "Start after": 1,
     "Through the day": 8
@@ -44,9 +44,6 @@
   "docs/features/TASKS.md": {
     "screensaver": 1
   },
-  "docs/features/THEMES.md": {
-    "screensaver": 1
-  },
   "docs/features/TRAVEL.md": {
     "screensaver": 2
   },
@@ -58,7 +55,7 @@
     "Make the default": 2,
     "Rest after": 4,
     "Resting": 14,
-    "screensaver": 7,
+    "screensaver": 6,
     "See it": 3,
     "Through the day": 8
   },
