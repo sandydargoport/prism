@@ -20,7 +20,8 @@
  *     to its dashboard.
  *   - a dashboard (/edit/[id]), from a device that is not a named screen: at
  *     the size of a screen that shows it, or one picked here. This device's
- *     own settings apply.
+ *     own settings apply, held here until Done writes them to this browser;
+ *     Cancel drops them (#1341).
  */
 import * as React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +38,8 @@ import { ownScreenId, SCREENS_LIST as LIST } from '@/lib/displays/editPlace';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
 import { useHoldEditing } from '@/lib/hooks/useEditing';
 import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/hooks/useIsMobile';
-import { syncScreenSettings } from '@/lib/displays/displaySettingsSync';
+import { readLocalSettings, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
+import { writeStored } from '@/lib/hooks/useStoredValue';
 
 type Entry = {
   id: string;
@@ -191,10 +193,17 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
     setSaving(true);
     setProblem(null);
     try {
+      const next = saved ? host.next ?? null : null;
       if (!screen) {
-        // A dashboard: it is saved already; back to whichever was on show.
+        // A dashboard: it is saved already. This device's own settings,
+        // held until now (#1341), are written to this browser on Done, and
+        // the page loads afresh so they apply; Cancel drops them.
+        const changes = saved ? changedSettings(original.current, host.settings) : {};
+        for (const [key, raw] of Object.entries(changes)) writeStored(key, raw);
         const at = saved ? layouts.find((l) => l.id === chosen.current?.id) ?? dashboard : dashboard;
-        router.push(dashboardPath(at));
+        const to = next ?? dashboardPath(at);
+        if (Object.keys(changes).length > 0) window.location.assign(to);
+        else router.push(to);
         return;
       }
       if (saved) {
@@ -222,11 +231,11 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
         // loaded afresh so they all apply.
         if (saved) await syncScreenSettings().catch(() => null);
         const at = saved ? layouts.find((l) => l.id === chosen.current?.id) ?? startedOn.current : startedOn.current;
-        window.location.assign(dashboardPath(at));
+        window.location.assign(next ?? dashboardPath(at));
         return;
       }
       await markEditing(screen.id, false);
-      router.push(saved ? `${LIST}&edited=${screen.id}` : LIST);
+      router.push(next ?? (saved ? `${LIST}&edited=${screen.id}` : LIST));
     } catch {
       finishing.current = false;
       setSaving(false);
@@ -241,7 +250,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
   const ready = screenId ? screen !== null : dashboard !== undefined && displays !== null;
   useEffect(() => {
     if (!ready || layoutsLoading || host || !rootRef.current) return;
-    const settings = screen ? { ...screen.settings } : {};
+    // A screen's settings as it has them; with no screen, this device's own (#1341).
+    const settings = screen ? { ...screen.settings } : readLocalSettings();
     original.current = { ...settings };
     const plan: ScreenPlan = { dashboardId: screen?.dashboardId ?? null, switches: [...(screen?.switches ?? [])] };
     originalPlan.current = { ...plan, switches: [...plan.switches] };
@@ -255,6 +265,10 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
       onFinish: (saved) => { void finishRef.current(saved); },
       unsaved: () => Object.keys(changedSettings(original.current, next.settings)).length > 0
         || !samePlan(originalPlan.current, { dashboardId: next.dashboardId, switches: next.switches }),
+      pending: () => ({
+        keys: Object.keys(changedSettings(original.current, next.settings)),
+        plan: !samePlan(originalPlan.current, { dashboardId: next.dashboardId, switches: next.switches }),
+      }),
       // The heading says the new name at once.
       onRenamed: (name) => setDisplays((list) => list?.map((d) => (d.id === next.displayId ? { ...d, name } : d)) ?? list),
     };

@@ -42,7 +42,7 @@ const row = 'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-le
 const section = 'm-0 mb-2 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
 
 export function DashboardSheet({
-  allDashboards, currentDashboardId, shownHereId, onSwitchDashboard, onAddToday, onCreateOpen, onRenameOpen, onSaveAsOpen, onSetDefault, onDelete, onResetBuiltIn,
+  allDashboards, currentDashboardId, shownHereId, onSwitchDashboard, beforeSwitch, onAddToday, onCreateOpen, onRenameOpen, onSaveAsOpen, onSetDefault, defaultPending = false, onDelete, onResetBuiltIn,
 }: {
   allDashboards: DashboardInfo[];
   currentDashboardId?: string;
@@ -52,12 +52,16 @@ export function DashboardSheet({
    */
   shownHereId?: string | null;
   onSwitchDashboard?: (slug: string) => void;
+  /** Asked before another dashboard opens, with changes not saved (#1341); false stays. */
+  beforeSwitch?: () => Promise<boolean>;
   /** An install with no Today yet: add it. */
   onAddToday?: () => void;
   onCreateOpen: () => void;
   onRenameOpen: () => void;
   onSaveAsOpen: () => void;
   onSetDefault: () => void;
+  /** Make the default was pressed: it is made so on Done (#1341). */
+  defaultPending?: boolean;
   onDelete: () => void;
   onResetBuiltIn?: () => void;
 }) {
@@ -66,8 +70,9 @@ export function DashboardSheet({
   const hasToday = allDashboards.some(isBuiltIn);
   // Built in first, then the family's own in their order.
   const listed = [...allDashboards.filter(isBuiltIn), ...allDashboards.filter((d) => !isBuiltIn(d))];
-  const open = (d: DashboardInfo) => {
+  const open = async (d: DashboardInfo) => {
     if (d.id === currentDashboardId) return;
+    if (beforeSwitch && !(await beforeSwitch())) return;
     // Its editor opens on this panel, not Widgets.
     keepPanelFor(d.id, 'dashboard');
     if (d.slug) onSwitchDashboard?.(d.slug);
@@ -89,7 +94,7 @@ export function DashboardSheet({
           <li key={d.id}>
             <button
               type="button"
-              onClick={() => open(d)}
+              onClick={() => { void open(d); }}
               aria-current={d.id === currentDashboardId || undefined}
               className={cn(row, d.id === currentDashboardId && 'bg-muted')}
               data-dashboard-row={d.id}
@@ -112,8 +117,8 @@ export function DashboardSheet({
         <button type="button" onClick={onCreateOpen} className={action} data-dashboard-new>New dashboard</button>
         <button type="button" onClick={onSaveAsOpen} className={action} data-dashboard-copy>Make a copy</button>
         {!builtIn && <button type="button" onClick={onRenameOpen} className={action}>Rename</button>}
-        <button type="button" onClick={onSetDefault} disabled={current?.isDefault} className={action} data-dashboard-default>
-          {current?.isDefault ? 'The default' : 'Make the default'}
+        <button type="button" onClick={onSetDefault} disabled={current?.isDefault || defaultPending} className={action} data-dashboard-default>
+          {current?.isDefault ? 'The default' : defaultPending ? 'The default after Done' : 'Make the default'}
         </button>
         {builtIn && onResetBuiltIn && (
           <button type="button" onClick={onResetBuiltIn} className={action} data-dashboard-reset>Reset to default</button>
@@ -293,9 +298,8 @@ export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
 }
 
 /**
- * One of the screen's own options (#1153), kept as soon as it changes, as on
- * the screen's own settings. From a phone it is the edited screen's, sent on
- * Done.
+ * One of the screen's own options (#1153): the edited screen's, sent on Done,
+ * or with no screen this device's own, written to it on Done (#1341).
  */
 function ScreenOption({ field }: { field: ScreenSettingField }) {
   const stored = useStoredString(field.key);
@@ -329,7 +333,7 @@ function NoticesSection() {
         name="This screen"
         stored={stored ?? undefined}
         online
-        savedText={remoteEditHost()?.displayId ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen shows them from now on.'}
+        savedText={remoteEditHost() ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen shows them from now on.'}
         save={async (raw) => { writeStored(SCREEN_ATTENTION_KEY, raw); return true; }}
       />
     </section>

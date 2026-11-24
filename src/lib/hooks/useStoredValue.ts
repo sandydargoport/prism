@@ -25,7 +25,11 @@ const listeners = new Set<() => void>();
  */
 const unsaved = new Map<string, string | null>();
 
+/** Counts writes, for a reader that cares that something changed, not what. */
+let revision = 0;
+
 function notify(): void {
+  revision += 1;
   for (const listener of listeners) listener();
 }
 
@@ -75,6 +79,11 @@ export function useStoredString(key: string): string | null {
     () => readStored(key),
     () => null,
   );
+}
+
+/** Re-renders on every write through writeStored (or from another tab), as a number that changes. */
+export function useStoredRevision(): number {
+  return useSyncExternalStore(subscribe, () => revision, () => 0);
 }
 
 /**

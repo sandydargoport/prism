@@ -35,6 +35,7 @@ import {
 } from '@/lib/screenSwitches';
 import { screenEditLink } from '@/lib/displays/editPlace';
 import { NameThisDevice } from './NameThisDevice';
+import type { SwitchChoice } from './SwitchPrompt';
 import { keepPanelFor } from './canvasPanel';
 import { busWindowsInWords, chip, dayChip, field, Fold, hhmm, iconButton, note, useBusRoutes } from './sheetRows';
 import type { DashboardInfo } from './LayoutEditorTypes';
@@ -124,23 +125,27 @@ async function problemFrom(res: Response): Promise<string> {
 
 /**
  * Opens another screen's editor, as Settings > Screens > Edit does. With
- * changes not saved, it asks first: they would be lost, as on Cancel.
+ * changes not saved, it asks first (#1341): Save and switch saves them as
+ * Done does and then opens it, Discard opens it without them, Stay stays.
  */
-export async function openOtherScreen(id: string, { unsaved, confirm, go }: {
+export async function openOtherScreen(id: string, { unsaved, ask, save, go }: {
   unsaved: boolean;
-  confirm: (title: string, description?: string, options?: { confirmLabel?: string; variant?: 'default' | 'destructive' }) => Promise<boolean>;
+  ask: () => Promise<SwitchChoice>;
+  /** Done, then on to `href`. */
+  save: (href: string) => Promise<void>;
   go?: (href: string) => void;
 }): Promise<boolean> {
+  const href = screenEditLink(id);
   if (unsaved) {
-    const ok = await confirm(
-      'Leave without saving?',
-      'The changes made here are not saved. To keep them, stay and press Done first.',
-      { confirmLabel: 'Leave', variant: 'destructive' },
-    );
-    if (!ok) return false;
+    const choice = await ask();
+    if (choice === 'stay') return false;
+    if (choice === 'save') {
+      await save(href);
+      return true;
+    }
   }
   // The editor's page, not the canvas's frame this panel is drawn from.
-  (go ?? ((href: string) => (window.top ?? window).location.assign(href)))(screenEditLink(id));
+  (go ?? ((to: string) => (window.top ?? window).location.assign(to)))(href);
   return true;
 }
 

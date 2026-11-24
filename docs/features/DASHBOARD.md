@@ -22,12 +22,14 @@ What each panel holds:
 
 - **Dashboard**: every dashboard, to switch to one, with **New dashboard**, **Make a copy**, **Rename**, **Make the default** and **Delete** (see [Multiple dashboards](#multiple-dashboards)).
 - **Widgets**: the widgets on this dashboard, the templates and the community gallery.
-- **Screen**, first: the screen being edited. A **Screen** drop-down lists every named screen, set to this one; picking another opens that screen's editor, asking first when changes are not saved. The pencil beside it renames the screen in place: type the name and press Enter, or leave the field, and it is saved as *Settings > Screens* renames one; Esc keeps the old name. **Base dashboard** and **Switches** set what it shows and when it switches (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches)); **When nobody is using it** has **Rest after** and **How dark**; **Light and photos** has the screen's **Light or dark**, **Photos behind the dashboard** and **New photo every**. On a device with no name the drop-down says **This device (not named)** and **Name this device** is below it; editing a dashboard with no screen, from a phone say, it says **No screen**.
+- **Screen**, first: the screen being edited. A **Screen** drop-down lists every named screen, set to this one; picking another opens that screen's editor, asking first when changes are not saved (see below). The pencil beside it renames the screen in place: type the name and press Enter, or leave the field, and it is saved as *Settings > Screens* renames one; Esc keeps the old name. **Base dashboard** and **Switches** set what it shows and when it switches (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches)); **When nobody is using it** has **Rest after** and **How dark**; **Light and photos** has the screen's **Light or dark**, **Photos behind the dashboard** and **New photo every**. On a device with no name the drop-down says **This device (not named)** and **Name this device** is below it; editing a dashboard with no screen, from a phone say, it says **No screen**.
 - **Through the day**: what the screen shows idle and at night, its own whichever dashboard is up, and the day's line, with a dot for each of the screen's switches; tapping a switch's dot opens it in **Screen** (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
 - **Look**: the screen shape, **See it at a screen size**, and this screen's own settings under **This screen**.
 - **More**: the overview, notices, **Export**, **Import**, **Share to the gallery** and **Reset this layout**.
 
-A dot on a button means that panel has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
+Everything in the editor waits for **Done**, including which dashboard is the default, the screen shape and the screen's own settings, on a device with no name too. A dot on a tab means that panel has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
+
+Opening another dashboard from **Dashboard**, or another screen from **Screen**, with changes not saved asks first: **Save and switch** saves them and opens it, **Discard** opens it without them, and **Stay** keeps you where you are.
 
 ### Glance, the built-in dashboard
 
@@ -102,7 +104,7 @@ You can make a separate dashboard for each room or display. The **Dashboard** pa
 - **New dashboard** asks for a name and what to start from: the Default Template, a copy of the current dashboard, or blank.
 - **Make a copy** saves the dashboard you are editing as a new one, or over another one.
 - **Rename**, **Make the default** and **Delete** act on the dashboard you are editing.
-- The **default** dashboard lives at **`/`**. **Make the default** makes any dashboard the default.
+- The **default** dashboard lives at **`/`**. **Make the default** makes any dashboard the default when you press **Done**.
 - Named dashboards get URLs like **`/d/kitchen`** or **`/d/living-room`**.
 - Each dashboard has its own widget layout, screensaver layout and orientation.
 - Bookmark a dashboard URL on a device that only shows that dashboard, so it opens straight to it.

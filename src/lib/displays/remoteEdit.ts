@@ -22,6 +22,11 @@
  *   - tells the host which dashboard it is on, and when editing ends.
  *
  * The phone page sends the settings to the screen on Done.
+ *
+ * A device nobody has named (/edit/[id]) gets the same layer for its own
+ * screen settings (#1341): they are held in the host until Done, which writes
+ * them to this browser, and Cancel drops them. Everything else it writes goes
+ * to its own storage, as it always has.
  */
 import { isScreenSettingKey, type ScreenSettings } from './screenSettings';
 import type { ScreenSwitch } from '@/lib/screenSwitches';
@@ -34,8 +39,8 @@ const BASE_KEY = 'prism:display-sync-base';
 export type RemoteEditHost = {
   /**
    * The named screen being edited, or null when editing a dashboard at a
-   * chosen size: then the frame keeps this device's own settings, as editing
-   * in place does.
+   * chosen size: then `settings` are this device's own, held until Done
+   * writes them to this browser (#1341).
    */
   displayId: string | null;
   /**
@@ -55,8 +60,12 @@ export type RemoteEditHost = {
   onFinish: (saved: boolean) => void;
   /** The screen's settings, dashboard or switches differ from when the page opened: Done has not sent them (#1326). */
   unsaved?: () => boolean;
+  /** What Done has not sent yet, for each tab's dot (#1341): the settings keys changed, and whether the dashboard or switches did. */
+  pending?: () => { keys: string[]; plan: boolean };
   /** The screen was renamed from the editor's Screen sheet (#1326). */
   onRenamed?: (name: string) => void;
+  /** Where Done goes once it has saved, in place of the usual place: another screen's editor, after Save and switch (#1341). */
+  next?: string | null;
 };
 
 type HostWindow = Window & { [REMOTE_EDIT_GLOBAL]?: RemoteEditHost };
@@ -96,6 +105,8 @@ export function resetRemoteEditHost(): void {
  */
 export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
   const memory = new Map<string, string | null>();
+  // A device editing its own dashboard (#1341): only its screen settings are held.
+  const own = host.displayId === null;
   const base = () => JSON.stringify({
     displayId: host.displayId,
     dashboardId: host.dashboardId,
@@ -105,6 +116,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
   });
   const get = (key: string): string | null => {
     if (isScreenSettingKey(key)) return host.settings[key] ?? null;
+    if (own) return real.getItem(key);
     if (key === BASE_KEY) return base();
     if (memory.has(key)) return memory.get(key) ?? null;
     return real.getItem(key);
@@ -114,10 +126,12 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
     setItem(key: string, value: string) {
       const v = String(value);
       if (isScreenSettingKey(key)) host.settings[key] = v;
+      else if (own) real.setItem(key, v);
       else if (key !== BASE_KEY) memory.set(key, v);
     },
     removeItem(key: string) {
       if (isScreenSettingKey(key)) delete host.settings[key];
+      else if (own) real.removeItem(key);
       else if (key !== BASE_KEY) memory.set(key, null);
     },
     clear() {
@@ -136,7 +150,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
  */
 export function installRemoteStorage(): void {
   const host = remoteEditHost();
-  if (!host?.displayId) return;
+  if (!host) return;
   try {
     const shim = remoteStorage(window.localStorage, host);
     Object.defineProperty(window, 'localStorage', { configurable: true, get: () => shim });

@@ -4,7 +4,7 @@
  * settings are read and written in the host, and nothing the frame writes
  * reaches the phone's own storage.
  */
-import { changedSettings, remoteStorage, type RemoteEditHost } from '../remoteEdit';
+import { changedSettings, installRemoteStorage, REMOTE_EDIT_GLOBAL, remoteStorage, resetRemoteEditHost, type RemoteEditHost } from '../remoteEdit';
 import { screenSummary } from '../screenSummary';
 
 function host(settings: Record<string, string>): RemoteEditHost {
@@ -45,6 +45,53 @@ describe('remoteStorage', () => {
     localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'phone', settings: {} }));
     const store = remoteStorage(localStorage, host({ 'prism-perf-mode': 'full' }));
     expect(JSON.parse(store.getItem('prism:display-sync-base')!)).toMatchObject({ displayId: 'kitchen', settings: { 'prism-perf-mode': 'full' } });
+  });
+});
+
+describe('a device nobody has named, editing its own dashboard (#1341)', () => {
+  const own = (settings: Record<string, string>): RemoteEditHost => ({ ...host(settings), displayId: null });
+  beforeEach(() => localStorage.clear());
+
+  it('holds its screen settings in the host, so nothing reaches the browser before Done', () => {
+    localStorage.setItem('prism-perf-mode', 'full');
+    const h = own({ 'prism-perf-mode': 'full' });
+    const store = remoteStorage(localStorage, h);
+    store.setItem('prism-perf-mode', 'minimal');
+    store.removeItem('prism-theme');
+    expect(store.getItem('prism-perf-mode')).toBe('minimal');
+    expect(h.settings['prism-perf-mode']).toBe('minimal');
+    expect(localStorage.getItem('prism-perf-mode')).toBe('full');
+  });
+
+  it('writes everything else to its own storage, and is its own device to the sync code', () => {
+    const store = remoteStorage(localStorage, own({}));
+    store.setItem('prism-screensaver-layout', '[]');
+    expect(localStorage.getItem('prism-screensaver-layout')).toBe('[]');
+    // Naming it from the editor still works: the sync base is its own.
+    store.setItem('prism:display-sync-base', '{"displayId":"new"}');
+    expect(localStorage.getItem('prism:display-sync-base')).toBe('{"displayId":"new"}');
+    expect(store.getItem('prism:display-sync-base')).toBe('{"displayId":"new"}');
+  });
+
+  it('gets the layer in the frame, as a named screen does', () => {
+    const h = own({ 'prism-perf-mode': 'full' });
+    const parent = { [REMOTE_EDIT_GLOBAL]: h };
+    const realParent = Object.getOwnPropertyDescriptor(window, 'parent');
+    const realStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'parent', { configurable: true, get: () => parent });
+    resetRemoteEditHost();
+    try {
+      installRemoteStorage();
+      window.localStorage.setItem('prism-perf-mode', 'minimal');
+      expect(h.settings['prism-perf-mode']).toBe('minimal');
+    } finally {
+      if (realParent) Object.defineProperty(window, 'parent', realParent);
+      else delete (window as { parent?: unknown }).parent;
+      if (realStorage) Object.defineProperty(window, 'localStorage', realStorage);
+      else delete (window as { localStorage?: unknown }).localStorage;
+      resetRemoteEditHost();
+    }
+    expect(window.localStorage.getItem('prism-perf-mode')).toBeNull();
   });
 });
 

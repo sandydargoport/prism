@@ -29,6 +29,13 @@ export interface LayoutEditorProps {
   /** Which tabs hold unsaved changes. */
   dashboardDirty?: boolean;
   idleDirty?: boolean;
+  /** The screen shape picked on Look differs from the saved one (#1341). */
+  lookDirty?: boolean;
+  /** Make the default was pressed: Done makes it so (#1341). */
+  defaultPending?: boolean;
+  onMakeDefault?: () => void;
+  /** Saves this dashboard without leaving the editor page, for Save and switch (#1341). */
+  onSaveDashboard?: () => Promise<void>;
   /** The idle view, arranging a screensaver layout. */
   editingScreensaver?: boolean;
   screensaverWidgets?: WidgetConfig[];

@@ -317,7 +317,8 @@ function DashboardHelp() {
         <Li><strong>Look</strong>: the <strong>Screen shape</strong>, <strong>See it at a screen size</strong>, and this screen&apos;s own settings under <strong>This screen</strong></Li>
         <Li><strong>More</strong>: the <strong>Overview</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong> and <strong>Reset this layout</strong></Li>
       </Ul>
-      <P><strong>Done</strong> saves your changes. <strong>Cancel</strong> leaves without saving.</P>
+      <P>Everything in the editor waits for <strong>Done</strong>, which saves it all; <strong>Cancel</strong> leaves without saving any of it. A dot on a tab means it has changes not saved yet.</P>
+      <P>Opening another dashboard (More &gt; Edit layout &gt; Dashboard) or another screen (More &gt; Edit layout &gt; Screen) with changes not saved asks first: <strong>Save and switch</strong>, <strong>Discard</strong> or <strong>Stay</strong>.</P>
 
       <H2>Arranging Widgets</H2>
       <Ul>
@@ -352,7 +353,7 @@ function DashboardHelp() {
       <H2>Multiple Dashboards</H2>
       <P>Create separate dashboards for different rooms or displays. The <strong>Dashboard</strong> tab lists them all; tap one to edit it, or <strong>New dashboard</strong> to create one.</P>
       <Ul>
-        <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default with <strong>Dashboard &gt; Make the default</strong></Li>
+        <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default with <strong>Dashboard &gt; Make the default</strong>, then <strong>Done</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
         <Li>Each has independent widget layout, resting layout, and orientation (landscape/portrait)</Li>
         <Li>Each named screen picks the dashboard it shows (Screen &gt; Base dashboard, or Settings &gt; Screens)</Li>

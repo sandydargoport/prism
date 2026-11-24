@@ -59,7 +59,6 @@ import { useIdleSwitchCheck } from '@/components/layout/useIdleSwitchCheck';
 import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setDashboardShown, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useScreenDay } from '@/components/screensaver/useScreenDay';
@@ -264,28 +263,10 @@ export function Dashboard({
   // every look (#1348).
   const previewDim = previewState === 'night' && previewBackdrop === 'dashboard' ? scene.dim : 0;
 
-  // Orientation from active layout (DB), fallback to landscape
-  // A choice made here holds until the active layout's orientation changes.
-  const fromLayout = layout.activeLayout?.orientation;
-  const [chosenOrientation, setScreenGuideOrientationState] = useLocalCopy<'landscape' | 'portrait' | null>(
-    fromLayout === 'portrait' || fromLayout === 'landscape' ? fromLayout : null,
-  );
-  const screenGuideOrientation = chosenOrientation ?? 'landscape';
-
-  const setScreenGuideOrientation = useCallback(async (o: 'landscape' | 'portrait') => {
-    setScreenGuideOrientationState(o);
-    // Persist to DB
-    if (layout.activeLayout) {
-      try {
-        await data.layouts.saveLayout({
-          id: layout.activeLayout.id,
-          name: layout.activeLayout.name,
-          widgets: layout.activeLayout.widgets,
-          orientation: o,
-        });
-      } catch { /* ignore */ }
-    }
-  }, [layout.activeLayout, data.layouts, setScreenGuideOrientationState]);
+  // The screen shape the editor's guides are drawn for: the dashboard's, or
+  // the one picked on Look, which is saved with Done like the rest (#1341).
+  const screenGuideOrientation = layout.editingOrientation;
+  const setScreenGuideOrientation = layout.setEditingOrientation;
 
   const [enabledSizes] = useState<string[]>(allSizeNames);
   const [gridScrollY, setGridScrollY] = useState(0);
@@ -584,6 +565,10 @@ export function Dashboard({
               onEditTabChange={layout.setEditTab}
               dashboardDirty={layout.dashboardDirty}
               idleDirty={layout.idleDirty}
+              lookDirty={layout.lookDirty}
+              defaultPending={layout.defaultDirty}
+              onMakeDefault={layout.makeDefault}
+              onSaveDashboard={layout.handleSave}
               editingScreensaver={layout.editingScreensaver}
               screensaverWidgets={layout.ssLayout}
               onScreensaverSaveAs={layout.handleSsSaveAs}
