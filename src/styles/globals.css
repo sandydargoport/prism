@@ -373,6 +373,16 @@
   height: calc(var(--screen-h, 100dvh) - var(--nav-bottom, 0px));
 }
 
+/* Phones: a page drags and springs back under the finger like any app
+   (#1355). contain on the root keeps the browser's own pull to reload off;
+   the card dashboard has its own. Below MOBILE_BREAKPOINT (768px) only, so
+   walls are untouched. */
+@media (max-width: 767.98px) {
+  html {
+    overscroll-behavior-y: contain;
+  }
+}
+
 /* At least one screen tall, from the same measured height as h-page (#1095):
    the page wrappers used min-h-screen (100vh), which in the iPhone app is
    taller than the document and let a page that fitted scroll. */

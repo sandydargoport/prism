@@ -108,12 +108,12 @@ test('the time and the list paint above the wallpaper photo', async ({ page }) =
   }
 });
 
-// #1076: every phone page, not only Today, refuses a pull past its top; the
-// iPhone app dragged subpages and sprang them back.
-test.describe('Phone subpages do not drag', () => {
+// #1355: every phone page, not only Today, drags and springs back natively
+// (this reverses #1076 on purpose), and still fits one screen.
+test.describe('Phone subpages drag natively and fit', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(90_000);
-  test('a pull down at the top is refused on each subpage', async ({ page }) => {
+  test('a pull down at the top is not cancelled on each subpage, and the page fits', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
     for (const path of ['/calendar', '/chores', '/shopping', '/tasks', '/meals']) {
@@ -131,7 +131,8 @@ test.describe('Phone subpages do not drag', () => {
         target.dispatchEvent(e);
         return e.defaultPrevented;
       });
-      expect(refused, `${path}: pull past the top refused`).toBe(true);
+      expect(refused, `${path}: pull past the top not cancelled`).toBe(false);
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY), `${path}: root contains the overscroll`).toBe('contain');
       // #1089, #1095: sized from the document's own height. In the iPhone app
       // 100vh and 100dvh are both taller than the area the page lays out in,
       // by about the status bar, so a page that fitted scrolled into empty
@@ -248,35 +249,33 @@ test.describe('Today on a phone', () => {
       expect(Math.abs(head.date!.top - head.cond!.top), 'date and condition on one line').toBeLessThanOrEqual(2);
       expect(head.dateSize).toBe(head.condSize);
 
-      // #1034: it fits one screen, so it neither scrolls nor bounces.
-      const fitScreen = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, inner: innerHeight, bounce: getComputedStyle(document.documentElement).overscrollBehaviorY, bodyBounce: getComputedStyle(document.body).overscrollBehaviorY }));
+      // #1034: it fits one screen, so it does not scroll.
+      const fitScreen = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, inner: innerHeight, rootOverscroll: getComputedStyle(document.documentElement).overscrollBehaviorY }));
       expect(fitScreen.doc, 'no scroll on a page that fits').toBeLessThanOrEqual(fitScreen.inner);
-      expect(fitScreen.bounce).toBe('none');
-      // The body too, which some iOS versions bounce instead.
-      expect(fitScreen.bodyBounce).toBe('none');
-      // The iPhone app dragged it anyway, so a one-finger drag is refused,
-      // except where something can scroll that way; a pinch is left alone.
+      // #1355: the page drags and springs back natively; contain on the root
+      // keeps the browser's own pull to reload off.
+      expect(fitScreen.rootOverscroll).toBe('contain');
+      // No vertical drag is cancelled, on the page or past a scroller's top.
       const drag = await page.evaluate(() => {
         const root = document.querySelector('[data-phone-today]')!;
         const box = document.createElement('div');
         box.style.cssText = 'height:40px;overflow-y:auto';
         box.innerHTML = '<div style="height:400px"></div>';
         root.appendChild(box);
-        // A finger from y=300 to y=300+dy; true when the move was refused.
-        const gesture = (target: Element, dy: number, fingers = 1) => {
-          const at = (y: number) => Array.from({ length: fingers }, (_, i) => new Touch({ identifier: i, target, clientX: 100 + i * 50, clientY: y }));
+        // A finger from y=300 to y=300+dy; true when the move was cancelled.
+        const gesture = (target: Element, dy: number) => {
+          const at = (y: number) => [new Touch({ identifier: 0, target, clientX: 100, clientY: y })];
           target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: at(300), targetTouches: at(300), changedTouches: at(300) }));
           const e = new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: at(300 + dy), targetTouches: at(300 + dy), changedTouches: at(300 + dy) });
           target.dispatchEvent(e);
           return e.defaultPrevented;
         };
         const inner = box.firstElementChild!;
-        const r = { pageDown: gesture(root, 40), pageUp: gesture(root, -40), boxUp: gesture(inner, -40), boxPastTop: gesture(inner, 40), pinch: gesture(root, 40, 2) };
+        const r = { pageDown: gesture(root, 40), pageUp: gesture(root, -40), boxPastTop: gesture(inner, 40) };
         box.remove();
         return r;
       });
-      expect(drag, 'refused on a page that fits and past a scroller\'s top; allowed to scroll a scroller and to pinch')
-        .toEqual({ pageDown: true, pageUp: true, boxUp: false, boxPastTop: true, pinch: false });
+      expect(drag, 'no drag is cancelled').toEqual({ pageDown: false, pageUp: false, boxPastTop: false });
 
       // #1076: Cards and Reorder act on the phone's cards; Today has none.
       await page.locator('[data-mobile-options]').click();

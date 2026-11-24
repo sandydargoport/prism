@@ -226,8 +226,6 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
           data-mobile-cards
           style={{
             height: `calc(100dvh - 112px - ${showIndicator ? (refreshing ? 48 : pullDistance * 0.5) : 0}px)`,
-            transform: pullDistance > 0 ? `translateY(${pullDistance * 0.4}px)` : undefined,
-            transition: pullDistance > 0 ? 'none' : undefined,
           }}
         >
           <div
@@ -244,7 +242,6 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
         <div
           className="p-4 pb-24 space-y-3 max-w-lg mx-auto"
           data-mobile-cards
-          style={pullDistance > 0 ? { transform: `translateY(${pullDistance * 0.4}px)`, transition: 'none' } : undefined}
         >
           {visibleOrder.map((id) => (
             <div key={id}>{cardMap[id]}</div>

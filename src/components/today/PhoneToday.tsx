@@ -43,7 +43,7 @@ export function PhoneToday({ parts, events, weather, onOpenEvent, household }: {
 
   return (
     // Exactly one screen when it fits (#1034): the notch area is part of the
-    // screen, and the page does not bounce when there is nothing below.
+    // screen, so a drag only springs back when there is nothing below.
     // Positioned, so it paints above the wallpaper's fixed photo and shade
     // layers. Left in the normal flow it painted under them: the time, the
     // temperature and the list sat behind the photo's tint, and only parts

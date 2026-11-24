@@ -87,7 +87,7 @@ On a phone, Glance, the built-in dashboard, shows a phone page instead of widget
 - The coming days as short sentences.
 - The chores and shopping lines: how many chores are left, with a ring to tick each one, and the shopping list's count, with a plus to add an item. The birthday nudge joins them when a birthday is close.
 
-The page is one screen tall, without the rubber-band bounce. It shows the parts that are switched on in Glance's **Widgets** panel (see [Glance](DASHBOARD.md#glance-the-built-in-dashboard)). Tap an event to open it.
+The page is one screen tall, so a drag springs back. It shows the parts that are switched on in Glance's **Widgets** panel (see [Glance](DASHBOARD.md#glance-the-built-in-dashboard)). Tap an event to open it.
 
 A dashboard with a grid layout keeps its cards on a phone: a single column of summary cards, or tiles. In their usual order they are Weather, Calendar, Bus Tracker (once a route is set up), Chores, Tasks, Shopping, Meals, Recipes, Messages, Birthdays (when one is coming up), Goals (when there are goals) and Wishes. **Clock** and **Photos** are off until you turn them on in **Dashboard options > Cards**.
 
