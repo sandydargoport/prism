@@ -15,7 +15,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // A local run used to inherit Playwright's default worker count, which is
+  // half the CPU count - three browsers at once on a six-core box. On
+  // 2026-11-24 that drove three global OOM kills on the dev host: the kernel
+  // took chrome-headless each time (Chrome raises its renderers'
+  // oom_score_adj so they are chosen first), and systemd then tore down the
+  // whole tmux scope, taking the shell and the session running the tests with
+  // it. Two browsers halve the peak and still run specs in parallel. Drop to
+  // 1 on a memory-tight machine.
+  workers: process.env.CI ? 1 : 2,
   reporter: 'html',
   use: {
     baseURL,
