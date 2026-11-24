@@ -256,8 +256,9 @@ function ScreensHelp() {
         <Li><strong>Switches</strong> &gt; <strong>Switch at bus time</strong>, if bus tracking is set up (Settings &gt; Bus): shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
         <Li><strong>Switches</strong> &gt; <strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
         <Li><strong>When nobody is using it</strong>: <strong>Rest after</strong>, how long nobody touches the screen before it rests, and <strong>How dark</strong>, how far it dims at night</Li>
+        <Li><strong>Light and photos</strong>: <strong>Light or dark</strong>, <strong>Photos behind the dashboard</strong> (Shown or Hidden) and <strong>New photo every</strong></Li>
       </Ul>
-      <P>These belong to the screen. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the Screen drop-down says <strong>No screen</strong> (or <strong>This device (not named)</strong>, with <strong>Name this device</strong> below it) and lists the screens.</P>
+      <P>These belong to the screen, and so do its seasonal theme, its pinned photos and which time zone it shows, set on the screen in Settings. Two screens can show the same dashboard, and each keeps its own switches. Editing a dashboard with no screen, from a phone say, the Screen drop-down says <strong>No screen</strong> (or <strong>This device (not named)</strong>, with <strong>Name this device</strong> below it) and lists the screens.</P>
 
       <H2>Through the day</H2>
       <P>More &gt; Edit layout &gt; Through the day sets how the dashboard rests and sleeps.</P>
@@ -668,8 +669,17 @@ function ScreensaverHelp() {
       <H2>Palettes</H2>
       <P>
         <strong>Settings &gt; Appearance &gt; Palette</strong> changes the colours. The
-        palette applies to every screen in the house; light and dark stay per-screen,
-        since that depends on the room a screen is in.
+        palette applies to every screen in the house. Light or dark is set for each
+        screen, since that depends on the room it is in: in its editor, More &gt; Edit
+        layout &gt; Screen &gt; <strong>Light or dark</strong>, or on the screen in
+        Settings &gt; Appearance. A named screen is Light or Dark, never following a
+        system setting, so a laptop editing it draws it as the screen does. A browser
+        that is not named can also follow its system.
+      </P>
+      <P>
+        Settings &gt; Appearance &gt; <strong>New screens start as</strong> (Light or Dark)
+        is what a screen named with no choice of its own starts as, and what a browser
+        nobody named uses. Screens already named keep theirs.
       </P>
       <P>
         If a palette ever makes Prism hard to read, add <code>?theme=default</code> to the
@@ -709,7 +719,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
       <H3>Appearance</H3>
       <P>Three groups:</P>
       <Ul>
-        <Li><strong>Look</strong>: Color Scheme (Light, Dark or System, and the palette) and Seasonal Theme</Li>
+        <Li><strong>Look</strong>: Color Scheme (this screen&apos;s Light or Dark, System too on a browser that is not named, New screens start as, and the palette) and Seasonal Theme</Li>
         <Li><strong>Background and away</strong>: Background Wallpaper, Away mode and Night sky</Li>
         <Li><strong>All screens</strong>: Units and Language</Li>
       </Ul>

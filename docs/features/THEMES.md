@@ -18,9 +18,13 @@ There are seven palettes, and you choose one under *Settings > Appearance > Pale
 
 The palette is set for the whole house. If you change it on a phone, the kitchen display changes too. It decides how your home looks, and when every screen is a different colour the house looks like something is broken.
 
-Light and dark are set per screen, because that choice depends on the room the screen is in. A hallway display at night and a tablet in a bright kitchen need different answers, and both are right at the same time. A screen that has never been set follows its system setting, or uses dark on an install that picked the **Night** look during setup.
+Light or dark is set for each screen, because that choice depends on the room the screen is in. A hallway display at night and a tablet in a bright kitchen need different answers, and both are right at the same time. Set it in the screen's editor, *More > Edit layout > Screen > Light or dark* (also from a phone, through *Settings > Screens > Edit*), or on the screen itself in *Settings > Appearance > Color Scheme*.
 
-The screensaver timeout and text size are per screen as well.
+A named screen is Light or Dark, never "follow the system": a laptop or phone editing it cannot know the screen's own system setting, so the screen keeps what it shows. A screen that followed its system before keeps the one it was showing. A browser nobody named can still choose **System**.
+
+*Settings > Appearance > New screens start as* (Light or Dark) is the household's starting value. A screen named with no choice of its own takes it once, and a browser nobody named uses it until it chooses. Screens already named keep theirs. On an install that never chose, a new screen starts as its system prefers, or dark if the **Night** look was picked during setup.
+
+The seasonal theme, the photos behind the dashboard (on or off, how often they change, matched to the screen's shape), the pinned photos, which time zone the screen shows and when it goes idle are kept with each screen as well.
 
 ## Readability
 

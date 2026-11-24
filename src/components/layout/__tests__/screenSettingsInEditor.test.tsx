@@ -53,6 +53,15 @@ const CONTROLS: Record<ScreenSettingKey, { on: Place; label: RegExp } | { none: 
   'prism:auto-hide-ui': { on: 'Look', label: /^Auto-hide navigation$/ },
   'prism-idle-logout-minutes': { on: 'Look', label: /^Sign out after$/ },
   'prism-screen-attention': { on: 'More, notices', label: /^An event starts within/ },
+  'prism-theme': { on: 'Screen', label: /^Light or dark$/ },
+  'prism-wallpaper-enabled': { on: 'Screen', label: /^Photos behind the dashboard$/ },
+  'prism-wallpaper-interval': { on: 'Screen', label: /^New photo every$/ },
+  // Kept with the screen (#1340), set on the screen itself for now.
+  'prism-seasonal-theme': { none: 'Settings > Appearance > Seasonal Theme, on the screen' },
+  'prism-wallpaper-auto-orientation': { none: 'Settings > Appearance > Background Wallpaper, on the screen' },
+  'prism-pinned-wallpaper': { none: 'Settings > Photos, on the screen' },
+  'prism-pinned-screensaver': { none: 'Settings > Photos, on the screen' },
+  'prism:display-timezone-mode': { none: 'Settings > General, on the screen' },
   // Kept with the screen so it survives a browser reset, but set by hand for a
   // screen whose bezel covers its edges: nothing sets it, Settings included.
   'prism:screen-safe-zones': { none: 'set by hand; no control anywhere' },

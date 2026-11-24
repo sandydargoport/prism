@@ -139,13 +139,14 @@ describe('the Screen tab (#1326)', () => {
     expect((screen.getByLabelText('Base dashboard') as HTMLSelectElement).value).toBe(BUS);
     expect(screen.getByText('Shown except while a switch is on.')).toBeTruthy();
     expect(Array.from(sheet.querySelectorAll('[data-field-label]')).map((n) => n.textContent))
-      .toEqual(['Screen', 'Base dashboard', 'Rest after', 'How dark']);
+      .toEqual(['Screen', 'Base dashboard', 'Rest after', 'How dark', 'Light or dark', 'Photos behind the dashboard', 'New photo every']);
     expect(Array.from(sheet.querySelectorAll('[data-screen-heading]')).map((n) => n.textContent))
-      .toEqual(['Switches', 'When nobody is using it']);
+      .toEqual(['Switches', 'When nobody is using it', 'Light and photos']);
     // In this order: the Screen row (drop-down and pencil), Base dashboard, Switches, When nobody is using it.
     expect(Array.from(sheet.querySelectorAll('[data-field-label], [data-screen-heading], [data-screen-rename]'))
       .map((n) => n.textContent || n.getAttribute('aria-label')))
-      .toEqual(['Screen', 'Rename Kitchen', 'Base dashboard', 'Switches', 'When nobody is using it', 'Rest after', 'How dark']);
+      .toEqual(['Screen', 'Rename Kitchen', 'Base dashboard', 'Switches', 'When nobody is using it', 'Rest after', 'How dark',
+        'Light and photos', 'Light or dark', 'Photos behind the dashboard', 'New photo every']);
     // The switch rows and the add buttons sit under Switches.
     const switchesSection = sheet.querySelector('[data-screen-plan]')!;
     expect(switchesSection.querySelector('[data-screen-heading]')!.textContent).toBe('Switches');
@@ -157,6 +158,22 @@ describe('the Screen tab (#1326)', () => {
     expect(localStorage.getItem('prism-screensaver-timeout')).toBe('3600');
     fireEvent.change(screen.getByLabelText('How dark at night'), { target: { value: '0.75' } });
     expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.75');
+  });
+
+  // #1340: light or dark and the photos behind the dashboard are the screen's own.
+  it("sets the screen's Light or Dark, and its photos behind the dashboard, never System", async () => {
+    await show();
+    const mode = screen.getByLabelText('Light or dark') as HTMLSelectElement;
+    expect(Array.from(mode.options).map((o) => o.textContent)).toEqual(['Light', 'Dark']);
+    fireEvent.change(mode, { target: { value: 'dark' } });
+    expect(localStorage.getItem('prism-theme')).toBe('dark');
+    expect(mode.value).toBe('dark');
+    fireEvent.change(screen.getByLabelText('New photo every'), { target: { value: '300' } });
+    expect(localStorage.getItem('prism-wallpaper-interval')).toBe('300');
+    fireEvent.change(screen.getByLabelText('Photos behind the dashboard'), { target: { value: 'false' } });
+    expect(localStorage.getItem('prism-wallpaper-enabled')).toBe('false');
+    // Hidden photos have nothing to change.
+    expect(screen.queryByLabelText('New photo every')).toBeNull();
   });
 
   it('with the screen off at night, there is nothing to dim', async () => {

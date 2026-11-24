@@ -11,12 +11,17 @@
  * what each setting means. A key with no stored value is simply absent.
  *
  * Chosen 2026-10-27: screensaver and drift, performance mode, the on-screen
- * keyboard and the screen layout settings. Theme stays per browser for now.
+ * keyboard and the screen layout settings. Theme stayed per browser then.
  * The time-of-day schedule and the attention panel joined 2026-10-30 (#692);
  * the schedule left 2026-11-20 for the timeline the screen follows (#1266).
  * The screensaver background left 2026-10-31 for the dashboard (#782).
  * The sign-out timer joined 2026-11-11 (#1159), when it left Settings for the
  * editing bar.
+ * Light or dark, the seasonal theme, the photos behind the dashboard (on or
+ * off, how often they change, matched to the screen's shape), the pinned
+ * photos and which time zone it shows joined 2026-11-24 (#1340), so a laptop
+ * editing a screen draws it as the screen does. A named screen stores Light or
+ * Dark, never `system`: see `concreteThemeMode` in displaySettingsSync.
  * Derived values (the screensaver layout bridged from the dashboard) and
  * per-browser memory (which constellation was last taught) are left out.
  */
@@ -48,6 +53,17 @@ export const SCREEN_SETTING_KEYS = [
   'prism-idle-logout-minutes',
   // Which notices it shows in the attention panel (#692).
   'prism-screen-attention',
+  // Light or dark, and the seasonal accents (#1340).
+  'prism-theme',
+  'prism-seasonal-theme',
+  // The photos behind the dashboard, and the photos pinned on it (#1340).
+  'prism-wallpaper-enabled',
+  'prism-wallpaper-interval',
+  'prism-wallpaper-auto-orientation',
+  'prism-pinned-wallpaper',
+  'prism-pinned-screensaver',
+  // The household's time zone or the device's own (#1340).
+  'prism:display-timezone-mode',
 ] as const;
 
 export type ScreenSettingKey = (typeof SCREEN_SETTING_KEYS)[number];

@@ -17,8 +17,8 @@ describe('cleanSettingChanges', () => {
   });
 
   it('refuses the whole request if any key is not a screen setting', () => {
-    // Theme stays per browser, and a household setting has no business here.
-    expect(cleanSettingChanges({ 'prism-screensaver-timeout': '300', 'prism-theme': 'dark' })).toBeNull();
+    // A household setting has no business here.
+    expect(cleanSettingChanges({ 'prism-screensaver-timeout': '300', 'prism-units': 'metric' })).toBeNull();
     expect(cleanSettingChanges({ 'prism-screensaver-layout': '[]' })).toBeNull();
   });
 
@@ -46,11 +46,21 @@ describe('mergeSettings and diffSettings', () => {
     )).toEqual({ 'prism-perf-mode': null, 'prism-screensaver-timeout': '120' });
   });
 
-  it('covers the settings chosen for screens, and not theme', () => {
+  it('covers the settings chosen for screens', () => {
     expect(SCREEN_SETTING_KEYS).toEqual(expect.arrayContaining([
       'prism-screensaver-timeout', 'prism-screensaver-drift', 'prism-perf-mode',
       'prism:keyboard-on-this-device', 'prism-orientation-override', 'prism:screen-safe-zones', 'prism:auto-hide-ui',
     ]));
-    expect(SCREEN_SETTING_KEYS).not.toContain('prism-theme');
+  });
+
+  it("holds the screen's light or dark, seasonal theme, photos and time zone (#1340)", () => {
+    expect(SCREEN_SETTING_KEYS).toEqual(expect.arrayContaining([
+      'prism-theme', 'prism-seasonal-theme',
+      'prism-wallpaper-enabled', 'prism-wallpaper-interval', 'prism-wallpaper-auto-orientation',
+      'prism-pinned-wallpaper', 'prism-pinned-screensaver',
+      'prism:display-timezone-mode',
+    ]));
+    expect(cleanSettingChanges({ 'prism-theme': 'light', 'prism-wallpaper-enabled': 'false' }))
+      .toEqual({ 'prism-theme': 'light', 'prism-wallpaper-enabled': 'false' });
   });
 });

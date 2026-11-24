@@ -53,7 +53,7 @@ describe('POST /api/displays/current/settings', () => {
 
   it('refuses a key that is not a screen setting', async () => {
     mockCurrentDisplay.mockResolvedValue(screen({}));
-    const res = await post({ changes: { 'prism-theme': 'dark' }, baseDisplayId: KITCHEN });
+    const res = await post({ changes: { 'prism:timezone': 'Europe/Paris' }, baseDisplayId: KITCHEN });
     expect(res.status).toBe(400);
     expect(mockApply).not.toHaveBeenCalled();
   });

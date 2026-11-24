@@ -10,6 +10,7 @@
  * it. Then the Base dashboard; its Switches to other dashboards for a while (#1282), at bus time or
  * at set times, a bus switch with its routes and minutes (#1291); and, When
  * nobody is using it, how long until it rests and how dark it goes at night.
+ * Then Light or dark and the photos behind the dashboard (#1340).
  * They belong to the screen, not the dashboard: two screens can show one
  * dashboard, each on its own schedule. Done sends them with its settings.
  *
@@ -24,6 +25,7 @@ import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim';
 import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import type { IdleBackground } from '@/lib/idleBackground';
 import { asDayAndNight } from '@/lib/throughTheDay';
 import {
@@ -36,6 +38,15 @@ import { keepPanelFor } from './canvasPanel';
 import { busWindowsInWords, chip, dayChip, field, Fold, hhmm, iconButton, note, useBusRoutes } from './sheetRows';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { cn } from '@/lib/utils';
+
+const THEME_KEY = 'prism-theme';
+const WALLPAPER_KEY = 'prism-wallpaper-enabled';
+const WALLPAPER_INTERVAL_KEY = 'prism-wallpaper-interval';
+const DEFAULT_WALLPAPER_INTERVAL = 60;
+/** How often the photo behind the dashboard changes, as Settings > Appearance offers it. */
+const WALLPAPER_INTERVALS: [number, string][] = [
+  [30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes'], [600, '10 minutes'], [3600, '1 hour'],
+];
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -165,6 +176,14 @@ export function ScreenSheet({
   const clock = (t: string) => formatTimeOfDay(t, timeFormat);
   const { timeout, setTimeout } = useScreensaverTimeout();
   const { level: dim, setLevel: setDim } = useIdleDimSetting();
+  // Light or dark: what the screen keeps, or what it shows now until it keeps one.
+  const storedMode = useStoredString(THEME_KEY);
+  const mode = storedMode === 'light' || storedMode === 'dark' ? storedMode
+    : typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  // As WallpaperBackground reads them: on unless turned off, 60 seconds unless set.
+  const photosOn = useStoredString(WALLPAPER_KEY) !== 'false';
+  const storedRotate = Number(useStoredString(WALLPAPER_INTERVAL_KEY));
+  const rotate = String(WALLPAPER_INTERVALS.some(([s]) => s === storedRotate) ? storedRotate : DEFAULT_WALLPAPER_INTERVAL);
   // Every switch folded, unless one was asked for.
   const [openRow, setOpenRow] = useState<number | null>(openSwitch);
   const toggle = (row: number) => setOpenRow((o) => (o === row ? null : row));
@@ -474,6 +493,36 @@ export function ScreenSheet({
             <Field label="How dark" htmlFor={fieldId('dark')} after={<span className={note}>at night</span>}>
               <Select id={fieldId('dark')} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
                 {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.raw === '0' ? 'Not dimmed' : l.label}</option>)}
+              </Select>
+            </Field>
+          )}
+        </section>
+      )}
+
+      {forScreen && (
+        // Light or dark and the photos behind the dashboard are the screen's
+        // own too (#1340): from a laptop they are the screen's, not the laptop's.
+        <section className="flex flex-col gap-3" aria-labelledby={fieldId('look')} data-screen-look>
+          <h3 id={fieldId('look')} className={HEADING} data-screen-heading>Light and photos</h3>
+          <Field label="Light or dark" htmlFor={fieldId('mode')}>
+            <Select id={fieldId('mode')} value={mode} data-screen-mode
+              onChange={(e) => { writeStored(THEME_KEY, e.target.value); onSettingChange?.(); }}>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </Select>
+          </Field>
+          <Field label="Photos behind the dashboard" htmlFor={fieldId('photos')}>
+            <Select id={fieldId('photos')} value={photosOn ? 'true' : 'false'} data-screen-photos
+              onChange={(e) => { writeStored(WALLPAPER_KEY, e.target.value); onSettingChange?.(); }}>
+              <option value="true">Shown</option>
+              <option value="false">Hidden</option>
+            </Select>
+          </Field>
+          {photosOn && (
+            <Field label="New photo every" htmlFor={fieldId('rotate')}>
+              <Select id={fieldId('rotate')} value={rotate}
+                onChange={(e) => { writeStored(WALLPAPER_INTERVAL_KEY, e.target.value); onSettingChange?.(); }}>
+                {WALLPAPER_INTERVALS.map(([s, label]) => <option key={s} value={String(s)}>{label}</option>)}
               </Select>
             </Field>
           )}
