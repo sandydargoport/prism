@@ -135,7 +135,7 @@ Meals is a weekly meal planner. Plan each meal by day and type (breakfast, lunch
 
 ### Performance
 
-Each screen runs at one of three levels, set in that screen's editor under **More > Edit layout > Look > This screen > Performance**. From a phone, open **Settings > Screens**, tap **Edit** on the screen, then **Look > This screen**.
+Each screen runs at one of three levels, set in that screen's editor under **More > Edit layout > Look > This screen > Performance**. From a phone, open **More > Edit a screen** (with two or more screens, pick one in *Settings > Screens*), then **Look > This screen**.
 
 - **Full**: every effect is on.
 - **Reduced**: no backdrop blur, no full-screen celebrations or particle effects, a still night sky.
@@ -156,7 +156,7 @@ This is a short tour of **Settings**. Where a section belongs to a feature, that
 - **Text Size** sets how large everything reads on each dashboard.
 - **Appearance** is in three groups. **Look** has **Color Scheme** (Light, Dark or System) with the **Palette**, and **Seasonal Theme**. **Background and away** has **Background Wallpaper** (with **Show when photos were taken**, **Show where photos were taken** and **On this day**), **Away mode** (how long the house sits idle before it turns on) and **Night sky**. **All screens** has **Units** and **Language**.
 - **One screen's own settings** are in that screen's editor (**More > Edit layout**), not in Settings. **Screen** has its name, the dashboard it shows, its switches, when it rests and how dark it goes at night; **Through the day**'s **More** holds the screensaver motion. **Look > This screen** has **Performance**, **On-screen keyboard**, **Orientation**, **Auto-hide navigation** and **Sign out after**.
-- **Screens** lists every named screen, whether it is on and the dashboard it shows (picked there too), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor, also from a phone. A screen is named from its own editor: on the screen, open the editor, then **Screen** > **Name this device** (for example "Kitchen"). A named screen keeps its screensaver, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. A browser nobody has named shows the default dashboard.
+- **Screens** lists every named screen, whether it is on and the dashboard it shows (picked there too), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor; from a phone, **More > Edit a screen** gets there too. A screen is named from its own editor: on the screen, open the editor, then **Screen** > **Name this device** (for example "Kitchen"). A named screen keeps its idle, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. A browser nobody has named shows the default dashboard.
 - **Photos** manages sources (Local, OneDrive, Immich), with a folder picker, display filters for orientation and resolution, GPS backfill (adding locations to older photos) and the pinned wallpaper and screensaver photos.
 - **Bus Tracking** covers the Gmail connection, route setup, finding routes automatically and the Gmail label filter.
 - **Input** has switches for the on-screen keyboard and the barcode scanner. The keyboard switch here is for all screens. To choose **Always** or **Never** for one screen, such as a tablet with its own keyboard, use **On-screen keyboard** in that screen's editor under **Look > This screen**.

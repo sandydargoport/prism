@@ -33,9 +33,9 @@ import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { samePlan, screenDashboardAt, screenShows, type ScreenPlan, type ScreenSwitch } from '@/lib/screenSwitches';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { changedSettings, REMOTE_EDIT_GLOBAL, type RemoteEditHost } from '@/lib/displays/remoteEdit';
-import { ownScreenId } from '@/lib/displays/editPlace';
+import { ownScreenId, SCREENS_LIST as LIST } from '@/lib/displays/editPlace';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
-import { MOBILE_BREAKPOINT } from '@/lib/hooks/useIsMobile';
+import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/hooks/useIsMobile';
 import { syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 
 type Entry = {
@@ -69,8 +69,6 @@ const RENEW_MS = 60 * 1000;
 const PICTURE_MAX_HEIGHT = 0.45;
 /** From this width the panels sit beside the picture (Tailwind's `lg`). */
 const SIDE_BY_SIDE = '(min-width: 1024px)';
-
-const LIST = '/settings?section=displays';
 
 function markEditing(id: string, editing: boolean, keepalive = false): Promise<unknown> {
   return fetch(`/api/displays/${id}/editing`, {
@@ -137,6 +135,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
   // The screen being edited is this browser (#1280): known once hydrated, as
   // it lives in this browser's storage.
   const hydrated = useHydrated();
+  // On a phone the editor says whose it is (#1353): a phone edits a screen, never itself.
+  const narrow = useIsMobile();
   const self = hydrated && screenId !== null && ownScreenId() === screenId;
   // The dashboard the frame opened on.
   const startedOn = useRef<Layout | undefined>(undefined);
@@ -342,6 +342,11 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
       <header className="px-4 pt-[max(1rem,env(safe-area-inset-top))] lg:col-start-1 lg:row-start-1 lg:px-6">
         <BackLink href={back} label={backLabel} />
         <h1 className="m-0 mb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h1>
+        {narrow && (screen ?? dashboard) && (
+          <p className="m-0 mb-1 text-caption text-muted-foreground" data-editing-not-this-phone>
+            You are editing {(screen ?? dashboard)!.name}, not this phone.
+          </p>
+        )}
         {screen && (
           <p className="m-0 mb-3 text-caption text-muted-foreground" data-remote-status>
             {screen.online ? 'On now' : `Off. ${screen.name} shows the changes when it is next switched on`}

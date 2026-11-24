@@ -231,7 +231,8 @@ function GettingAroundHelp() {
       <H2>On a wall screen</H2>
       <P>On a dashboard, the screen&apos;s <strong>Auto-hide navigation</strong> decides how the bar behaves. It is in More &gt; Edit layout &gt; Look, under <strong>This screen</strong>. On, the bar hides behind a small <strong>Menu</strong> tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it. Every other page keeps the bar on screen.</P>
       <H2>On a phone</H2>
-      <P>The bar holds five pages and More, and Sign in is in More. This screen has no Edit layout or Screensaver on a phone. Swipe in from the left or right edge of the screen to go to the page before or after on the bar.</P>
+      <P>The bar holds five pages and More, and Sign in is in More. Swipe in from the left or right edge of the screen to go to the page before or after on the bar.</P>
+      <P>A phone is not a screen, so from a phone you edit a screen, never the phone. More &gt; Edit a screen, under <strong>Screens</strong>, asks for a parent&apos;s PIN and opens a screen&apos;s editor: with one named screen, that screen; with two or more, Settings &gt; Screens to pick one; with none, the default dashboard. The editor shows the screen at its own size and says, under its title, which screen you are editing. A signed-in child has no Edit a screen.</P>
     </>
   );
 }
@@ -711,7 +712,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
         <Li><strong>Background and away</strong>: Background Wallpaper, Away mode and Night sky</Li>
         <Li><strong>All screens</strong>: Units and Language</Li>
       </Ul>
-      <P>A screen&apos;s own settings, like when it rests, its orientation, performance and on-screen keyboard, are in its editor: More &gt; Edit layout on the screen, or Settings &gt; Screens &gt; Edit from a phone.</P>
+      <P>A screen&apos;s own settings, like how long it waits before going idle, its orientation, performance and on-screen keyboard, are in its editor: More &gt; Edit layout on the screen, or More &gt; Edit a screen from a phone.</P>
       {!isMobile && (
         <>
           <H3>Text Size</H3>
@@ -719,7 +720,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
         </>
       )}
       <H3>Screens</H3>
-      <P>Every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor, also from a phone, with a live picture of it. To name a device, open the editor on it and go to Screen. A named screen keeps its settings with its name, so a reset browser can take them back. A browser nobody named works as before.</P>
+      <P>Every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor with a live picture of it; from a phone, More &gt; Edit a screen gets there too. To name a device, open the editor on it and go to Screen. A named screen keeps its settings with its name, so a reset browser can take them back. A browser nobody named works as before.</P>
       <H3>This Screen</H3>
       <P>More &gt; Edit layout &gt; Look &gt; <strong>This screen</strong> holds the screen&apos;s own settings:</P>
       <Ul>

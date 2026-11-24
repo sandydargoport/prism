@@ -66,7 +66,7 @@ A web page can't change the panel's own brightness or turn it off. On an OLED pa
 
 #### Configuration
 
-A screen's own screensaver settings are in its editor, More > Edit layout. From a phone, **Edit** on the screen's row in *Settings > Screens* opens the same editor for that screen.
+A screen's own idle settings are in its editor, More > Edit layout. From a phone, **More > Edit a screen** opens the same editor for that screen.
 
 In **Screen** (More > Edit layout > Screen), under **When nobody is using it**:
 

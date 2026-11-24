@@ -375,6 +375,50 @@ test.describe('the dock on the wall', () => {
     });
   }
 
+  // #1353: from a phone you edit a screen, never the phone. More has Edit a
+  // screen under Screens, and the editor says which screen it is.
+  test('on a phone, More > Edit a screen opens a screen\'s editor, which says it is not this phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok()).toBe(true);
+    await page.goto('/chores');
+    await expect(page.locator('[data-dock]')).toBeVisible({ timeout: 60_000 });
+    await page.locator('[data-dock-more]').click();
+    const panel = page.locator('[data-dock-more-panel]');
+    await expect(panel).toBeVisible();
+    const groups = await panel.locator('[data-dock-more-group]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dock-more-group')));
+    expect(groups.indexOf('screens'), 'Screens after Pages').toBeGreaterThan(groups.indexOf('pages'));
+    expect(groups.indexOf('screens'), 'Screens before Prism').toBeLessThan(groups.indexOf('prism'));
+    const tile = panel.locator('[data-dock-more-group="screens"] [data-screen-job="edit-a-screen"]');
+    await expect(tile).toHaveText('Edit a screen');
+    // Measured once the panel has finished opening (it zooms in).
+    await expect.poll(async () => (await tile.boundingBox())?.x ?? -1, { message: 'the tile settles inside the phone' }).toBeGreaterThanOrEqual(0);
+    const box = (await tile.boundingBox())!;
+    expect(box.width, 'a tile a finger can hit').toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, 'inside the phone').toBeLessThanOrEqual(390);
+    await expect(page.locator('[data-screen-job="edit"]'), 'no Edit layout on a phone').toHaveCount(0);
+
+    const { displays } = await (await page.request.get('/api/displays')).json() as { displays: Array<{ id: string; name: string }> };
+    await tile.click();
+    if (displays.length > 1) {
+      await page.waitForURL((u) => u.pathname === '/settings' && u.searchParams.get('section') === 'displays', { timeout: 60_000 });
+      return;
+    }
+    await onCanvas(page);
+    const path = new URL(page.url()).pathname;
+    if (displays.length === 1) expect(path, 'the one screen\'s editor').toBe(`/screens/${displays[0]!.id}`);
+    else expect(path, 'the default dashboard\'s editor').toMatch(/^\/edit\//);
+    const line = page.locator('[data-editing-not-this-phone]');
+    await expect(line).toHaveText(/^You are editing .+, not this phone\.$/);
+    if (displays.length === 1) await expect(line).toHaveText(`You are editing ${displays[0]!.name}, not this phone.`);
+    const title = (await page.locator('[data-canvas-editor] header h1').boundingBox())!;
+    const under = (await line.boundingBox())!;
+    expect(under.y, 'the line is under the title').toBeGreaterThanOrEqual(title.y + title.height - 1);
+    expect(under.x + under.width, 'and inside the phone').toBeLessThanOrEqual(390);
+  });
+
   // #1020: on a phone, one clear Add per page and nothing floating over a page's
   // content. The options button is the dashboard's own, and it adds nothing.
   test('on a phone: options only on the dashboard, no "+" on it, and Shopping\'s header keeps one add', async ({ page }) => {

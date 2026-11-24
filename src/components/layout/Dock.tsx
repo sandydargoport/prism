@@ -13,7 +13,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { HelpCircle, LogIn, LogOut, MoreHorizontal, Vote } from 'lucide-react';
+import { HelpCircle, LogIn, LogOut, MonitorCog, MoreHorizontal, Vote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ALL_NAV_ITEMS, type NavItem } from '@/lib/constants/navItems';
 import { dockLayout, DOCK_SIZE_NARROW, MORE_TILE } from '@/lib/constants/dock';
@@ -28,6 +28,7 @@ import { ScreenJobs } from './DashboardGrid';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
 import { FeedbackCard } from '@/components/feedback/FeedbackCard';
 import { isReferendumOpen } from '@/lib/feedback/referendum';
+import { phoneEditPlace, SCREENS_LIST } from '@/lib/displays/editPlace';
 
 /** How long the wall's dock stays after the last touch. */
 export const DOCK_WALL_MS = 10_000;
@@ -37,16 +38,21 @@ export const MENU_NUB_MS = 8_000;
 const EDGE_PX = 24;
 const SWIPE_PX = 60;
 const SWIPE_MS = 700;
-/** The More panel's groups, in order (#1257): this screen first on a wall, last on a phone. */
+/**
+ * The More panel's groups, in order (#1257): this screen first on a wall,
+ * last on a phone. A phone also has Screens, its way into a screen's editor
+ * (#1353), before Prism.
+ */
 const GROUPS_WALL = ['screen', 'pages', 'prism'] as const;
-const GROUPS_NARROW = ['pages', 'prism', 'screen'] as const;
+const GROUPS_NARROW = ['pages', 'screens', 'prism', 'screen'] as const;
 /**
  * Each group in More is a panel of its own, so the three read apart at a
  * glance: this screen's jobs on a faint tint of the accent (they act on the
  * screen in hand), the pages on a faint grey, Prism's own on a plain border.
  */
-const GROUP_PANEL: Record<(typeof GROUPS_WALL)[number], string> = {
+const GROUP_PANEL: Record<(typeof GROUPS_NARROW)[number], string> = {
   screen: 'border-primary/25 bg-primary/[0.06]',
+  screens: 'border-primary/25 bg-primary/[0.06]',
   pages: 'border-border bg-muted/50',
   prism: 'border-border',
 };
@@ -94,6 +100,37 @@ function PageScreenJobs({ narrow, editHref, close }: { narrow: boolean; editHref
   );
 }
 
+/**
+ * A phone's way into the editor (#1353): from a phone you edit a screen,
+ * never the phone. A parent only, asked for as Edit layout on the wall asks.
+ */
+function PhoneEditScreen({ close }: { close: () => void }) {
+  const t = useTranslations('common');
+  const { activeUser, requireAuth } = useAuth();
+  const router = useRouter();
+  const open = async () => {
+    close();
+    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit a screen.", { parentsOnly: true });
+    if (!user || user.role !== 'parent') return;
+    const res = await fetch('/api/displays').catch(() => null);
+    if (!res?.ok) { router.push(SCREENS_LIST); return; }
+    const screens = ((await res.json()).displays ?? []) as Array<{ id: string }>;
+    let defaultId: string | null = null;
+    if (screens.length === 0) {
+      const r = await fetch('/api/layouts').catch(() => null);
+      const list = (r?.ok ? (await r.json()).layouts : null) as Array<{ id: string; isDefault?: boolean }> | null;
+      defaultId = (list?.find((l) => l.isDefault) ?? list?.[0])?.id ?? null;
+    }
+    router.push(phoneEditPlace(screens, defaultId));
+  };
+  return (
+    <button type="button" onClick={() => { void open(); }} className={MORE_TILE} data-screen-job="edit-a-screen">
+      <MonitorCog className="h-5 w-5" />
+      <span className="whitespace-nowrap">{t('nav.editAScreen', { defaultValue: 'Edit a screen' })}</span>
+    </button>
+  );
+}
+
 export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const t = useTranslations('common');
   const pathname = usePathname();
@@ -102,6 +139,9 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const { filterNavItems, dockPages } = useHiddenPages();
   // A phone has room for five pages and More; Sign in moves into More (#924).
   const narrow = useIsMobile();
+  // A signed-in child has no way into the editor, so no Screens group (#1353).
+  const { activeUser } = useAuth();
+  const canEdit = !activeUser || activeUser.role === 'parent';
   const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
   // The open question (#1311) asks in a window of its own, from Feedback beside Help.
@@ -277,8 +317,10 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
               screen's jobs lead; on a phone, the pages. */}
           {(narrow ? GROUPS_NARROW : GROUPS_WALL).map((group) => {
             if (group === 'pages' && pages.length === 0) return null;
+            if (group === 'screens' && !canEdit) return null;
             const title = group === 'screen'
               ? t('nav.thisScreen', { defaultValue: 'This screen' })
+              : group === 'screens' ? t('nav.screens', { defaultValue: 'Screens' })
               : group === 'pages' ? t('nav.pages', { defaultValue: 'Pages' }) : t('nav.prism', { defaultValue: 'Prism' });
             return (
               <section
@@ -299,6 +341,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
                   data-dock-prism-grid={group === 'prism' || undefined}
                 >
                   {group === 'screen' && (screenJobs ?? <PageScreenJobs narrow={narrow} editHref={screenEditHref(pathname, search)} close={() => setMoreOpen(false)} />)}
+                  {group === 'screens' && <PhoneEditScreen close={() => setMoreOpen(false)} />}
                   {group === 'pages' && pages.map((item) => link(item, true))}
                   {group === 'prism' && (
                     <>

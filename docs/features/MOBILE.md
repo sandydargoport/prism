@@ -51,7 +51,8 @@ You can add your own shortcuts by editing `public/manifest.json`.
 
 Every page has the dock, one row of pages along the bottom of the screen, on a phone as on a wall screen or a laptop. On a phone it holds five pages and **More**: Home, Calendar, Chores, Shopping and Meals, unless the household chose others in *Settings > Features*. Each page shows its icon and its name, and the page you are on is marked. **Home** goes back to the dashboard.
 
-- **More** opens the rest: the other pages under **Pages**, then **Settings**, **Help** and **Sign in** under **Prism**, then **This screen** with **Reload**, **Babysitter mode** and **Away mode**. Signed in, the **Sign in** tile shows your name, and a tap signs you out.
+- **More** opens the rest: the other pages under **Pages**, then **Edit a screen** under **Screens**, then **Settings**, **Help** and **Sign in** under **Prism**, then **This screen** with **Reload**, **Babysitter mode** and **Away mode**. Signed in, the **Sign in** tile shows your name, and a tap signs you out.
+- **More > Edit a screen** is how a phone gets to the editor. A phone is not a screen, so from a phone you edit a screen, never the phone. It asks for a parent's PIN, then opens a screen's editor: with one named screen, that screen; with two or more, *Settings > Screens* to pick one; with none, the default dashboard. The editor shows the screen at its own size, and under its title one line says what you are editing, for example "You are editing Hallway, not this phone." A signed-in child has no **Edit a screen**.
 - **Swipe in from the edge** to move along the dock: from the left edge of the screen to the page before, from the right edge to the next one. The swipe has to start at the very edge and go sideways, so a swipe in the middle of a page (the Calendar's dates, Shopping's lists) still belongs to the page.
 
 #### The round button
