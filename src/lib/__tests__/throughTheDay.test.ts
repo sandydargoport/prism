@@ -4,7 +4,7 @@
  * the night backdrop all ask it.
  */
 import * as SunCalc from 'suncalc';
-import { idleBackgroundSchema, needsLocation, type IdleBackground } from '../idleBackground';
+import { idleBackgroundSchema, idleSourceAt, needsLocation, type IdleBackground } from '../idleBackground';
 import { asDayAndNight, backdropFor, DEFAULT_NIGHT, isNightAt, nightRule, screenStateAt } from '../throughTheDay';
 
 // A fictional household somewhere mid-latitude, west of Greenwich.
@@ -42,15 +42,61 @@ describe('the night rule', () => {
   });
 });
 
-describe('screenStateAt', () => {
+describe('screenStateAt: what a screen shows (#1344)', () => {
   const night = shift(SunCalc.getTimes(NOON, LAT, LON).sunset!, 120);
+  const at = (now: Date) => ({ now, lat: LAT, lon: LON });
+  const photos: IdleBackground = { source: 'photos' };
+  const offAtNight: IdleBackground = { day: 'photos', night: 'off', switch: DEFAULT_NIGHT };
+
   it('is active while someone is using the screen, day or night', () => {
-    expect(screenStateAt({ idle: false, now: NOON, rule: DEFAULT_NIGHT, lat: LAT, lon: LON })).toBe('active');
-    expect(screenStateAt({ idle: false, now: night, rule: DEFAULT_NIGHT, lat: LAT, lon: LON })).toBe('active');
+    expect(screenStateAt({ idle: false, background: photos, at: at(NOON) }).state).toBe('active');
+    expect(screenStateAt({ idle: false, background: photos, at: at(night) }).state).toBe('active');
   });
   it('is resting by day and night after dark once nobody is', () => {
-    expect(screenStateAt({ idle: true, now: NOON, rule: DEFAULT_NIGHT, lat: LAT, lon: LON })).toBe('resting');
-    expect(screenStateAt({ idle: true, now: night, rule: DEFAULT_NIGHT, lat: LAT, lon: LON })).toBe('night');
+    expect(screenStateAt({ idle: true, background: photos, at: at(NOON) }).state).toBe('resting');
+    expect(screenStateAt({ idle: true, background: photos, at: at(night) }).state).toBe('night');
+  });
+
+  // Each row is what a screen showed before the one function: the wall's
+  // look, night, ink and dim, and the editor preview's forced moments.
+  it.each([
+    // in use: the dashboard, never dimmed, but night is still night (Glance's veil)
+    ['in use by day', { idle: false, at: at(NOON) }, { state: 'active', night: false, look: 'dashboard', dim: 0 }],
+    ['in use at night', { idle: false, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+    ['idle by day', { idle: true, at: at(NOON) }, { state: 'resting', night: false, look: 'photos', dim: 0 }],
+    ['idle at night', { idle: true, at: at(night) }, { state: 'night', night: true, look: 'off', dim: 0.5 }],
+    // Away and Sitter keep the screen in use, so they cancel the dim (#1348 changes this).
+    ['idle at night in Away', { idle: true, away: true, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+    ['idle at night with a sitter', { idle: true, sitter: true, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+    ['a screen that cannot idle', { idle: true, canIdle: false, at: at(night) }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+    // The editor's previews give night outright.
+    ['the Resting preview', { idle: true, at: { night: false } }, { state: 'resting', night: false, look: 'photos', dim: 0 }],
+    ['the Night preview', { idle: true, at: { night: true } }, { state: 'night', night: true, look: 'off', dim: 0.5 }],
+    ['the In use preview at night', { idle: false, at: { night: true } }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+  ] as const)('%s', (_name, input, scene) => {
+    expect(screenStateAt({ background: offAtNight, dimLevel: 0.5, ...input })).toEqual(scene);
+  });
+
+  it('agrees with the rules the wall used, for every background, time and mode', () => {
+    const level = 0.75;
+    const backgrounds: IdleBackground[] = [
+      { source: 'photos' }, { source: 'dashboard' }, { source: 'sky' }, { source: 'off' },
+      { day: 'dashboard', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } },
+      offAtNight,
+    ];
+    const times = [NOON, night, new Date(2026, 10, 5, 22), new Date(2026, 10, 5, 7)];
+    for (const background of backgrounds) for (const now of times) for (const idle of [false, true])
+      for (const away of [false, true]) for (const sitter of [false, true]) {
+        const scene = screenStateAt({ idle, away, sitter, background, at: at(now), dimLevel: level });
+        // The wall before #1344: shouldShowScreensaver, isNightAt with the
+        // dashboard's rule, idleSourceAt, and the dim only while idle at night.
+        const wallIdle = idle && !away && !sitter;
+        const wallNight = isNightAt(nightRule(background), now, LAT, LON);
+        expect(scene.night).toBe(wallNight);
+        expect(scene.state !== 'active').toBe(wallIdle);
+        expect(scene.look).toBe(wallIdle ? idleSourceAt(background, now, LAT, LON) : 'dashboard');
+        expect(scene.dim).toBe(wallIdle && wallNight ? level : 0);
+      }
   });
 });
 
