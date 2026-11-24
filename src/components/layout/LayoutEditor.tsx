@@ -4,8 +4,6 @@ import * as React from 'react';
 import { useState, useCallback, useRef, useEffect, useMemo, useReducer } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
-import { useResetOn } from '@/lib/hooks/useResetOn';
 import { editsIdleLayout } from '@/components/dashboard/useDashboardLayout';
 import { LayoutEditorShareDialog } from './LayoutEditorShareDialog';
 import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
@@ -34,9 +32,8 @@ function onEditorPage(node: React.ReactElement): React.ReactElement {
   return root ? createPortal(node, root) : node;
 }
 
-export type { SavedLayout, DashboardInfo, LayoutEditorProps } from './LayoutEditorTypes';
+export type { DashboardInfo, LayoutEditorProps } from './LayoutEditorTypes';
 
-type ActivePopover = 'dashboard' | 'widgets' | 'templates' | 'community' | 'preview' | 'more' | 'save' | null;
 
 export function LayoutEditor({
   widgets,
@@ -46,7 +43,6 @@ export function LayoutEditor({
   onReset,
   onCancel,
   layoutName,
-  savedLayouts = [],
   editTab = 'dashboard',
   onEditTabChange,
   dashboardDirty,
@@ -56,9 +52,7 @@ export function LayoutEditor({
   onScreensaverSaveAs,
   onScreensaverReset,
   onSelectScreensaverTemplate,
-  screensaverPresets = [],
   onSelectScreensaverPreset,
-  onDeleteScreensaverPreset,
   idleBackground,
   onIdleBackgroundChange,
   idleHalf = 'day',
@@ -73,14 +67,10 @@ export function LayoutEditor({
   onDeviceNamed,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
-  enabledSizes = [],
-  onToggleSize,
   gridScrollY = 0,
   gridVisibleRows = 48,
   gridScrollX = 0,
   gridVisibleCols = 48,
-  gridTotalRows: _gridTotalRows = 96,
-  gridTotalCols: _gridTotalCols = 48,
   scrollToGridRef,
   allDashboards = [],
   currentDashboardId,
@@ -95,12 +85,9 @@ export function LayoutEditor({
   hideEmptyByDefault = false,
   idleToggles = false,
 }: LayoutEditorProps) {
-  const { zones, allSizeNames } = useScreenSafeZones();
   const { confirm: confirmDelete, dialogProps: confirmDialogProps } = useConfirmDialog();
   const { measureMode, measureHideNav, toggleMeasureMode, toggleMeasureNav } = useMeasureMode();
-  const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
-  const [activePopover, setActivePopover] = useState<ActivePopover>(null);
   // A screen's own settings (rest after, how dark) show when the editor is
   // for a screen: the one edited on the canvas, if any (#1281). A dashboard
   // edited at a chosen size has none.
@@ -148,7 +135,6 @@ export function LayoutEditor({
   // other than the dashboard itself shows behind it.
   const hasIdleLayout = !!idleBackground && editsIdleLayout(idleBackground);
   const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
 
   const currentWidgets = useMemo(
     () => editingScreensaver ? (screensaverWidgets || []) : widgets,
@@ -158,8 +144,6 @@ export function LayoutEditor({
     () => currentWidgets.filter(w => w.visible !== false),
     [currentWidgets],
   );
-
-  const closePopover = useCallback(() => setActivePopover(null), []);
 
   // A day and night pair whose offsets cross is not saved (#782).
   const saveBlocked = idleBackground ? idleSaveProblem(idleBackground, idleCheck) : null;
@@ -195,24 +179,6 @@ export function LayoutEditor({
     allDashboards,
     currentDashboardId,
     confirmDelete,
-    setActivePopover: closePopover,
-  });
-
-  // Close popover when clicking outside toolbar
-  useEffect(() => {
-    if (!activePopover) return;
-    const handler = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        setActivePopover(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [activePopover]);
-
-  // Close popover when measure mode activates
-  useResetOn(measureMode, () => {
-    if (measureMode) setActivePopover(null);
   });
 
   // Copy this layout over the other one and switch to it, so the result is
@@ -367,11 +333,6 @@ export function LayoutEditor({
                 gridScrollX={gridScrollX}
                 gridVisibleCols={gridVisibleCols}
                 scrollToGridRef={scrollToGridRef}
-                screenGuideOrientation={screenGuideOrientation}
-                effectiveEnabledSizes={effectiveEnabledSizes}
-                onToggleSize={onToggleSize}
-                allSizeNames={allSizeNames}
-                zones={zones}
                 validation={state.validation}
               />
             )}
@@ -385,7 +346,6 @@ export function LayoutEditor({
   return onEditorPage(
     <>
       <EditorBar
-        ref={toolbarRef}
         open={sheet}
         onOpenChange={setSheet}
         sheet={sheetContent}

@@ -18,14 +18,6 @@ jest.mock('@/components/layout/WallpaperBackground', () => ({
 }));
 jest.mock('@/lib/hooks/usePhotos', () => ({ usePhotos: () => ({ photos: [], loading: false }) }));
 jest.mock('@/app/settings/SettingsView', () => ({
-  useDisplayContextFilters: () => ({
-    filters: {
-      gallery: { orientation: [] },
-      wallpaper: { orientation: [] },
-      screensaver: { orientation: [] },
-    },
-    setFilters: jest.fn(),
-  }),
   useTargetResolution: () => ({
     resolution: { width: 1920, height: 1080 },
     setResolution: jest.fn(),

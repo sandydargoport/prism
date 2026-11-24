@@ -17,7 +17,9 @@ async function openDisplays(context: BrowserContext, parentName: string): Promis
   const page = await context.newPage();
   await verifySettingsPinViaAPI(page, parentName);
   await page.goto('/settings?section=displays');
-  await expect(page.getByRole('heading', { name: 'Screens', level: 2 })).toBeVisible();
+  // The first visit compiles Settings on the dev server, and a visit while
+  // another route compiles waits for it: more than the default 5 s on CI.
+  await expect(page.getByRole('heading', { name: 'Screens', level: 2 })).toBeVisible({ timeout: 30_000 });
   return page;
 }
 
@@ -85,6 +87,22 @@ test.describe('Display registry', () => {
   });
 });
 
+/**
+ * Store a value, trying again while the page reloads itself. A named screen
+ * reloads once after it applies a change from another device, so a write
+ * made just after the page loads can land on a page that is going away.
+ */
+async function writeStorage(page: Page, key: string, value: string): Promise<void> {
+  await expect.poll(async () => {
+    try {
+      await page.evaluate(({ k, v }) => localStorage.setItem(k, v), { k: key, v: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, { timeout: 30_000 }).toBe(true);
+}
+
 /** A stored value, or null while the page is in the middle of reloading itself. */
 async function readStorage(page: Page, key: string): Promise<string | null> {
   try {
@@ -130,8 +148,9 @@ test.describe('Display settings follow the screen', () => {
       await expect.poll(() => readStorage(wall, TIMEOUT), { timeout: 30_000 }).toBe('600');
 
       // Changed on the wall: stored within a few seconds, without a refresh.
+      // The wall may still reload itself once to apply the phone's edit.
       await wall.waitForLoadState('load');
-      await wall.evaluate(() => localStorage.setItem('prism-screensaver-drift', 'off'));
+      await writeStorage(wall, 'prism-screensaver-drift', 'off');
       await expect.poll(async () => (await stored())?.settings?.['prism-screensaver-drift'], { timeout: 30_000 }).toBe('off');
 
       // The phone gives the wall a dashboard of its own (#1282); the wall's

@@ -6,12 +6,6 @@ import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 
 export const EXPORT_VERSION = 2;
 
-export interface SavedLayout {
-  id: string;
-  name: string;
-  widgets: WidgetConfig[];
-}
-
 export interface DashboardInfo {
   id: string;
   name: string;
@@ -28,29 +22,24 @@ export interface LayoutEditorProps {
   onSaveAs: (opts?: string | { id: string } | { name: string }) => void;
   onReset: () => void;
   onCancel: () => void;
-  onDeleteLayout?: (id: string) => void;
   layoutName?: string;
-  savedLayouts?: SavedLayout[];
-  /** The Dashboard or Idle screen tab (#782). */
+  /** The canvas shows the dashboard in use or the screen idle (#782). */
   editTab?: EditTab;
   onEditTabChange?: (tab: EditTab) => void;
   /** Which tabs hold unsaved changes. */
   dashboardDirty?: boolean;
   idleDirty?: boolean;
-  /** The Idle screen tab, arranging a screensaver layout. */
+  /** The idle view, arranging a screensaver layout. */
   editingScreensaver?: boolean;
   screensaverWidgets?: WidgetConfig[];
-  onScreensaverWidgetToggle?: (widgetType: string, visible: boolean) => void;
   onScreensaverSaveAs?: () => void;
   onScreensaverReset?: () => void;
   onSelectScreensaverTemplate?: (templateWidgets: WidgetConfig[]) => void;
-  screensaverPresets?: Array<{ name: string; widgets: WidgetConfig[] }>;
   onSelectScreensaverPreset?: (widgets: WidgetConfig[]) => void;
-  onDeleteScreensaverPreset?: (name: string) => void;
   /** What the display shows behind it when idle (#782). Omitted: no picker. */
   idleBackground?: IdleBackground;
   onIdleBackgroundChange?: (bg: IdleBackground) => void;
-  /** Which half of a day and night pair the Idle screen tab shows. */
+  /** Which half of a day and night pair the idle view shows. */
   idleHalf?: IdleHalf;
   onIdleHalfChange?: (half: IdleHalf) => void;
   /** Tonight's times and whether the offsets cross, for a day and night pair. */
@@ -75,14 +64,10 @@ export interface LayoutEditorProps {
   onDeviceNamed?: (displayId: string) => void;
   screenGuideOrientation?: 'landscape' | 'portrait';
   onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
-  enabledSizes?: string[];
-  onToggleSize?: (size: string) => void;
   gridScrollY?: number;
   gridVisibleRows?: number;
   gridScrollX?: number;
   gridVisibleCols?: number;
-  gridTotalRows?: number;
-  gridTotalCols?: number;
   scrollToGridRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
   // Multi-dashboard props
   allDashboards?: DashboardInfo[];
@@ -131,4 +116,3 @@ export interface LayoutExportV2 {
   widgets: ExportWidget[];
 }
 
-export type ActivePopover = 'dashboard' | 'widgets' | 'templates' | 'community' | 'preview' | 'more' | 'save' | null;

@@ -24,7 +24,6 @@ interface UseLayoutEditorStateOptions {
   allDashboards: Array<{ id: string; name: string; slug: string | null; isDefault: boolean }>;
   currentDashboardId?: string;
   confirmDelete: (title: string, message: string) => Promise<boolean>;
-  setActivePopover: (p: null) => void;
 }
 
 export function useLayoutEditorState({
@@ -42,7 +41,6 @@ export function useLayoutEditorState({
   allDashboards,
   currentDashboardId,
   confirmDelete,
-  setActivePopover,
 }: UseLayoutEditorStateOptions) {
   const [exportFeedback, setExportFeedback] = useState('');
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -100,8 +98,7 @@ export function useLayoutEditorState({
       setTimeout(() => setExportFeedback(''), 2000);
       toast({ title: 'Could not export the layout', variant: 'destructive' });
     });
-    setActivePopover(null);
-  }, [buildExportData, setActivePopover]);
+  }, [buildExportData]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -120,8 +117,7 @@ export function useLayoutEditorState({
   const handleRenameOpen = useCallback(() => {
     setRenameValue(layoutName || '');
     setShowRenameDialog(true);
-    setActivePopover(null);
-  }, [layoutName, setActivePopover]);
+  }, [layoutName]);
 
   const handleRenameSubmit = useCallback(() => {
     const trimmed = renameValue.trim();
@@ -140,8 +136,7 @@ export function useLayoutEditorState({
       `Devices bookmarked at /d/${currentSlug || '...'} will stop working.`,
     );
     if (ok) onDeleteDashboard?.();
-    setActivePopover(null);
-  }, [allDashboards, currentDashboardId, confirmDelete, layoutName, onDeleteDashboard, setActivePopover]);
+  }, [allDashboards, currentDashboardId, confirmDelete, layoutName, onDeleteDashboard]);
 
   const handleApplyCommunityLayout = useCallback((newWidgets: WidgetConfig[], name: string) => {
     if (editingScreensaver && onSelectScreensaverPreset) {
@@ -151,8 +146,7 @@ export function useLayoutEditorState({
       onWidgetsChange(newWidgets);
       onSaveAs(name);
     }
-    setActivePopover(null);
-  }, [editingScreensaver, onSelectScreensaverPreset, onWidgetsChange, onSaveAs, onScreensaverSaveAs, setActivePopover]);
+  }, [editingScreensaver, onSelectScreensaverPreset, onWidgetsChange, onSaveAs, onScreensaverSaveAs]);
 
   return {
     exportFeedback,

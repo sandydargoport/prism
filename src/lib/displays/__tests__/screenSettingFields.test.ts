@@ -10,19 +10,14 @@ import { changesFor, currentOption, SCREEN_SETTING_FIELDS } from '../screenSetti
 const field = (key: string) => SCREEN_SETTING_FIELDS.find((f) => f.key === key)!;
 
 describe('SCREEN_SETTING_FIELDS', () => {
-  it('covers every synced setting a person chooses', () => {
-    // The motion marker is written with the effect; nothing edits safe zones yet;
-    // the attention panel has its own editor.
-    // Light or dark and the photos behind the dashboard are on the Screen
-    // sheet; the rest of #1340's are set on the screen itself (#1340).
-    const notOnTheForm = [
-      'prism-screensaver-motion-v2', 'prism:screen-safe-zones', 'prism-screen-attention',
-      'prism-theme', 'prism-seasonal-theme', 'prism-wallpaper-enabled', 'prism-wallpaper-interval',
-      'prism-wallpaper-auto-orientation', 'prism-pinned-wallpaper', 'prism-pinned-screensaver',
-      'prism:display-timezone-mode',
-    ];
-    expect(SCREEN_SETTING_FIELDS.map((f) => f.key).sort())
-      .toEqual(SCREEN_SETTING_KEYS.filter((k) => !notOnTheForm.includes(k)).sort());
+  it('is the screen\'s options under Look > This screen, and no others', () => {
+    // The screensaver's own settings are edited in its panel and on the Screen
+    // sheet (see screenSettingsInEditor.test.tsx), not from this table.
+    expect(SCREEN_SETTING_FIELDS.map((f) => f.key).sort()).toEqual([
+      'prism-idle-logout-minutes', 'prism-orientation-override', 'prism-perf-mode',
+      'prism:auto-hide-ui', 'prism:keyboard-on-this-device',
+    ]);
+    for (const f of SCREEN_SETTING_FIELDS) expect(SCREEN_SETTING_KEYS).toContain(f.key);
   });
 
   it('falls back to one of its own options, and has no option twice', () => {
@@ -46,7 +41,6 @@ describe('Sign out after', () => {
   it('is one of the screen\'s own options, with the choices and default it had in Settings', () => {
     const f = field(IDLE_LOGOUT_KEY);
     expect(f).toBeDefined();
-    expect(f.group).toBe('Screen');
     expect(f.options.map((o) => o.raw)).toEqual(IDLE_LOGOUT_OPTIONS.map((o) => String(o.value)));
     expect(currentOption(f, {})).toBe(String(DEFAULT_IDLE_LOGOUT_MINUTES));
     expect(currentOption(f, { [IDLE_LOGOUT_KEY]: '240' })).toBe('240');
@@ -55,23 +49,19 @@ describe('Sign out after', () => {
 
 describe('currentOption', () => {
   it('shows what the screen falls back to when nothing, or nothing it knows, is stored', () => {
-    expect(currentOption(field('prism-screensaver-timeout'), {})).toBe('120');
-    expect(currentOption(field('prism-screensaver-drift'), { 'prism-screensaver-drift': 'off' })).toBe('off');
-    expect(currentOption(field('prism-screensaver-shortcut'), { 'prism-screensaver-shortcut': 'yes' })).toBe('off');
+    expect(currentOption(field('prism-orientation-override'), {})).toBe('auto');
+    expect(currentOption(field('prism-orientation-override'), { 'prism-orientation-override': 'portrait' })).toBe('portrait');
+    expect(currentOption(field('prism:auto-hide-ui'), { 'prism:auto-hide-ui': 'yes' })).toBe('false');
   });
 
-  it('reads an effect stored under its old name as the screen does', () => {
-    const motion = field('prism-screensaver-motion');
-    expect(currentOption(motion, { 'prism-screensaver-motion': 'smoke' })).toBe('fade');
-    expect(currentOption(motion, { 'prism-screensaver-motion': 'smoke', 'prism-screensaver-motion-v2': '1' }))
-      .toBe('smoke');
+  it('reads an old performance value as the screen does', () => {
+    expect(currentOption(field('prism-perf-mode'), { 'prism-perf-mode': 'true' })).toBe('reduced');
+    expect(currentOption(field('prism-perf-mode'), { 'prism-perf-mode': 'false' })).toBe('full');
   });
 });
 
 describe('changesFor', () => {
-  it('marks an effect as named the current way, so Smoke stays Smoke', () => {
-    expect(changesFor(field('prism-screensaver-motion'), 'smoke'))
-      .toEqual({ 'prism-screensaver-motion': 'smoke', 'prism-screensaver-motion-v2': '1' });
+  it('writes the chosen raw string under the field\'s own key', () => {
     expect(changesFor(field('prism-perf-mode'), 'true')).toEqual({ 'prism-perf-mode': 'true' });
   });
 });

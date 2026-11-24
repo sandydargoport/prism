@@ -970,7 +970,7 @@ async function seed() {
   console.log('Creating default settings...');
 
   await db.insert(schema.settings).values([
-    { key: 'theme',    value: { mode: 'system' } },
+    { key: 'theme',    value: {} },
     { key: 'location', value: { city: 'Springfield', state: 'IL', country: 'US' } },
     { key: 'security', value: { requirePinForEvents: true, requirePinForDelete: true, requirePinForSettings: true, sessionTimeout: 30 } },
     // Mark setup as complete so the dashboard doesn't redirect to /setup.
