@@ -45,6 +45,7 @@
     "test:ui-audit": "playwright test e2e/ui-audit.spec.ts && node scripts/ui-audit-board.mjs",
     "test:migration-replay": "bash scripts/test-migration-replay.sh",
     "scan:secrets": "bash scripts/scan-secrets.sh",
+    "check:ui-words": "tsx scripts/check-ui-words.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
