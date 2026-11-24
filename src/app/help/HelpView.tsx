@@ -320,11 +320,12 @@ function DashboardHelp() {
       <Ul>
         <Li><strong>Drag</strong> a widget to move it. Tap it again for resize mode, then drag its corner handles</Li>
         <Li>Pick a widget on the screen or in the list in the <strong>Widgets</strong> panel (More &gt; Edit layout &gt; Widgets); its settings are below the list, and Widgets comes forward if another panel is open. The &times; beside a name in the list hides that widget. The settings are <strong>Fill</strong> and <strong>Outline</strong> colour and opacity, <strong>Text</strong> colour, size and, for the clock and weather, <strong>Align</strong>, the calendar&apos;s <strong>Grid</strong>, <strong>Hide when empty</strong> (hidden while it has nothing to show) and <strong>Hide first on a small screen</strong>. The canvas shows only the screen</Li>
+        <Li><strong>Apply to all widgets</strong>, under Fill, Outline and Text (Edit layout &gt; Widgets, with a widget picked), puts that widget&apos;s fill, outline, or text colour and size on every widget, and says how many differ. To turn outlines off everywhere, pick <strong>None</strong> under Outline, then <strong>Apply to all widgets</strong>. A widget added new takes the look the others all share</Li>
         <Li>With a widget selected, <strong>Delete</strong> or <strong>Backspace</strong> removes it (the toast has Undo), and the arrow keys move it, or resize it in resize mode</Li>
       </Ul>
 
       <H2>Starter Templates</H2>
-      <P>Widgets &gt; <strong>Start from a template</strong> offers six built-in dashboards: <strong>Family Central</strong>, <strong>Calendar Focus</strong>, <strong>Command Center</strong>, <strong>Meal Planner</strong>, <strong>School Mornings</strong>, and a photo-forward <strong>Ambient</strong>. Each is built around a single hero widget (usually the calendar) with the other widgets sized to their natural shape and grouped into a couple of balanced zones, a starting point you then rearrange. Every template ships in both landscape and portrait versions, and the resting layout has its own matching set.</P>
+      <P>Widgets &gt; <strong>Start from a template</strong> offers six built-in dashboards: <strong>Family Central</strong>, <strong>Calendar Focus</strong>, <strong>Command Center</strong>, <strong>Meal Planner</strong>, <strong>School Mornings</strong>, and a photo-forward <strong>Ambient</strong>. Each is built around a single hero widget (usually the calendar) with the other widgets sized to their natural shape and grouped into a couple of balanced zones, a starting point you then rearrange. A template asks first, since it replaces every widget with its place, fill, outline and text. Every template ships in both landscape and portrait versions, and the resting layout has its own matching set.</P>
 
       <H2>Overview</H2>
       <P>More &gt; <strong>Overview</strong> shows a small map of your layout. It highlights widget positions and flags issues like overlapping or undersized widgets. Click the map to scroll the canvas to that spot. To see the layout at another screen&apos;s size, use <strong>Shown at</strong> above the canvas.</P>
@@ -338,7 +339,7 @@ function DashboardHelp() {
 
       <H2>Import, Export &amp; Community Layouts</H2>
       <Ul>
-        <Li><strong>Community gallery</strong>: Widgets &gt; <strong>Browse the community gallery</strong> shows layouts shared by other Prism users. Search by name and filter by <strong>orientation</strong> (Landscape/Portrait, pre-set to the dashboard you&apos;re editing), preview each as a thumbnail, then <strong>Apply layout</strong>.</Li>
+        <Li><strong>Community gallery</strong>: Widgets &gt; <strong>Browse the community gallery</strong> shows layouts shared by other Prism users. Search by name and filter by <strong>orientation</strong> (Landscape/Portrait, pre-set to the dashboard you&apos;re editing), preview each as a thumbnail, then <strong>Apply layout</strong>, which asks first, since it replaces every widget and its look.</Li>
         <Li><strong>Share</strong>: Submit your own layout (More &gt; Share to the gallery). Fill in the details and submit; Prism opens a pre-filled submission, and once it&apos;s approved your layout appears in the gallery.</Li>
         <Li><strong>Export</strong>: Copy your current layout as JSON to share it directly (More &gt; Export)</Li>
         <Li><strong>Import</strong>: Paste a layout JSON to load someone else&apos;s design (More &gt; Import)</Li>

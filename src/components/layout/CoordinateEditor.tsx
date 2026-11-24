@@ -6,6 +6,7 @@ import { WIDGET_COLORS } from './LayoutPreview';
 import { WIDGET_REGISTRY, ALL_WIDGET_TYPES, SCREENSAVER_WIDGETS } from '@/components/widgets/widgetRegistry';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { findNextFreeSlot } from '@/lib/utils/widgetPlacement';
+import { withSharedLook } from './widgetLook';
 
 interface CoordinateEditorProps {
   widgets: WidgetConfig[];
@@ -83,9 +84,10 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
       // Find the first free slot row-by-row, columns inside each row — slots
       // a new widget into top-row gaps before falling through to the bottom.
       const { x, y } = findNextFreeSlot(widgets, reg.defaultW, reg.defaultH);
+      // A new widget takes the fill, outline and text the others all share (#1339).
       onWidgetsChange([
         ...widgets,
-        { i: widgetId, x, y, w: reg.defaultW, h: reg.defaultH, visible: true },
+        withSharedLook(widgets, { i: widgetId, x, y, w: reg.defaultW, h: reg.defaultH, visible: true }),
       ]);
     }
   }, [widgets, onWidgetsChange]);

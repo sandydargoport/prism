@@ -20,6 +20,8 @@ import type { DashboardInfo } from './LayoutEditorTypes';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import { changesFor, currentOption, SCREEN_SETTING_FIELDS, type ScreenSettingField } from '@/lib/displays/screenSettingFields';
 import { SCREEN_ATTENTION_KEY } from '@/lib/displays/screenAttention';
@@ -166,6 +168,7 @@ export function WidgetsSheet({
   idleToggles?: boolean;
 }) {
   const [community, setCommunity] = useState(false);
+  const { confirm, dialogProps } = useConfirmDialog();
   const templates = useMemo(() => {
     const all = editingScreensaver ? SCREENSAVER_TEMPLATES : LAYOUT_TEMPLATES;
     return Object.entries(all).filter(([, t]) => t.orientation === orientation);
@@ -177,6 +180,16 @@ export function WidgetsSheet({
   const change = editingScreensaver && onScreensaverPreset ? onScreensaverPreset : onWidgetsChange;
   // A widget hidden or removed is no longer selected, as on the canvas.
   const selected = selectedWidgetId ? widgets.find((w) => w.i === selectedWidgetId && w.visible !== false) : undefined;
+  // A template or a gallery layout replaces every widget here and its fill,
+  // outline and text, so it asks first (#1339).
+  const askToReplace = (name: string) => confirm(
+    `Use ${name}?`,
+    `${name} replaces every widget on this ${editingScreensaver ? 'idle screen' : 'dashboard'}, with its place, fill, outline and text.`,
+    { confirmLabel: 'Replace', variant: 'destructive' },
+  );
+  const applyCommunity = async (next: WidgetConfig[], name: string) => {
+    if (await askToReplace(name)) onApplyCommunityLayout(next, name);
+  };
   return (
     <div className="flex flex-col gap-6">
       <section>
@@ -190,6 +203,8 @@ export function WidgetsSheet({
           <WidgetStylePanel
             widget={selected}
             onChange={(next) => change(widgets.map((w) => (w.i === next.i ? next : w)))}
+            allWidgets={widgets}
+            onAllChange={change}
             onClose={onSelectedWidgetChange ? () => onSelectedWidgetChange(null) : undefined}
             hideEmptyByDefault={hideEmptyByDefault}
             idleToggles={idleToggles}
@@ -208,7 +223,8 @@ export function WidgetsSheet({
               key={key}
               type="button"
               className={action}
-              onClick={() => {
+              onClick={async () => {
+                if (!(await askToReplace(t.name))) return;
                 if (editingScreensaver) onScreensaverTemplate?.(SCREENSAVER_TEMPLATES[key]!.widgets);
                 else onWidgetsChange(LAYOUT_TEMPLATES[key]!.widgets.map((w) => ({ ...w, visible: true })));
               }}
@@ -225,10 +241,11 @@ export function WidgetsSheet({
         </button>
         {community && (
           <div className="mt-4">
-            <CommunityGallery mode={mode} onApplyLayout={onApplyCommunityLayout} currentOrientation={orientation} />
+            <CommunityGallery mode={mode} onApplyLayout={applyCommunity} currentOrientation={orientation} />
           </div>
         )}
       </section>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }
