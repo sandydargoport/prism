@@ -118,19 +118,20 @@ async function boxes(where: Page | FrameLocator, selector: string): Promise<Reco
   }, selector);
 }
 
-async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'portrait') {
+async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'portrait', outlines?: 'off') {
   const login = await page.request.post('/api/auth/login', {
     data: { userId: getSeededParentId(), pin: PIN },
   });
   expect(login.ok(), 'precondition: login must succeed before measuring').toBe(true);
-  await page.addInitScript((layout) => {
+  await page.addInitScript(({ layout, outlines }) => {
     // Once per test: the editor writes this key itself after load.
     if (sessionStorage.getItem('ss-geometry-seeded')) return;
     localStorage.setItem('prism-screensaver-layout', JSON.stringify(layout));
     // Drift is on by default and would move the live widgets off their places.
     localStorage.setItem('prism-screensaver-drift', 'off');
+    if (outlines) localStorage.setItem('prism-screensaver-outlines', outlines);
     sessionStorage.setItem('ss-geometry-seeded', '1');
-  }, LAYOUT);
+  }, { layout: LAYOUT, outlines });
   await page.goto('/');
   const frame = await openEditor(page, 'clock');
   // The canvas is the screen: its size and shape for this orientation, the
@@ -220,6 +221,17 @@ for (const [orientation, viewport] of [
           expect(Math.abs(p[k] - l[k]), `${i} ${k}: Preview ${p[k]} vs live ${l[k]}`).toBeLessThanOrEqual(1);
         }
       }
+    });
+
+    // #1338: the preview forced light outlines whatever the screen said, so
+    // with Widget outlines off it showed a frame the wall never draws.
+    test('with Widget outlines off the preview draws no widget outlines, as the wall does', async ({ page }) => {
+      const canvas = await openScreensaverEditor(page, orientation, 'off');
+      const borderColors = () => canvas.locator('body').evaluate(() =>
+        [...document.querySelectorAll('[data-ss-preview-widget] [class*="bg-card"].border-border')]
+          .map((e) => getComputedStyle(e).borderTopColor));
+      await expect.poll(async () => (await borderColors()).length, 'a widget card is in the preview').toBeGreaterThan(0);
+      for (const c of await borderColors()) expect(c).toBe('rgba(0, 0, 0, 0)');
     });
   });
 }

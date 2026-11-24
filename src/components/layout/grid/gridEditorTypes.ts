@@ -5,6 +5,11 @@ export interface EditorTheme {
   gridStroke: string;
   gridOpacity: number;
   gridPatternId: string;
+  /**
+   * The dashed frame of an unselected widget, as variants of the widget's
+   * `group`: it shows only while the widget is pointed at or holds keyboard
+   * focus, so the dashboard does not look outlined while editing (#1338).
+   */
   borderDash: string;
 }
 
@@ -13,7 +18,7 @@ export const DASHBOARD_THEME: EditorTheme = {
   gridStroke: 'currentColor',
   gridOpacity: 0.3,
   gridPatternId: 'grid-dash',
-  borderDash: 'border-white/50 dark:border-white/40',
+  borderDash: 'group-hover:border-dashed group-focus-within:border-dashed group-hover:border-white/50 group-focus-within:border-white/50 dark:group-hover:border-white/40 dark:group-focus-within:border-white/40',
 };
 
 export const SCREENSAVER_THEME: EditorTheme = {
@@ -21,7 +26,7 @@ export const SCREENSAVER_THEME: EditorTheme = {
   gridStroke: 'white',
   gridOpacity: 0.2,
   gridPatternId: 'grid-ss',
-  borderDash: 'border-white/40',
+  borderDash: 'group-hover:border-dashed group-focus-within:border-dashed group-hover:border-white/40 group-focus-within:border-white/40',
 };
 
 export interface CssGridDisplayProps {

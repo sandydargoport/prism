@@ -35,7 +35,7 @@ const TaskModal = lazy(() => import('@/app/tasks/TaskModal').then(m => ({ defaul
 const MealModal = lazy(() => import('@/app/meals/MealsView').then(m => ({ default: m.MealModal })));
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
-import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
+import { SCREENSAVER_WIDGET_CLASS, screensaverOutlineClass } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import type { ScreenPlan } from '@/lib/screenSwitches';
@@ -249,7 +249,7 @@ export function Dashboard({
   );
   // The widgets that stay drift while idle, so a screen that shows the same
   // board all night does not hold every edge on the same pixels (part 2).
-  const { drift } = useScreensaverMotion();
+  const { drift, outlines: ssOutlines } = useScreensaverMotion();
   const idleDrift = calmIdle && drift;
   // Through the day (#1152): the state the editor is showing, if any. The
   // Through the day sheet's strip sets it: Active is the dashboard in use,
@@ -463,14 +463,14 @@ export function Dashboard({
     return (
       <WidgetBoundary name={w.i}>
         <Suspense fallback={<div className="flex items-center justify-center h-full text-white/50 text-sm">Loading...</div>}>
-          <div className={SCREENSAVER_WIDGET_CLASS}>
+          <div data-ss-preview-widget={w.i} className={SCREENSAVER_WIDGET_CLASS + screensaverOutlineClass(ssOutlines)}>
             <Component {...props} />
           </div>
         </Suspense>
       </WidgetBoundary>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [data, ssOutlines]);
 
   /** Today's scene with `parts`: this dashboard's, or another's shown as it is saved. */
   const todayScene = (parts: WidgetConfig[], look: { idle: boolean; night: boolean; drift: boolean }) => (

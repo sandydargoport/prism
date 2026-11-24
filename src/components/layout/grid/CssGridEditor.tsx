@@ -417,7 +417,7 @@ function DraggableWidget({
     <div
       ref={setNodeRef}
       data-editor-widget={widget.i}
-      className={`relative ${inResizeMode ? '' : 'cursor-grab active:cursor-grabbing'} ${ringClass} ${isDragging ? 'opacity-30' : ''}`}
+      className={`group relative ${inResizeMode ? '' : 'cursor-grab active:cursor-grabbing'} ${ringClass} ${isDragging ? 'opacity-30' : ''}`}
       style={{
         gridColumn: `${pos.x + 1} / span ${pos.w}`,
         gridRow: `${pos.y + 1} / span ${pos.h}`,
@@ -431,11 +431,12 @@ function DraggableWidget({
       {...(inMoveMode ? listeners : {})}
       {...(inMoveMode ? attributes : {})}
     >
-      {/* Border overlay — dashed for move, solid for resize (accessible: pattern + color) */}
-      <div className={`absolute inset-0 z-10 border-2 ${
+      {/* Border overlay: dashed for move, solid for resize (accessible: pattern + color).
+          An unselected widget has none until it is pointed at or focused (#1338). */}
+      <div data-editor-frame className={`absolute inset-0 z-10 border-2 ${
         isSelected
           ? inResizeMode ? 'border-solid border-warning' : 'border-dashed border-blue-500'
-          : `border-dashed ${theme.borderDash}`
+          : `border-none ${theme.borderDash}`
       } rounded-lg pointer-events-none`} />
 
       {/* Widget content — interactivity disabled in edit mode so a stray
