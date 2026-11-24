@@ -37,7 +37,7 @@ import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
 import { SCREENSAVER_WIDGET_CLASS, screensaverOutlineClass } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import { backgroundOf } from '@/lib/screenDay';
 import type { ScreenPlan } from '@/lib/screenSwitches';
 import { loadBase } from '@/lib/displays/displaySettingsSync';
 import { screenEditLink } from '@/lib/displays/editPlace';
@@ -61,7 +61,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 import { useResetOn } from '@/lib/hooks/useResetOn';
-import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
+import { setDashboardShown, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
+import { useScreenDay } from '@/components/screensaver/useScreenDay';
 import { usePreviewScene } from '@/components/screensaver/useScene';
 import type { ScreenState } from '@/lib/throughTheDay';
 import { useScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
@@ -229,18 +230,15 @@ export function Dashboard({
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
 
-  // Tell the Screensaver what this dashboard shows behind it when idle (#782,
-  // #1281), which may be the dashboard itself (calm mode, #691). When the
-  // dashboard goes, other pages keep its photos or sky but have no dashboard
-  // to show. The phone layout has no calm idle state. Keyed by its JSON so a
-  // fresh copy of the same value is not a change.
-  const idleBackground = layout.activeLayout ? parseIdleBackground(layout.activeLayout.idleBackground) : PHOTOS;
-  const idleKey = JSON.stringify(isMobile ? withoutDashboard(idleBackground) : idleBackground);
+  // Tell the Screensaver a dashboard is here to show idle (calm mode, #691).
+  // What the screen shows idle, and at night, is the screen's own day
+  // (#1345), not this dashboard's, so a switch to another dashboard does not
+  // change it. The phone layout has no calm idle state.
   useEffect(() => {
-    const bg = JSON.parse(idleKey) as IdleBackground;
-    setActiveIdleBackground(bg);
-    return () => setActiveIdleBackground(withoutDashboard(bg));
-  }, [idleKey]);
+    setDashboardShown(!isMobile);
+    return () => setDashboardShown(false);
+  }, [isMobile]);
+  const { day: screenDay } = useScreenDay();
   const calmIdle = useCalmIdle() && !layout.isEditing;
   const fadedIds = useMemo(
     () => calmIdle ? new Set(layout.activeWidgets.filter(w => !shownWhenIdle(w)).map(w => w.i)) : undefined,
@@ -256,9 +254,9 @@ export function Dashboard({
   const previewState: ScreenState | null = !layout.isEditing ? null
     : layout.editTab !== 'idle' ? 'active'
       : layout.idleHalf === 'night' ? 'night' : 'resting';
-  const shownBackground = layout.isEditing ? layout.editingBackground : idleBackground;
+  const shownBackground = layout.isEditing ? layout.editingBackground : backgroundOf(screenDay);
   // One function says what the screen shows (#1344): the veil, the dim and
-  // the backdrop all go by the dashboard's rule.
+  // the backdrop all go by the screen's rule.
   const scene = usePreviewScene({ previewState, calmIdle, background: shownBackground });
   const sceneNight = scene.night;
   const previewBackdrop = previewState ? scene.look : null;

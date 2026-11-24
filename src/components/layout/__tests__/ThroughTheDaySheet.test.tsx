@@ -4,9 +4,9 @@
  * The Through the day sheet (#1152) as rows (#1281) that fold (#1294). First
  * a day slider that steps through the day's waypoints and shows the screen
  * then, with a dot for each of the screen's switches; tapping one opens it on
- * the Screen sheet, where the switches are set (#1326). Then the dashboard's
- * own resting and night, saved with the dashboard: Resting with See it, and
- * At night as a row shaped like a switch, folded to one line. A dashboard
+ * the Screen sheet, where the switches are set (#1326). Then the screen's
+ * own idle look and night (#1345), saved to the screen: Resting with See it,
+ * and At night as a row shaped like a switch, folded to one line. A day
  * nobody gave a night is stored as before.
  */
 import React, { useState } from 'react';
@@ -48,8 +48,8 @@ const ROUTES = [
 
 const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; plan?: ScreenPlan | null; preview?: string | null } = {};
 
-function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forScreen = true, current = HOME }: {
-  initial: IdleBackground; dashboards?: typeof DASHBOARDS; plan?: ScreenPlan | null; screenId?: string | null; forScreen?: boolean; current?: string;
+function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', current = HOME }: {
+  initial: IdleBackground; dashboards?: typeof DASHBOARDS; plan?: ScreenPlan | null; screenId?: string | null; current?: string;
 }) {
   const [value, setValue] = useState(initial);
   const [half, setHalf] = useState<IdleHalf>('day');
@@ -67,7 +67,6 @@ function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forS
       currentDashboardId={current}
       screenPlan={screenPlan}
       screenId={screenId}
-      forScreen={forScreen}
       previewDashboardId={preview}
       onPreviewDashboardChange={setPreview}
       onOpenLook={lookOpened}
@@ -148,12 +147,14 @@ describe('ThroughTheDaySheet', () => {
       expect(seen.half).toBe('night');
     });
 
-    it('turns dimming on when Dim this dashboard is chosen on a screen that does not dim', () => {
+    it('choosing the dashboard at night sets only the look, never how much darker (#1345)', () => {
       render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} />);
       openNight();
       pick('Night look', 'dashboard');
       expect(seen.value).toEqual({ source: 'dashboard' });
-      expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.5');
+      // No screen setting is written as a side effect of the look.
+      expect(localStorage.getItem('prism-screensaver-dim')).toBeNull();
+      expect(localStorage.getItem('prism-screen-day')).toBeNull();
     });
 
     it('sets night by the clock instead of the sun', () => {
@@ -175,17 +176,10 @@ describe('ThroughTheDaySheet', () => {
       expect(seen.value).toEqual({ day: 'dashboard', night: 'dashboard', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 } });
     });
 
-    it('says the look is the dashboard\'s, for every screen showing it', () => {
+    it('says the look is the screen\'s, whichever dashboard is up (#1345)', () => {
       render(<Harness initial={{ source: 'photos' }} current={BUS} />);
-      expect(document.querySelector('[data-day-shared]')!.textContent).toMatch(/^Every screen showing Bus rests and sleeps this way\./);
-    });
-
-    it('for a dashboard alone, there is no screen to dim, and nothing changes one', () => {
-      render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} forScreen={false} screenId={null} />);
-      openNight();
-      pick('Night look', 'dashboard');
-      expect(seen.value).toEqual({ source: 'dashboard' });
-      expect(localStorage.getItem('prism-screensaver-dim')).toBeNull();
+      expect(document.querySelector('[data-day-shared]')!.textContent)
+        .toBe('This is the screen\'s own: it idles this way whichever dashboard is up. Done saves it to this screen.');
     });
 
     it('More\'s Screen fit and performance opens the editor\'s Look, not a Settings page (#1313)', () => {
@@ -225,7 +219,7 @@ describe('ThroughTheDaySheet', () => {
     });
 
     it('a dashboard edited on its own has no screen, so nothing switches on its line', () => {
-      render(<Harness initial={{ source: 'dashboard' }} screenId={null} forScreen={false} />);
+      render(<Harness initial={{ source: 'dashboard' }} screenId={null} />);
       expect(document.querySelector('[data-day-span]')).toBeNull();
       // No timeline either: those are gone (#1282).
       expect(document.querySelector('[data-timeline-bar]')).toBeNull();
@@ -366,7 +360,7 @@ describe('ThroughTheDaySheet', () => {
 
     it('a dashboard edited on its own shows only night\'s start and end, and its own night', async () => {
       // Bus, not the household's default, is being edited.
-      render(<Harness initial={NIGHT} plan={null} screenId={null} forScreen={false} current={BUS} />);
+      render(<Harness initial={NIGHT} plan={null} screenId={null} current={BUS} />);
       await act(async () => {});
       expect(dots().map((d) => d.getAttribute('data-waypoint-marks'))).toEqual(['night-end', 'now', 'night-start']);
       later();

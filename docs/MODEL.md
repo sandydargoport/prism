@@ -50,7 +50,7 @@ Editor directions start at the editor of a screen, for example Editor > Screen >
 | Away turns on after | row `awayModeAutoAfterHours` | unchanged | Settings > Screens |
 | Sitter | row `babysitterMode` | unchanged | More > Babysitter |
 | New and unnamed screens show | `layouts.is_default` on one dashboard | unchanged | Settings > Screens > New and unnamed screens show (today Make the default, in the editor) |
-| Starting idle and night look | the default dashboard's `layouts.idle_background` | Planned: one household row, seeded by migration 0057 (#1345) | Settings > Screens > New and unnamed screens show |
+| Starting idle and night look | the default dashboard's `layouts.idle_background` | row `screenStartingDay`, seeded by migration 0057 and `02-schema.sql` (#1345) | Settings > Screens > New and unnamed screens show |
 
 ### Screen
 
@@ -61,10 +61,10 @@ Editor directions start at the editor of a screen, for example Editor > Screen >
 | Switches (set times, bus time) | `displays.switches` | unchanged | Editor > Screen > Shows |
 | Stays awake, per switch | none | Planned: a field on each entry of `displays.switches` (#1347) | Editor > Screen > Shows, in the switch's row |
 | Idle after | screen key `prism-screensaver-timeout` | unchanged | Editor > Screen > When idle |
-| Idle look by day | `layouts.idle_background` of the dashboard that is up | Planned: screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > By day |
-| Idle look at night | `layouts.idle_background` of the dashboard that is up | Planned: screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > At night |
-| When night is (dusk to dawn with offsets, or set times) | `layouts.idle_background` (`switch`) | Planned: screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > Advanced |
-| Darker at night | screen key `prism-screensaver-dim` | Planned: inside screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > At night |
+| Idle look by day | `layouts.idle_background` of the dashboard that is up | screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > By day |
+| Idle look at night | `layouts.idle_background` of the dashboard that is up | screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > At night |
+| When night is (dusk to dawn with offsets, or set times) | `layouts.idle_background` (`switch`) | screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > Advanced |
+| Darker at night | screen key `prism-screensaver-dim` | inside screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > At night |
 | Transition effect | screen key `prism-screensaver-motion` | unchanged | Editor > Screen > When idle > Advanced |
 | Change every | screen key `prism-screensaver-motion-interval` | unchanged | Editor > Screen > When idle > Advanced |
 | Show at least, Show at most | screen keys `prism-screensaver-min-widgets`, `prism-screensaver-max-widgets` | unchanged | Editor > Screen > When idle > Advanced |

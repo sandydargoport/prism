@@ -430,10 +430,11 @@ test.describe('the Today view', () => {
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
     await page.clock.setFixedTime(at(19, 0));
     await login(page);
-    // Night by this dashboard's own rule (#1152), so the test does not hang on
-    // where the sun sets at the season it runs in.
-    const idleBackground = { day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '18:00', to: '06:00' } };
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today', idleBackground } })).json();
+    // Night by the screen's own rule (#1152, #1345), so the test does not hang
+    // on where the sun sets at the season it runs in.
+    const day = { day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '18:00', to: '06:00' }, nightLevel: 0 };
+    await page.addInitScript((value) => localStorage.setItem('prism-screen-day', value), JSON.stringify(day));
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
     try {
       const tomorrow = (h: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h);
       await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonrise: at(17, 30).toISOString(), moonset: tomorrow(9).toISOString(), moonPhase: 0.3 } }));
@@ -676,6 +677,12 @@ test.describe('the Today view', () => {
     const d = new Date();
     await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
     await login(page);
+    // This screen idles as its dashboard (#1345), seeded once so Done's save survives the reload.
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('e2e-day-seeded')) return;
+      localStorage.setItem('prism-screen-day', JSON.stringify({ day: 'dashboard', night: 'dashboard', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 0 }));
+      sessionStorage.setItem('e2e-day-seeded', '1');
+    });
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Day e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
@@ -715,11 +722,13 @@ test.describe('the Today view', () => {
       await expect(off).toHaveCount(0);
       await expect(frame.locator('[data-today-shade]')).toHaveCount(1);
 
-      // Done keeps the night look with the dashboard.
+      // Done keeps the night look with the screen (#1345), not the dashboard.
       await page.locator('[data-editor-done]').click();
       await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('prism-screen-day') ?? 'null')))
+        .toEqual({ day: 'dashboard', night: 'off', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 0 });
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
-      expect(saved.idleBackground).toEqual({ day: 'dashboard', night: 'off', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 } });
+      expect(saved.idleBackground).toEqual({ source: 'dashboard' });
     } finally {
       await deleteLayout(page, layout.id);
     }

@@ -7,9 +7,11 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import type { IdleBackground } from '@/lib/idleBackground';
 import type { ScreenState } from '@/lib/throughTheDay';
+import { serializeScreenDay } from '@/lib/screenDay';
+import { setDashboardShown } from '../calmMode';
 
 jest.mock('@/lib/throughTheDay', () => {
   const actual = jest.requireActual('@/lib/throughTheDay');
@@ -29,15 +31,17 @@ const NIGHT = new Date(2026, 10, 5, 23);
 beforeEach(() => {
   spy.mockClear();
   localStorage.clear();
-  localStorage.setItem('prism-screensaver-dim', '0.5');
+  // The screen's own day (#1345), 50% darker at night.
+  localStorage.setItem('prism-screen-day', serializeScreenDay({ ...bg, nightLevel: 50 }));
+  setDashboardShown(true);
   jest.useFakeTimers();
 });
-afterEach(() => jest.useRealTimers());
+afterEach(() => { jest.useRealTimers(); setDashboardShown(false); });
 
 describe('the wall', () => {
   it('asks screenStateAt with idle, Away, Sitter, the time and the dim', () => {
     jest.setSystemTime(NIGHT);
-    const { result } = renderHook(() => useWallScene({ idle: true, away: false, sitter: false, background: bg }));
+    const { result } = renderHook(() => useWallScene({ idle: true, away: false, sitter: false }));
     expect(spy).toHaveBeenCalledWith(expect.objectContaining({
       idle: true, away: false, sitter: false, background: bg, dimLevel: 0.5,
       at: { now: NIGHT, lat: 45, lon: -100 },
@@ -47,8 +51,44 @@ describe('the wall', () => {
 
   it('keeps the dim off in Away, as before', () => {
     jest.setSystemTime(NIGHT);
-    const { result } = renderHook(() => useWallScene({ idle: true, away: true, sitter: false, background: bg }));
+    const { result } = renderHook(() => useWallScene({ idle: true, away: true, sitter: false }));
     expect(result.current).toMatchObject({ state: 'active', night: true, dim: 0 });
+  });
+});
+
+describe('the wall idles by the screen\'s own day (#1345)', () => {
+  const photosAllDay = serializeScreenDay({ day: 'photos', night: 'photos', switch: bg.switch, nightLevel: 25 });
+
+  it('keeps the screen\'s look when a switch puts up a dashboard with another one', () => {
+    localStorage.setItem('prism-screen-day', photosAllDay);
+    jest.setSystemTime(DAY);
+    const { result } = renderHook(() => useWallScene({ idle: true, away: false, sitter: false }));
+    expect(result.current.look).toBe('photos');
+    // The switch: another dashboard comes up. It is a dashboard on screen
+    // like any other, and nothing it stores reaches the wall's scene.
+    act(() => { setDashboardShown(false); setDashboardShown(true); });
+    expect(result.current.look).toBe('photos');
+    jest.setSystemTime(NIGHT);
+    const { result: night } = renderHook(() => useWallScene({ idle: true, away: false, sitter: false }));
+    expect(night.current).toMatchObject({ state: 'night', look: 'photos', dim: 0.25 });
+  });
+
+  it('follows a change to the screen\'s day, made here or from another device', () => {
+    jest.setSystemTime(NIGHT);
+    const { result } = renderHook(() => useWallScene({ idle: true, away: false, sitter: false }));
+    expect(result.current.look).toBe('off');
+    act(() => {
+      localStorage.setItem('prism-screen-day', photosAllDay);
+      window.dispatchEvent(new StorageEvent('storage', { key: 'prism-screen-day' }));
+    });
+    expect(result.current).toMatchObject({ look: 'photos', dim: 0.25 });
+  });
+
+  it('shows photos in place of the dashboard on a page with no dashboard', () => {
+    act(() => { setDashboardShown(false); });
+    jest.setSystemTime(DAY);
+    const { result } = renderHook(() => useWallScene({ idle: true, away: false, sitter: false }));
+    expect(result.current.look).toBe('photos');
   });
 });
 
@@ -102,6 +142,12 @@ describe('the callers', () => {
     const s = src('screensaver/Screensaver.tsx');
     expect(s).toMatch(/useWallScene\(/);
     expect(s).not.toMatch(ownRules);
+  });
+
+  it('no part of the wall reads a dashboard\'s idle look (#1345)', () => {
+    for (const file of ['screensaver/Screensaver.tsx', 'screensaver/useScene.ts', 'dashboard/Dashboard.tsx', 'dashboard/useDashboardLayout.ts']) {
+      expect(src(file)).not.toMatch(/\.idleBackground\b|parseIdleBackground/);
+    }
   });
 
   it('the dashboard takes Glance\'s veil and the preview from usePreviewScene', () => {

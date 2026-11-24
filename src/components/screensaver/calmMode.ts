@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from 'react';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import { PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 
 /**
  * Calm mode (#691): the dashboard is its own idle screen. When the display goes
@@ -13,11 +12,10 @@ import { PHOTOS, type IdleBackground } from '@/lib/idleBackground';
  * The Screensaver still owns idleness (timers, the toolbar button, Away and
  * Babysitter yielding), so two facts cross between it and the dashboard:
  *
- *  - the idle background of the dashboard on screen (#782), published by the
- *    Dashboard while it is mounted. Any other page has no dashboard to show,
- *    so it gets the screensaver over that dashboard's photos or sky; with no
- *    dashboard at all, photos.
- *    The Screensaver works out which half of a day and night pair shows now.
+ *  - whether a dashboard is on screen to be shown idle, published by the
+ *    Dashboard while it is mounted (not on the phone layout). What the screen
+ *    shows idle is the screen's own day (#1345), never the dashboard's; any
+ *    other page has no dashboard to show, so it gets photos in its place.
  *  - whether a calm display is idle right now, published by the Screensaver.
  *
  * Both are module-level stores for the same reason useDisplayIdle is one: the
@@ -55,14 +53,14 @@ function createStore<T>(initial: T) {
   };
 }
 
-const activeBackground = createStore<IdleBackground>(PHOTOS);
+const dashboardShown = createStore(false);
 const calmIdle = createStore(false);
 
-/** Publish the idle background of the dashboard on screen. Called by the Dashboard. */
-export const setActiveIdleBackground = activeBackground.set;
+/** Publish whether a dashboard is on screen to show idle. Called by the Dashboard. */
+export const setDashboardShown = dashboardShown.set;
 
-export function useActiveIdleBackground(): IdleBackground {
-  return useSyncExternalStore(activeBackground.subscribe, activeBackground.get, activeBackground.initial);
+export function useDashboardShown(): boolean {
+  return useSyncExternalStore(dashboardShown.subscribe, dashboardShown.get, dashboardShown.initial);
 }
 
 /** Publish whether a calm display is idle. Called by the Screensaver. */

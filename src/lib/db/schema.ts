@@ -971,11 +971,12 @@ export const layouts = pgTable('layouts', {
   // What the display shows when idle (#782): this dashboard itself with only
   // some widgets left showing, or the screensaver layout above over photos or
   // the night sky, or one by day and another at night. See
-  // src/lib/idleBackground.ts. Every screen showing the dashboard rests and
-  // sleeps this way (#1281); for a release it lived on the timeline instead
-  // (#1266), and 0055 brought it back. It replaced `screensaver_mode` (calm or
-  // separate), which 0039 converted and which the database still holds,
-  // unread, so a rollback finds it.
+  // src/lib/idleBackground.ts. Unread since 0057 (#1345): the screen owns its
+  // day now (screen key `prism-screen-day`, src/lib/screenDay.ts), and 0057
+  // copied this onto each screen. Kept, and still accepted by the API, so a
+  // rollback finds it; dropped after the release. It replaced
+  // `screensaver_mode` (calm or separate), which 0039 converted and which the
+  // database still holds, unread.
   idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
 
   // Per-dashboard screen orientation

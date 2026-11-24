@@ -15,13 +15,16 @@
  * the screen already has settings stored, the browser is a screen coming back
  * after a reset (or a new browser taking over its name), so the stored settings
  * win and its own are not sent up. If nothing is stored yet, the screen has
- * just been named, and what this browser has becomes the screen's settings.
+ * just been named, and what this browser has becomes the screen's settings,
+ * its day written out from what the browser was going by (#1345, see
+ * displays/startingDay), so the screen holds its own day from the start.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { currentDisplay, setDisplayCookies } from '@/lib/auth/displayIdentity';
 import { applySettingChanges } from '@/lib/displays/displaySettingsStore';
 import { cleanSettingChanges } from '@/lib/displays/screenSettings';
+import { readHouseholdDay, withStartingDay } from '@/lib/displays/startingDay';
 import { parseSwitches } from '@/lib/screenSwitches';
 import { logError } from '@/lib/utils/logError';
 
@@ -46,7 +49,7 @@ function shape(row: { id: string; dashboardId: string | null; switches: unknown 
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
-  const changes = cleanSettingChanges(body?.changes);
+  let changes = cleanSettingChanges(body?.changes);
   if (!changes) {
     return NextResponse.json({ error: 'Not a valid set of screen settings' }, { status: 400 });
   }
@@ -60,7 +63,10 @@ export async function POST(request: NextRequest) {
 
     const firstSync = body?.baseDisplayId !== row.id;
     const adopting = firstSync && Object.keys(row.settings ?? {}).length > 0;
-    if (adopting || Object.keys(changes).length === 0) {
+    if (adopting) return NextResponse.json(shape(row, row.settings, row.settingsUpdatedAt));
+    // Just named: the screen copies its day once, then holds its own.
+    if (firstSync) changes = withStartingDay(changes, await readHouseholdDay());
+    if (Object.keys(changes).length === 0) {
       return NextResponse.json(shape(row, row.settings, row.settingsUpdatedAt));
     }
 

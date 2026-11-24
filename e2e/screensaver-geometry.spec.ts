@@ -78,7 +78,11 @@ async function editAsScreen(page: Page, dashboardId: string): Promise<{ frame: F
   const named = await page.request.post('/api/displays', { data: { name: `Screensaver e2e ${Date.now()}` } });
   expect(named.ok(), 'precondition: this browser is named').toBe(true);
   const id: string = (await named.json()).display?.id ?? (await (await page.request.get('/api/displays')).json()).currentId;
-  expect((await page.request.patch(`/api/displays/${id}`, { data: { dashboardId } })).ok()).toBe(true);
+  // The day this browser was seeded with, as its first sync would carry it up (#1345).
+  const day = seededDays.get(page);
+  expect((await page.request.patch(`/api/displays/${id}`, {
+    data: { dashboardId, ...(day ? { settings: { 'prism-screen-day': day } } : {}) },
+  })).ok()).toBe(true);
   await page.goto(`/screens/${id}?dashboard=${dashboardId}`);
   const frame = await onCanvas(page);
   return { frame, removeScreen: () => page.request.delete(`/api/displays/${id}`) };
@@ -94,6 +98,30 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('prism-screensaver-carried', '1'));
 });
 const PIN = process.env.E2E_PIN || '1234';
+
+/**
+ * This browser's screen idles so (#1345): its day is a screen setting, not
+ * the dashboard's, written once per tab so a day the editor saves survives a
+ * reload. A screen named in the test carries it up on its first sync.
+ */
+async function screenIdles(page: Page, bg: IdleBackground, nightLevel: 0 | 25 | 50 | 75 = 0) {
+  const pair = 'source' in bg
+    ? { day: bg.source, night: bg.source, switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 } }
+    : bg;
+  const day = JSON.stringify({ ...pair, nightLevel });
+  seededDays.set(page, day);
+  await page.addInitScript((value) => {
+    if (sessionStorage.getItem('e2e-day-seeded')) return;
+    localStorage.setItem('prism-screen-day', value);
+    sessionStorage.setItem('e2e-day-seeded', '1');
+  }, day);
+}
+const seededDays = new WeakMap<Page, string>();
+
+/** The day this browser's screen keeps, as stored. */
+async function storedDay(page: Page): Promise<unknown> {
+  return page.evaluate(() => JSON.parse(localStorage.getItem('prism-screen-day') ?? 'null'));
+}
 
 /** Inside both default frames (48x27 landscape, 36x64 portrait) and short of
  *  their right and bottom edges, which is what the old fit got wrong. */
@@ -281,12 +309,13 @@ test.describe('screensaver night sky', () => {
   test.setTimeout(90_000);
 
   /**
-   * The background is stored with the dashboard (#782), so the page is handed
-   * one dashboard with it set. Nothing is written to the database.
+   * The background is the screen's own day (#1345), seeded in the browser;
+   * the page is handed one dashboard. Nothing is written to the database.
    */
   async function openDashboard(page: Page, background: IdleBackground, at: string, weather: Record<string, unknown> = {}) {
     await page.clock.setFixedTime(new Date(at));
     await weatherAt(page, { lat: 45, lon: -100, ...weather });
+    await screenIdles(page, background);
     await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
       ? route.fulfill({ json: { layouts: [idleLayout(background)] } })
       : route.fallback());
@@ -602,9 +631,9 @@ test.describe('screensaver night sky', () => {
     expect((await sky(page))!.alpha).toBe(255);
   });
 
-  // #1281: how a screen rests is the dashboard's own, so two dashboards rest
-  // each their own way, whichever this browser shows.
-  test('two dashboards with different night looks each rest with their own', async ({ page }) => {
+  // #1345: how a screen idles is the screen's own, so a switch to another
+  // dashboard, even one that once kept another night look, idles the same.
+  test('the screen idles by its own day whichever dashboard is up', async ({ page }) => {
     const hall = {
       ...idleLayout({ day: 'photos', night: 'photos', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } }),
       id: '00000000-0000-4000-8000-000000001281', name: 'Hall e2e', slug: 'hall-e2e', isDefault: false,
@@ -623,9 +652,9 @@ test.describe('screensaver night sky', () => {
       await page.waitForTimeout(1500);
       return sky(page);
     };
-    expect(await restOn('hall-e2e'), 'Hall: photos at night').toBeNull();
+    expect((await restOn('hall-e2e'))?.alpha, 'Hall: the screen\'s night sky').toBe(255);
     expect((await restOn('idle-e2e'))?.alpha, 'Idle: the night sky').toBe(255);
-    expect(await restOn('hall-e2e'), 'Hall again: photos').toBeNull();
+    expect((await restOn('hall-e2e'))?.alpha, 'Hall again: the night sky').toBe(255);
   });
 
   test('a dashboard by day and the sky after dark: calm at noon, the sky at midnight', async ({ page }) => {
@@ -654,6 +683,8 @@ test.describe('calm mode idle screen', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
   test.setTimeout(180_000);
+  // The screen idles as its dashboard (#1345).
+  test.beforeEach(async ({ page }) => { await screenIdles(page, { source: 'dashboard' }); });
 
   // Clock and Tasks rely on the default ticks; Shopping and Weather override them.
   // The clock is glass, which goes clear on the idle screen.
@@ -943,11 +974,13 @@ test.describe('idle background picker', () => {
    * day: its own canvas, or with `asScreen` this browser's screen's editor,
    * which adds the screen's own rows.
    */
-  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground?: unknown, asScreen = false) {
+  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground: IdleBackground = { source: 'dashboard' }, asScreen = false) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    // The idle look is the screen's (#1345), not the dashboard's.
+    await screenIdles(page, idleBackground);
     const created = await page.request.post('/api/layouts', {
-      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }], ...(idleBackground ? { idleBackground } : {}) },
+      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }] },
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
@@ -963,7 +996,7 @@ test.describe('idle background picker', () => {
     return { id: layout.id as string, frame, removeScreen };
   }
 
-  test('resting and night each show on the canvas, an edge moves, and Done saves it with the dashboard', async ({ page }) => {
+  test('resting and night each show on the canvas, an edge moves, and Done saves it to the screen', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 });
     const { frame } = layout;
     try {
@@ -996,14 +1029,17 @@ test.describe('idle background picker', () => {
       await page.getByLabel('Ends: amount').fill('1');
       await expect(page.locator('[data-idle-crossed]')).toHaveCount(0);
       // Nothing is kept before Done.
-      expect((await (await page.request.get(`/api/layouts/${layout.id}`)).json()).idleBackground).toEqual({ source: 'dashboard' });
+      expect(await storedDay(page)).toMatchObject({ day: 'dashboard', night: 'dashboard' });
 
       await done(page).click();
       await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
-      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
-      expect(saved.idleBackground).toEqual({
-        day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 },
+      // Done saves it to the screen's day (#1345), how dark kept, and leaves
+      // the dashboard's own old look alone.
+      expect(await storedDay(page)).toEqual({
+        day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 }, nightLevel: 0,
       });
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      expect(saved.idleBackground).toEqual({ source: 'dashboard' });
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
@@ -1070,8 +1106,7 @@ test.describe('idle background picker', () => {
       await page.getByLabel('Ends: amount').fill('6');
       await expect(page.locator('[data-idle-crossed]')).toContainText('night would end before it starts');
       await expect(done(page)).toBeDisabled();
-      const stored = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
-      expect(stored.idleBackground).toEqual({ source: 'dashboard' });
+      expect(await storedDay(page)).toMatchObject({ day: 'dashboard', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 } });
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
@@ -1080,9 +1115,9 @@ test.describe('idle background picker', () => {
 
 /**
  * Dim when idle (#691): at night the idle screen darkens behind a black layer
- * that never takes a tap, and a touch lifts it. Night is the dashboard's own
- * rule (#1152), read on the screen's own clock, so the browser is put in a
- * zone west of UTC.
+ * that never takes a tap, and a touch lifts it. Night and how dark are the
+ * screen's own (#1345), read on the screen's own clock, so the browser is put
+ * in a zone west of UTC.
  */
 test.describe('dim when idle', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to create a dashboard');
@@ -1099,14 +1134,14 @@ test.describe('dim when idle', () => {
     });
   }
 
-  /** A dashboard whose night runs 11 pm to 7 am, removed after the test. */
-  async function withNightDashboard(page: Page, run: (slug: string, id: string) => Promise<void>) {
+  /** A screen whose night runs 11 pm to 7 am, on a dashboard removed after the test. */
+  async function withNightDashboard(page: Page, run: (slug: string, id: string) => Promise<void>, nightLevel: 0 | 50 = 0) {
     await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
+    await screenIdles(page, { day: 'photos', night: 'photos', switch: { by: 'clock', from: '23:00', to: '07:00' } }, nightLevel);
     const created = await page.request.post('/api/layouts', {
       data: {
         name: `Dim e2e ${Date.now()}`,
         widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }],
-        idleBackground: { day: 'photos', night: 'photos', switch: { by: 'clock', from: '23:00', to: '07:00' } },
       },
     });
     expect(created.status()).toBe(201);
@@ -1118,7 +1153,7 @@ test.describe('dim when idle', () => {
     }
   }
 
-  test('darkens the idle screen at night by the dashboard\'s rule, and a touch lifts it', async ({ page }) => {
+  test('darkens the idle screen at night by the screen\'s rule, and a touch lifts it', async ({ page }) => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
     await withNightDashboard(page, async (slug, id) => {
@@ -1153,7 +1188,6 @@ test.describe('dim when idle', () => {
   });
 
   test('leaves the idle screen alone by day', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('prism-screensaver-dim', '0.5'));
     // 6 pm in Chicago, which is 11 pm UTC: night must not be read in UTC.
     await page.clock.setFixedTime(new Date('2026-10-28T23:00:00Z'));
     await withNightDashboard(page, async (slug) => {
@@ -1162,7 +1196,7 @@ test.describe('dim when idle', () => {
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
       await page.waitForTimeout(5000);
       expect((await dim(page))!.opacity).toBe(0);
-    });
+    }, 50);
   });
 });
 

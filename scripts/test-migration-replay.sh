@@ -119,6 +119,14 @@ run_migrate
 log "Second migrate run (replay — must be a no-op)..."
 run_migrate
 
+# 0057 (#1345): a fresh install keeps the household starting day 02-schema.sql
+# seeds (the dashboard quieter, dusk to dawn, 50% darker); 0057 adds none.
+FRESH=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT count(*) || '|' || bool_and(value = '{\"day\": \"dashboard\", \"night\": \"dashboard\", \"switch\": {\"by\": \"sun\", \"duskOffset\": 30, \"dawnOffset\": -30}, \"nightLevel\": 50}'::jsonb) FROM settings WHERE key = 'screenStartingDay'")
+if [ "$FRESH" != "1|true" ]; then
+  echo "ERROR: a fresh install's household starting day is not the seed, 50% darker (got '$FRESH')" >&2
+  exit 1
+fi
+
 log "Scenario A: PASS"
 
 # ----------------------------------------------------------------------------
@@ -447,6 +455,13 @@ if [ "$SCREENS" != "0" ]; then
   echo "ERROR: the upgrade named a screen ($SCREENS)" >&2
   exit 1
 fi
+# 0057 (#1345): the household starting day is the default dashboard's look,
+# photos on a v1.30.1 upgrade, not darker.
+HOUSE=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT bool_and(value = '{\"day\": \"photos\", \"night\": \"photos\", \"switch\": {\"by\": \"sun\", \"duskOffset\": 30, \"dawnOffset\": -30}, \"nightLevel\": 0}'::jsonb) FROM settings WHERE key = 'screenStartingDay'")
+if [ "$HOUSE" != "t" ]; then
+  echo "ERROR: a v1.30.1 upgrade's household starting day is not photos, not darker (got '$HOUSE')" >&2
+  exit 1
+fi
 
 log "And a replay is a no-op on it..."
 psql_exec "DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';"
@@ -595,7 +610,8 @@ if [ "$GOT" != "1|Main|photos" ]; then
   echo "ERROR: 0054 made the first timeline as '$GOT' (want 1|Main|photos)" >&2
   exit 1
 fi
-SETTINGS=$(q "SELECT settings::text FROM displays WHERE name = 'M wall'")
+# Less the day 0057 writes for every screen (Scenario P).
+SETTINGS=$(q "SELECT (settings - 'prism-screen-day')::text FROM displays WHERE name = 'M wall'")
 if [ "$SETTINGS" != '{"prism-screensaver-timeout": "60"}' ]; then
   echo "ERROR: 0054 left the screen's settings as $SETTINGS" >&2
   exit 1
@@ -712,6 +728,109 @@ if [ "$(q "SELECT coalesce(dashboard_id::text, 'default') || ':' || switches::te
 fi
 
 log "Scenario O: PASS"
+
+# ----------------------------------------------------------------------------
+# Scenario P: 0057 the screen owns its day (#1345). One check per row of the
+# migration table:
+#   1. each named screen's day comes from its normal dashboard's idle look,
+#      the default dashboard's when it shows the household's;
+#   2. its prism-screensaver-dim becomes the night level (none is 0), and the
+#      key goes;
+#   3. a screen whose switch went to a dashboard that idled differently takes
+#      its normal dashboard's look, and is logged;
+#   4. the household starting day is seeded from the default dashboard, not
+#      darker, only when there is none;
+#   5. dashboards, switches, the default and each dashboard's own idle look
+#      are left as they were.
+# Runs once per screen: a replay leaves a day changed since alone.
+# ----------------------------------------------------------------------------
+log "=== Scenario P: 0057 the screen owns its day ==="
+
+DAY="'{\"day\": \"photos\", \"night\": \"sky\", \"switch\": {\"by\": \"clock\", \"from\": \"21:00\", \"to\": \"06:30\"}}'::jsonb"
+psql_exec "
+UPDATE layouts SET is_default = false;
+INSERT INTO layouts (id, name, widgets, is_default, idle_background) VALUES
+  ('00000000-0000-0000-0000-00000000d0a1', 'P main', '[]'::jsonb, true, '{\"source\": \"dashboard\"}'::jsonb),
+  ('00000000-0000-0000-0000-00000000d0a2', 'P hall', '[]'::jsonb, false, $DAY),
+  ('00000000-0000-0000-0000-00000000d0a3', 'P bus', '[]'::jsonb, false, '{\"source\": \"off\"}'::jsonb),
+  ('00000000-0000-0000-0000-00000000d0a4', 'P same', '[]'::jsonb, false, '{\"source\": \"dashboard\"}'::jsonb);
+INSERT INTO displays (name, dashboard_id, switches, settings) VALUES
+  ('P default', NULL,
+   '[{\"when\": \"times\", \"days\": [1], \"from\": \"07:00\", \"to\": \"08:00\", \"dashboardId\": \"00000000-0000-0000-0000-00000000d0a4\"}]'::jsonb,
+   '{\"prism-screensaver-timeout\": \"120\"}'::jsonb),
+  ('P hallway', '00000000-0000-0000-0000-00000000d0a2',
+   '[{\"when\": \"times\", \"days\": [1], \"from\": \"07:00\", \"to\": \"08:00\", \"dashboardId\": \"00000000-0000-0000-0000-00000000d0a3\"}]'::jsonb,
+   '{\"prism-screensaver-dim\": \"0.75\"}'::jsonb);
+DELETE FROM settings WHERE key = 'screenStartingDay';
+"
+layouts_snapshot() { q "SELECT string_agg(name || '|' || is_default || '|' || idle_background::text || '|' || coalesce(screensaver_widgets::text, 'null'), E'\n' ORDER BY name) FROM layouts WHERE name LIKE 'P %'"; }
+plans_snapshot() { q "SELECT string_agg(name || '|' || coalesce(dashboard_id::text, 'default') || '|' || switches::text, E'\n' ORDER BY name) FROM displays WHERE name LIKE 'P %'"; }
+LAYOUTS_BEFORE=$(layouts_snapshot)
+PLANS_BEFORE=$(plans_snapshot)
+psql_exec "DELETE FROM public.__prism_migrations WHERE name = '0057_screen_owns_day';"
+OUT=$(run_migrate 2>&1)
+echo "$OUT"
+
+day_is() { q "SELECT (settings->>'prism-screen-day')::jsonb = $2 FROM displays WHERE name = '$1'"; }
+
+log "Row 1: each screen's day is its normal dashboard's idle look..."
+if [ "$(day_is 'P default' "'{\"day\": \"dashboard\", \"night\": \"dashboard\", \"switch\": {\"by\": \"sun\", \"duskOffset\": 30, \"dawnOffset\": -30}, \"nightLevel\": 0}'::jsonb")" != "t" ]; then
+  echo "ERROR: 0057 gave the screen on the household's dashboard $(q "SELECT settings->>'prism-screen-day' FROM displays WHERE name = 'P default'")" >&2
+  exit 1
+fi
+if [ "$(day_is 'P hallway' "'{\"day\": \"photos\", \"night\": \"sky\", \"switch\": {\"by\": \"clock\", \"from\": \"21:00\", \"to\": \"06:30\"}, \"nightLevel\": 75}'::jsonb")" != "t" ]; then
+  echo "ERROR: 0057 gave the screen on its own dashboard $(q "SELECT settings->>'prism-screen-day' FROM displays WHERE name = 'P hallway'")" >&2
+  exit 1
+fi
+
+log "Row 2: the dim value moved into the night level and its key is gone..."
+GOT=$(q "SELECT string_agg(name || '=' || (settings ? 'prism-screensaver-dim') || ',' || ((settings->>'prism-screen-day')::jsonb->>'nightLevel') || ',' || coalesce(settings->>'prism-screensaver-timeout', '-') || ',' || (settings_updated_at IS NOT NULL), ' ' ORDER BY name) FROM displays WHERE name LIKE 'P %'")
+if [ "$GOT" != "P default=false,0,120,true P hallway=false,75,-,true" ]; then
+  echo "ERROR: 0057 left the screens' settings as '$GOT'" >&2
+  exit 1
+fi
+
+log "Row 3: the screen whose switch idled differently is logged, the other is not..."
+if ! grep -q '0057: screen "P hallway" idled differently during a switch' <<<"$OUT"; then
+  echo "ERROR: 0057 did not log the screen whose switched-to dashboard idled differently" >&2
+  exit 1
+fi
+if grep -q '0057: screen "P default"' <<<"$OUT"; then
+  echo "ERROR: 0057 logged a screen whose switch idled the same" >&2
+  exit 1
+fi
+
+log "Row 4: the household starting day is the default dashboard's, not darker..."
+HOUSE=$(q "SELECT bool_and(value = '{\"day\": \"dashboard\", \"night\": \"dashboard\", \"switch\": {\"by\": \"sun\", \"duskOffset\": 30, \"dawnOffset\": -30}, \"nightLevel\": 0}'::jsonb) || '|' || count(*) FROM settings WHERE key = 'screenStartingDay'")
+if [ "$HOUSE" != "true|1" ]; then
+  echo "ERROR: 0057 seeded the household starting day as $(q "SELECT value::text FROM settings WHERE key = 'screenStartingDay'")" >&2
+  exit 1
+fi
+
+log "Row 5: dashboards, the default, their own looks and the screens' switches are unchanged..."
+if [ "$(layouts_snapshot)" != "$LAYOUTS_BEFORE" ] || [ "$(plans_snapshot)" != "$PLANS_BEFORE" ]; then
+  echo "ERROR: 0057 changed a dashboard or a screen's dashboard or switches" >&2
+  exit 1
+fi
+
+log "Change a screen's day and the household's, then replay 0057..."
+psql_exec "
+UPDATE displays SET settings = jsonb_set(settings, '{prism-screen-day}', to_jsonb('{\"day\": \"off\", \"night\": \"off\", \"switch\": {\"by\": \"sun\", \"duskOffset\": 0, \"dawnOffset\": 0}, \"nightLevel\": 25}'::text)) WHERE name = 'P hallway';
+UPDATE settings SET value = jsonb_set(value, '{nightLevel}', '50') WHERE key = 'screenStartingDay';
+DELETE FROM public.__prism_migrations WHERE name = '0057_screen_owns_day';
+"
+OUT=$(run_migrate 2>&1)
+if [ "$(q "SELECT (settings->>'prism-screen-day')::jsonb->>'day' FROM displays WHERE name = 'P hallway'")" != "off" ] \
+  || [ "$(q "SELECT value->>'nightLevel' FROM settings WHERE key = 'screenStartingDay'")" != "50" ]; then
+  echo "ERROR: replaying 0057 wrote over a day changed since" >&2
+  exit 1
+fi
+if grep -q '0057: screen' <<<"$OUT"; then
+  echo "ERROR: replaying 0057 logged a screen it did not change" >&2
+  exit 1
+fi
+
+log "Scenario P: PASS"
 
 # ----------------------------------------------------------------------------
 echo

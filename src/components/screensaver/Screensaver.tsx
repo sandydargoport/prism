@@ -39,7 +39,7 @@ import { useEditing } from '@/lib/hooks/useEditing';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useWallScene } from './useScene';
-import { setCalmIdle, useActiveIdleBackground } from './calmMode';
+import { setCalmIdle } from './calmMode';
 import { IdleDim } from './idleDim';
 
 // Only displays that choose the sky load its star catalogue.
@@ -95,12 +95,13 @@ export function Screensaver() {
   const { isActive: isBabysitter } = useBabysitterMode();
   // Never idle while a dashboard is being edited here (#1342).
   const editing = useEditing();
-  // What shows behind it (#782), which can change with the time of day. When
-  // it is the dashboard itself (calm mode, #691) this decides when, and the
-  // dashboard does the showing, so there is no overlay to put up. One
-  // function says what the screen shows (#1344): the look, night and the dim.
-  const background = useActiveIdleBackground();
-  const scene = useWallScene({ idle: idleNow, away: isAway, sitter: isBabysitter, editing, background });
+  // What shows behind it (#782), which can change with the time of day. It is
+  // the screen's own day (#1345), so a switch to another dashboard does not
+  // change it. When it is the dashboard itself (calm mode, #691) this decides
+  // when, and the dashboard does the showing, so there is no overlay to put
+  // up. One function says what the screen shows (#1344): the look, night and
+  // the dim.
+  const scene = useWallScene({ idle: idleNow, away: isAway, sitter: isBabysitter, editing });
   const { lat, lon, eclipse, night } = scene;
   const idle = scene.state !== 'active';
   const source = scene.look;
