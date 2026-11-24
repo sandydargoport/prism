@@ -51,28 +51,21 @@ You can add your own shortcuts by editing `public/manifest.json`.
 
 Every page has the dock, one row of pages along the bottom of the screen, on a phone as on a wall screen or a laptop. On a phone it holds five pages and **More**: Home, Calendar, Chores, Shopping and Meals, unless the household chose others in *Settings > Features*. Each page shows its icon and its name, and the page you are on is marked. **Home** goes back to the dashboard.
 
-- **More** opens the rest: the other pages under **Pages**, then **Edit a screen** under **Screens**, then **Settings**, **Help** and **Sign in** under **Prism**, then **This screen** with **Reload**, **Babysitter mode** and **Away mode**. Signed in, the **Sign in** tile shows your name, and a tap signs you out.
+- **More** opens the rest, in four groups: the other pages under **Pages**; **Cards**, **Reorder** and **Reload** under **This phone** (Cards and Reorder only on a dashboard of cards); **Edit a screen**, **Away mode** and **Babysitter mode** under **Screens**; and **Settings**, **Help** and **Sign in** under **Prism**. Signed in, the **Sign in** tile shows your name, and a tap signs you out.
 - **More > Edit a screen** is how a phone gets to the editor. A phone is not a screen, so from a phone you edit a screen, never the phone. It asks for a parent's PIN, then opens a screen's editor: with one named screen, that screen; with two or more, *Settings > Screens* to pick one; with none, the default dashboard. The editor shows the screen at its own size, and under its title one line says what you are editing, for example "You are editing Hallway, not this phone." A signed-in child has no **Edit a screen**.
 - **Swipe in from the edge** to move along the dock: from the left edge of the screen to the page before, from the right edge to the next one. The swipe has to start at the very edge and go sideways, so a swipe in the middle of a page (the Calendar's dates, Shopping's lists) still belongs to the page.
 
 #### The round button
 
-The round button at the bottom right, above the dock, is the page's Add: **Add Event** on the Calendar, **Add chore**, **Add item** on Shopping, **Add meal**, **Add task**, **Add message**, **Add recipe**, **Add wish** and **Add goal**. Those pages have no **+** in their header on a phone. A page with nothing to add has no round button, and it hides while a window is open.
+The round button at the bottom right, above the dock, is the page's Add and nothing else: **Add Event** on the Calendar, **Add chore**, **Add item** on Shopping, **Add meal**, **Add task**, **Add message**, **Add recipe**, **Add wish** and **Add goal**. Those pages have no **+** in their header on a phone. A page with nothing to add, the dashboard among them, has no round button, and it hides while a window is open.
 
-On the dashboard it is **Dashboard options**, with a sliders mark. It opens a small menu:
+#### More > This phone > Reorder
 
-- **Home**: goes back to the dashboard.
-- **Settings**: opens the full Settings page.
-- **Login / Logout**: switches users, the same as **Sign in** in **More**.
-- **Reorder** and **Cards**: only on a dashboard that shows cards (see below).
+In **More > This phone > Reorder**, each dashboard card gets a grip so you can drag it. Drag the cards into order, then tap **Done** on the bar above the dock. The order is kept on this phone.
 
-#### Card reorder mode
+#### More > This phone > Cards
 
-In **Dashboard options > Reorder**, each dashboard card gets a grip so you can drag it. Drag the cards into order, then open **Dashboard options** again and tap **Done** to save. The order is kept on this phone.
-
-#### Dashboard options > Cards
-
-**Dashboard options > Cards** has a toggle for each card. Turn off the ones you don't use, for example Bus Tracker if you have no bus to track. Hidden cards aren't drawn at all, which saves the phone some work.
+**More > This phone > Cards** has a toggle for each card, and **Rows** or **Tiles** for how they are drawn. Turn off the ones you don't use, for example Bus Tracker if you have no bus to track. Hidden cards aren't drawn at all, which saves the phone some work. The dashboard changes as you tap; **Done** closes the list. Both choices are kept on this phone.
 
 The same panel has two more controls:
 
@@ -90,9 +83,9 @@ On a phone, Glance, the built-in dashboard, shows a phone page instead of widget
 
 The page is one screen tall, so a drag springs back. It shows the parts that are switched on in Glance's **Widgets** panel (see [Glance](DASHBOARD.md#glance-the-built-in-dashboard)). Tap an event to open it.
 
-A dashboard with a grid layout keeps its cards on a phone: a single column of summary cards, or tiles. In their usual order they are Weather, Calendar, Bus Tracker (once a route is set up), Chores, Tasks, Shopping, Meals, Recipes, Messages, Birthdays (when one is coming up), Goals (when there are goals) and Wishes. **Clock** and **Photos** are off until you turn them on in **Dashboard options > Cards**.
+A dashboard with a grid layout keeps its cards on a phone: a single column of summary cards, or tiles. In their usual order they are Weather, Calendar, Bus Tracker (once a route is set up), Chores, Tasks, Shopping, Meals, Recipes, Messages, Birthdays (when one is coming up), Goals (when there are goals) and Wishes. **Clock** and **Photos** are off until you turn them on in **More > This phone > Cards**.
 
-Tap a card to open the full page for that feature. You can reorder the cards and hide any of them from **Dashboard options**.
+Tap a card to open the full page for that feature. You can reorder the cards and hide any of them from **More > This phone**.
 
 ### Calendar on mobile
 
@@ -209,11 +202,11 @@ The agenda-only rule arrived in v1.8. If your phone shows the month view, it is 
 
 #### The round button is missing
 
-The round button only shows on phone-sized screens (narrower than 768px). On the dashboard it is always there as **Dashboard options**. On another page it shows only when the page has something to add, and it hides while a window is open.
+The round button only shows on phone-sized screens (narrower than 768px), and only on a page that has something to add. The dashboard has none: its cards' tools are under **More > This phone**. The button hides while a window is open.
 
 #### Cards in mobile dashboard appearing in wrong order
 
-Check whether someone changed the order in **Dashboard options > Reorder**. The order is kept on each phone, so another phone has its own. To set it again, tap **Dashboard options > Reorder**, drag the cards, then open **Dashboard options** and tap **Done**.
+Check whether someone changed the order in **More > This phone > Reorder**. The order is kept on each phone, so another phone has its own. To set it again, open **More > This phone > Reorder**, drag the cards, then tap **Done** on the bar above the dock.
 
 #### Service worker registration fails
 

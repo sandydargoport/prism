@@ -1,325 +1,37 @@
 'use client';
-import { Emoji } from '@/components/ui/Emoji';
 
+import { Plus } from 'lucide-react';
 import { useCurrentPageAdd } from '@/lib/hooks/usePageAdd';
-import { useState, useCallback } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import {
-  SlidersHorizontal,
-  Plus,
-  X,
-  Home,
-  Sun,
-  Moon,
-  Monitor,
-  User,
-  LayoutGrid,
-  ArrowUpDown,
-  Eye,
-  EyeOff,
-  Rows3,
-  LayoutDashboard,
-  Settings as SettingsIcon,
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/components/providers/ThemeProvider';
-import { useHiddenCards } from '@/components/dashboard/useMobileCardOrder';
-import { useMobileLayout } from '@/lib/hooks/useMobileLayout';
 
 export interface MobileFabProps {
-  user?: {
-    id: string;
-    name: string;
-    avatarUrl?: string | null;
-    color?: string;
-  } | null;
-  onLogin?: () => void;
-  onLogout?: () => void;
-  /** Cards and Reorder act on the phone's cards; a page without them hides both. */
-  cardTools?: boolean;
   uiHidden?: boolean;
 }
 
-const ALL_CARDS: { id: string; label: string }[] = [
-  { id: 'weather', label: 'Weather' },
-  { id: 'clock', label: 'Clock' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'busTracking', label: 'Bus Tracker' },
-  { id: 'chores', label: 'Chores' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'shopping', label: 'Shopping' },
-  { id: 'meals', label: 'Meals' },
-  { id: 'recipes', label: 'Recipes' },
-  { id: 'messages', label: 'Messages' },
-  { id: 'birthdays', label: 'Birthdays' },
-  { id: 'points', label: 'Goals' },
-  { id: 'wishes', label: 'Wishes' },
-  { id: 'photos', label: 'Photos' },
-];
-
-export function MobileFab({ user, onLogin, onLogout, uiHidden, cardTools = true }: MobileFabProps) {
-  const pathname = usePathname();
-  // A subpage's own Add (#1028); the dashboard has none and keeps its options.
+/**
+ * The phone's round button (#1354): the page's Add and nothing else. A page
+ * with no Add, the dashboard among them, has no round button. The phone's own
+ * tools (Cards, Reorder, Reload) are under More > This phone. Never over an
+ * open window.
+ */
+export function MobileFab({ uiHidden }: MobileFabProps) {
   const pageAdd = useCurrentPageAdd();
-  const [isOpen, setIsOpen] = useState(false);
-  const [showCards, setShowCards] = useState(false);
-  const [hiddenCards, setHiddenCards] = useHiddenCards();
-  const [reorderMode, setReorderMode] = useState(false);
-  const { theme, setTheme } = useTheme();
-  const { layout, setLayout } = useMobileLayout();
-
-  const toggleReorderMode = useCallback(() => {
-    const next = !reorderMode;
-    setReorderMode(next);
-    setIsOpen(false);
-    window.dispatchEvent(new CustomEvent('prism:mobile-reorder', { detail: { active: next } }));
-  }, [reorderMode]);
-
-  const toggleCard = useCallback((cardId: string) => {
-    setHiddenCards((prev) =>
-      prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId],
-    );
-  }, [setHiddenCards]);
-
-  const cycleTheme = () => {
-    if (theme === 'light') setTheme('dark');
-    else if (theme === 'dark') setTheme('system');
-    else setTheme('light');
-  };
-
-  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
-  const themeLabel = theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'Auto';
-
-  const isDashboard = pathname === '/' || pathname?.startsWith('/d/');
-
-  const actions = [
-    {
-      key: 'home',
-      icon: <Home className="h-5 w-5" />,
-      label: 'Home',
-      onClick: () => setIsOpen(false),
-      href: '/',
-    },
-    {
-      // Always present so the Settings page is reachable on mobile.
-      // (Pre-#52 phase 1, there was no path to /settings from mobile PWA
-      // because MobileFab had no Settings action and MobileNav isn't
-      // mounted.)
-      key: 'settings',
-      icon: <SettingsIcon className="h-5 w-5" />,
-      label: 'Settings',
-      onClick: () => setIsOpen(false),
-      href: '/settings',
-    },
-    ...(isDashboard && cardTools ? [
-      {
-        key: 'reorder',
-        icon: <ArrowUpDown className="h-5 w-5" />,
-        label: reorderMode ? 'Done' : 'Reorder',
-        onClick: toggleReorderMode,
-      },
-      {
-        // Dashboard-card visibility / theme / layout toggles — context-
-        // specific to the dashboard, not the same as /settings. Renamed
-        // from "Settings" to "Cards" so the two are distinguishable.
-        key: 'cards',
-        icon: <LayoutGrid className="h-5 w-5" />,
-        label: 'Cards',
-        onClick: () => { setIsOpen(false); setShowCards(true); },
-      },
-    ] : []),
-    {
-      key: 'auth',
-      icon: user ? (
-        <div
-          className="relative h-5 w-5 rounded-full flex items-center justify-center text-3xs font-bold text-white"
-          style={{ backgroundColor: user.color || '#6B7280' }}
-        >
-          {user.avatarUrl?.startsWith('emoji:') ? (
-            <span className="text-sm"><Emoji e={user.avatarUrl.slice(6)} /></span>
-          ) : user.avatarUrl ? (
-            <Image src={user.avatarUrl} alt={user.name} fill unoptimized className="rounded-full object-cover" />
-          ) : (
-            user.name.charAt(0).toUpperCase()
-          )}
-        </div>
-      ) : (
-        <User className="h-5 w-5 text-destructive" />
-      ),
-      label: user ? 'Logout' : 'Login',
-      onClick: () => {
-        setIsOpen(false);
-        if (user) onLogout?.();
-        else onLogin?.();
-      },
-    },
-  ];
-
-  // Off the dashboard (#1020, #1028) it is the page's Add, or nothing.
-  if (!isDashboard) {
-    if (!pageAdd) return null;
-    return (
-      <button
-        type="button"
-        onClick={pageAdd.run}
-        aria-label={pageAdd.label}
-        data-page-add
-        className={cn(
-          'fixed right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg',
-          'transition-all duration-300 ease-in-out active:scale-95 [body:has([role=dialog])_&]:hidden',
-          uiHidden && 'translate-y-24 opacity-0',
-        )}
-        style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
-      >
-        <Plus className="h-6 w-6" />
-      </button>
-    );
-  }
-
+  if (!pageAdd) return null;
   return (
-    <>
-      {/* Backdrop */}
-      {(isOpen || showCards) && (
-        <div
-          className="fixed inset-0 bg-black/30 z-40"
-          onClick={() => { setIsOpen(false); setShowCards(false); }}
-        />
+    <button
+      type="button"
+      onClick={pageAdd.run}
+      aria-label={pageAdd.label}
+      data-page-add
+      className={cn(
+        'fixed right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg',
+        'transition-all duration-300 ease-in-out active:scale-95 [body:has([role=dialog])_&]:hidden',
+        uiHidden && 'translate-y-24 opacity-0',
       )}
-
-      {/* Cards settings panel */}
-      {showCards && (
-        <div className="fixed inset-x-4 bottom-[calc(var(--nav-bottom,0px)+5.5rem)] z-50 bg-card rounded-2xl shadow-2xl border border-border p-4 max-h-[60vh] overflow-y-auto safe-area-bottom animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-base">Dashboard Cards</h3>
-            <button
-              onClick={() => { setShowCards(false); window.location.reload(); }}
-              className="text-sm text-primary font-medium"
-            >
-              Done
-            </button>
-          </div>
-          {/* Theme toggle */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-border mb-2">
-            <span className="text-sm font-medium">Theme</span>
-            <button
-              onClick={cycleTheme}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ThemeIcon className="h-4 w-4" />
-              <span>{themeLabel}</span>
-            </button>
-          </div>
-          {/* Layout toggle */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-border mb-3">
-            <span className="text-sm font-medium">Layout</span>
-            <div className="flex items-center border rounded-md overflow-hidden text-xs">
-              <button
-                onClick={() => setLayout('rows')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 transition-colors',
-                  layout === 'rows' ? 'bg-secondary text-secondary-foreground font-medium' : 'text-muted-foreground hover:bg-accent'
-                )}
-              >
-                <Rows3 className="h-3.5 w-3.5" />
-                Rows
-              </button>
-              <button
-                onClick={() => setLayout('tiles')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 border-l transition-colors',
-                  layout === 'tiles' ? 'bg-secondary text-secondary-foreground font-medium' : 'text-muted-foreground hover:bg-accent'
-                )}
-              >
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                Tiles
-              </button>
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground mb-3">
-            Toggle which cards appear on your mobile dashboard.
-          </p>
-          <div className="space-y-1">
-            {ALL_CARDS.map((card) => {
-              const isHidden = hiddenCards.includes(card.id);
-              return (
-                <button
-                  key={card.id}
-                  onClick={() => toggleCard(card.id)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-                >
-                  <span className={cn('text-sm font-medium', isHidden && 'text-muted-foreground')}>
-                    {card.label}
-                  </span>
-                  {isHidden ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-primary" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Action items */}
-      {isOpen && (
-        <div className="fixed bottom-[calc(var(--nav-bottom,0px)+5.5rem)] right-6 z-50 flex flex-col-reverse items-end gap-3 safe-area-bottom">
-          {actions.map((action, i) => {
-            const content = (
-              <div
-                className="flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2"
-                style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}
-              >
-                <span className="text-sm font-medium text-foreground bg-card/95 backdrop-blur-xs px-3 py-1.5 rounded-full shadow-md border border-border">
-                  {action.label}
-                </span>
-                <div className="w-11 h-11 rounded-full bg-card shadow-lg border border-border flex items-center justify-center text-foreground">
-                  {action.icon}
-                </div>
-              </div>
-            );
-
-            if ('href' in action && action.href) {
-              return (
-                <Link key={action.key} href={action.href} onClick={action.onClick}>
-                  {content}
-                </Link>
-              );
-            }
-            return (
-              <button key={action.key} onClick={action.onClick}>
-                {content}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* The phone dashboard's options (#1020): a sliders mark, not a "+",
-          since it adds nothing; never over an open window. */}
-      <button
-        onClick={() => { if (showCards) { setShowCards(false); } else { setIsOpen(!isOpen); } }}
-        aria-label={isOpen || showCards ? 'Close options' : 'Dashboard options'}
-        data-mobile-options
-        className={cn(
-          'fixed right-6 z-50 w-14 h-14 rounded-full [body:has([role=dialog])_&]:hidden',
-          'bg-primary text-primary-foreground shadow-lg',
-          'flex items-center justify-center',
-          'transition-all duration-300 ease-in-out',
-          'active:scale-95',
-          (isOpen || showCards) && 'bg-muted text-muted-foreground',
-          reorderMode && !isOpen && 'bg-warning text-white',
-          uiHidden && !isOpen && !showCards && 'translate-y-24 opacity-0'
-        )}
-        // Above the dock (#924).
-        style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
-      >
-        {isOpen || showCards ? <X className="h-6 w-6" /> : <SlidersHorizontal className="h-6 w-6" />}
-      </button>
-    </>
+      // Above the dock (#924).
+      style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
+    >
+      <Plus className="h-6 w-6" />
+    </button>
   );
 }

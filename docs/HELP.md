@@ -53,7 +53,7 @@ Glance is the built-in dashboard and the front page on a new install. It draws t
 
 ### The dock
 
-The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Screensaver), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). Which pages sit on the dock is chosen in **Settings > Features**.
+The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Screensaver), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). On a phone it holds **Pages**, **This phone** (Cards, Reorder, Reload), **Screens** (Edit a screen, Away mode, Babysitter mode) and **Prism**, and the round button above the dock is only the page's Add. Which pages sit on the dock is chosen in **Settings > Features**.
 
 ### [Calendar](features/CALENDAR.md)
 

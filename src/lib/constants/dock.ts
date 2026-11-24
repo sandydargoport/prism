@@ -42,3 +42,10 @@ export function dockLayout(
   const more = visible.filter((i) => !dock.includes(i));
   return { dock, more };
 }
+
+/**
+ * More > This phone (#1354) asks the phone's dashboard of cards to open its
+ * Cards sheet or start Reorder, once More has closed.
+ */
+export const PHONE_CARDS_EVENT = 'prism:phone-cards';
+export const PHONE_REORDER_EVENT = 'prism:mobile-reorder';

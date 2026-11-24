@@ -277,12 +277,16 @@ test.describe('Today on a phone', () => {
       });
       expect(drag, 'no drag is cancelled').toEqual({ pageDown: false, pageUp: false, boxPastTop: false });
 
-      // #1076: Cards and Reorder act on the phone's cards; Today has none.
-      await page.locator('[data-mobile-options]').click();
-      await expect(page.getByRole('button', { name: 'Settings' }).or(page.getByRole('link', { name: 'Settings' })).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Reorder' })).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Cards' })).toHaveCount(0);
-      await page.locator('[data-mobile-options]').click();
+      // #1076, #1354: Cards and Reorder act on the phone's cards; Today has
+      // none, so More > This phone has Reload alone.
+      await expect(page.locator('[data-mobile-options]')).toHaveCount(0);
+      await page.locator('[data-dock-more]').click();
+      const phone = page.locator('[data-dock-more-panel] [data-dock-more-group="phone"]');
+      await expect(phone.locator('[data-phone-job="reload"]')).toBeVisible();
+      await expect(phone.locator('[data-phone-job="cards"]')).toHaveCount(0);
+      await expect(phone.locator('[data-phone-job="reorder"]')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('[data-dock-more-panel]')).toHaveCount(0);
 
       // In order, top to bottom: header, sentences, lines.
       const tops = await page.evaluate(() => {

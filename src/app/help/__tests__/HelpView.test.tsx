@@ -76,6 +76,10 @@ describe('Help after the new look (#1308)', () => {
       'More > This screen > Away mode',
       'Settings > Security > Require the PIN for every change',
       'Look > This screen',
+      // A phone's own cards (#1354).
+      'More > This phone > Cards',
+      'More > This phone > Reorder',
+      'More > Screens > Away mode',
     ]) expect(text).toContain(direction);
     for (const gone of [
       'Nothing was removed',
@@ -97,6 +101,8 @@ describe('Help after the new look (#1308)', () => {
       'Name of screen',
       'Dashboard it shows',
       'go to Through the day',
+      // The round button is only a page's Add (#1354).
+      'Dashboard options',
     ]) expect(text).not.toContain(gone);
   });
 

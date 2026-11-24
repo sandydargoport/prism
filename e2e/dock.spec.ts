@@ -365,8 +365,8 @@ test.describe('the dock on the wall', () => {
         expect(i.w).toBeGreaterThanOrEqual(44);
         expect(i.h).toBeGreaterThanOrEqual(44);
       }
-      // The phone's own tools button sits above the dock, never on it.
-      const fab = page.getByRole('button', { name: 'Dashboard options' });
+      // The round button (a page's Add) sits above the dock, never on it.
+      const fab = page.locator('[data-page-add]');
       if (await fab.count()) {
         const f = await fab.boundingBox();
         const d = await dock.boundingBox();
@@ -419,21 +419,44 @@ test.describe('the dock on the wall', () => {
     expect(under.x + under.width, 'and inside the phone').toBeLessThanOrEqual(390);
   });
 
-  // #1020: on a phone, one clear Add per page and nothing floating over a page's
-  // content. The options button is the dashboard's own, and it adds nothing.
-  test('on a phone: options only on the dashboard, no "+" on it, and Shopping\'s header keeps one add', async ({ page }) => {
+  // #1020, #1354: on a phone the round button is a page's Add and nothing
+  // else, so the dashboard has none; its cards' tools are under More > This
+  // phone.
+  test('on a phone: no round button on the dashboard, This phone has Cards and Reorder, and Shopping\'s round button is its one Add', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok()).toBe(true);
     await page.goto('/');
-    const options = page.locator('[data-mobile-options]');
-    await expect(options).toBeVisible({ timeout: 60_000 });
-    await expect(options).toHaveAttribute('aria-label', 'Dashboard options');
-    await expect(options.locator('svg.lucide-plus'), 'not a "+"').toHaveCount(0);
+    await expect(page.locator('[data-mobile-cards]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-page-add], [data-mobile-options]'), 'no round button on the dashboard').toHaveCount(0);
+
+    // Cards opens once More has gone.
+    const more = page.locator('[data-dock-more-panel]');
+    await page.locator('[data-dock-more]').click();
+    await more.locator('[data-phone-job="cards"]').click();
+    const cards = page.locator('[data-phone-cards]');
+    await expect(cards).toBeVisible();
+    await expect(more).toHaveCount(0);
+    await expect(cards.getByText('Rows', { exact: true })).toBeVisible();
+    await cards.locator('[data-phone-cards-done]').click();
+    await expect(cards).toHaveCount(0);
+
+    // Reorder: a Done bar above the dock, and Done ends it.
+    await page.locator('[data-dock-more]').click();
+    await more.locator('[data-phone-job="reorder"]').click();
+    const bar = page.locator('[data-reorder-done-bar]');
+    await expect(bar).toBeVisible();
+    const [b, d] = await Promise.all([bar.boundingBox(), page.locator('[data-dock]').boundingBox()]);
+    expect(b!.y + b!.height, 'the Done bar sits above the dock').toBeLessThanOrEqual(d!.y);
+    expect(b!.x).toBeGreaterThanOrEqual(0);
+    expect(b!.x + b!.width, 'inside the phone').toBeLessThanOrEqual(390);
+    await bar.locator('[data-reorder-done]').click();
+    await expect(bar).toHaveCount(0);
+    await expect(page.locator('[data-mobile-cards]')).toBeVisible();
 
     await page.goto('/shopping');
     await expect(page.locator('[data-shopping-manage]')).toBeVisible({ timeout: 60_000 });
-    await expect(page.locator('[data-mobile-options]'), 'no options button off the dashboard').toHaveCount(0);
+    await expect(page.locator('[data-mobile-options]'), 'no options button anywhere').toHaveCount(0);
     // #1028: on a subpage the round button is the page's Add; here it brings up the add field.
     const add = page.locator('[data-page-add]');
     await expect(add).toHaveAttribute('aria-label', 'Add item');
@@ -473,7 +496,7 @@ test.describe('the dock on the wall', () => {
 
     // #1036: no screensaver on a phone.
     await page.goto('/');
-    await expect(page.locator('[data-mobile-options]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-mobile-cards]')).toBeVisible({ timeout: 60_000 });
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.waitForTimeout(1500);
     await expect(page.locator('[data-screensaver]'), 'no screensaver on a phone').toHaveCount(0);
@@ -502,13 +525,13 @@ test.describe('the dock on the wall', () => {
     expect(ring.match(/0px 0px 0px [1-9]/g) ?? [], 'no focus ring round the menu').toEqual([]);
     await page.keyboard.press('Escape');
 
-    // Never over an open window: on the dashboard, open one and the button goes.
-    await page.goto('/');
-    await expect(options).toBeVisible({ timeout: 60_000 });
+    // Never over an open window: on Shopping, open one and the round button goes.
+    await page.goto('/shopping');
+    await expect(add).toBeVisible({ timeout: 60_000 });
     await page.evaluate(() => { const d = document.createElement('div'); d.setAttribute('role', 'dialog'); d.id = 'probe-dialog'; document.body.appendChild(d); });
-    await expect(options).toBeHidden();
+    await expect(add).toBeHidden();
     await page.evaluate(() => document.getElementById('probe-dialog')?.remove());
-    await expect(options).toBeVisible();
+    await expect(add).toBeVisible();
   });
 
   // #1028: on every subpage the round button is that page's Add, the header has
