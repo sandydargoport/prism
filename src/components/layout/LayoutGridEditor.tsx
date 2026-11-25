@@ -383,6 +383,7 @@ export function LayoutGridEditor({
                 theme={theme}
                 idleToggles={idleToggles}
                 hideEmptyByDefault={hideEmptyByDefault}
+                fadedIds={fadedIds}
               />
             ) : (
               <div style={{ padding: 20, color: 'yellow' }}>

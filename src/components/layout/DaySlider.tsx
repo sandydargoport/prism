@@ -56,7 +56,7 @@ export function Swatch({ index, ...rest }: { index: number } & React.HTMLAttribu
 const DRAG_PX = 4;
 const step = 'flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent pointer-fine:h-8 pointer-fine:w-8';
 
-export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, tick, caption, back }: {
+export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, tick, caption }: {
   stops: Stop[];
   nights: NightSpan[];
   spans: SwitchSpan[];
@@ -72,8 +72,6 @@ export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, t
   tick: (minute: number) => string;
   /** What the canvas shows at the stop picked. */
   caption?: string;
-  /** Back to in use, when the canvas shows something else. */
-  back?: React.ReactNode;
 }) {
   const lineRef = useRef<HTMLDivElement>(null);
   const press = useRef<{ id: number; x: number; dragging: boolean } | null>(null);
@@ -191,7 +189,6 @@ export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, t
           </p>
           {at !== null && caption && <p className="m-0 text-caption text-muted-foreground" data-day-caption>{caption}</p>}
         </div>
-        {back}
       </div>
     </div>
   );

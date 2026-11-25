@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { act, renderHook } from '@testing-library/react';
 import type { IdleBackground } from '@/lib/idleBackground';
-import type { ScreenState } from '@/lib/throughTheDay';
+import { canvasDarkness } from '@/lib/canvasScene';
 import { serializeScreenDay } from '@/lib/screenDay';
 import { setDashboardShown } from '../calmMode';
 
@@ -93,43 +93,48 @@ describe('the wall idles by the screen\'s own day (#1345)', () => {
 });
 
 describe('Glance and the editor preview', () => {
-  // The Dashboard before #1344, as it read: the veil, the backdrop, the dim
-  // and whether Glance's parts fade.
-  function before(previewState: ScreenState | null, calmIdle: boolean, nightNow: boolean) {
-    const sceneNight = previewState === 'night' || (previewState !== 'resting' && nightNow);
-    const backdrop = previewState === null ? null : previewState === 'active' ? 'dashboard'
-      : previewState === 'night' ? bg.night : bg.day;
-    const dim = previewState === 'night' && backdrop === 'dashboard' ? 0.5 : 0;
-    const idle = calmIdle || previewState === 'resting' || previewState === 'night';
-    return { sceneNight, backdrop, dim, idle };
-  }
-
-  it.each([null, 'active', 'resting', 'night'] as const)('shows what it showed before with the preview at %s', (previewState) => {
-    for (const calmIdle of previewState === null ? [false, true] : [false]) {
+  it('off the canvas, idles as the wall says and is night by the screen\'s rule', () => {
+    for (const calmIdle of [false, true]) {
       for (const now of [DAY, NIGHT]) {
         jest.setSystemTime(now);
-        spy.mockClear();
-        const { result, unmount } = renderHook(() => usePreviewScene({ previewState, calmIdle, background: bg }));
-        expect(spy).toHaveBeenCalled();
-        const scene = result.current;
-        const was = before(previewState, calmIdle, now === NIGHT);
-        expect(scene.night).toBe(was.sceneNight);
-        expect(scene.state !== 'active').toBe(was.idle);
-        if (previewState) {
-          expect(scene.look).toBe(was.backdrop);
-          expect(previewState === 'night' && scene.look === 'dashboard' ? scene.dim : 0).toBe(was.dim);
-        }
+        const { result, unmount } = renderHook(() => usePreviewScene({ preview: null, calmIdle, background: bg }));
+        expect(result.current.night).toBe(now === NIGHT);
+        expect(result.current.clockNight).toBe(now === NIGHT);
+        expect(result.current.state !== 'active').toBe(calmIdle);
         unmount();
       }
     }
   });
 
-  it('gives the night outright for the Resting and Night previews', () => {
+  // The canvas's toggles (#1348): each of the four states, whatever the time.
+  it.each([
+    [{ idle: false, night: false }, { state: 'active', night: false, look: 'dashboard', dim: 0 }],
+    // Glance in use at night: its veil, and nothing darker.
+    [{ idle: false, night: true }, { state: 'active', night: true, look: 'dashboard', dim: 0 }],
+    [{ idle: true, night: false }, { state: 'resting', night: false, look: 'dashboard', dim: 0 }],
+    [{ idle: true, night: true }, { state: 'night', night: true, look: 'off', dim: 0.5 }],
+  ] as const)('the toggles at %j draw %j, by day and at night', (preview, drawn) => {
+    for (const now of [DAY, NIGHT]) {
+      jest.setSystemTime(now);
+      spy.mockClear();
+      const { result, unmount } = renderHook(() => usePreviewScene({ preview, calmIdle: false, background: bg }));
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ idle: preview.idle, at: { night: preview.night }, dimLevel: 0.5 }));
+      expect(result.current).toMatchObject(drawn);
+      // Day | Night starts from the clock, whatever the toggles say.
+      expect(result.current.clockNight).toBe(now === NIGHT);
+      unmount();
+    }
+  });
+
+  it('dims every look at night, not only the dashboard (#1348)', () => {
     jest.setSystemTime(DAY);
-    renderHook(() => usePreviewScene({ previewState: 'night', calmIdle: false, background: bg }));
-    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ idle: true, at: { night: true } }));
-    renderHook(() => usePreviewScene({ previewState: 'resting', calmIdle: false, background: bg }));
-    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ idle: true, at: { night: false } }));
+    for (const look of ['dashboard', 'photos', 'sky'] as const) {
+      const background: IdleBackground = { day: 'dashboard', night: look, switch: bg.switch };
+      const { result, unmount } = renderHook(() => usePreviewScene({ preview: { idle: true, night: true }, calmIdle: false, background }));
+      expect(result.current).toMatchObject({ state: 'night', look, dim: 0.5 });
+      expect(canvasDarkness(result.current)).toEqual({ kind: 'dim', opacity: 0.5 });
+      unmount();
+    }
   });
 });
 

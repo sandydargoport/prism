@@ -39,15 +39,14 @@ export interface EditorBarProps {
   doneBlocked?: string | null;
   onDone: () => void;
   onCancel: () => void;
-  /** Showing the screen as it rests or at night (the Idle screen), not as it is in use; null in use. */
-  resting?: 'resting' | 'night' | null;
   /** Showing another dashboard as it is saved, by its name (#1294). */
   previewName?: string | null;
-  onLeaveResting?: () => void;
+  /** Back to the dashboard being edited. */
+  onLeavePreview?: () => void;
 }
 
 export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(function EditorBar(
-  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, resting = null, previewName = null, onLeaveResting },
+  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, previewName = null, onLeavePreview },
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
@@ -87,11 +86,11 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
           {doneLabel}
         </button>
       </div>
-      {/* Through the day has its own, beside its slider (#1294). */}
-      {(resting || previewName) && open !== 'day' && (
-        <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-muted py-1.5 pl-4 pr-1.5 text-body" data-editor-resting={resting ?? 'preview'}>
-          {resting === 'night' ? 'Showing the screen at night' : resting ? 'Showing the screen while it rests' : `Showing ${previewName} as it is saved`}
-          <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-background px-4 hover:bg-background/70 pointer-fine:min-h-8 pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium">Back to in use</button>
+      {/* In use or idle, by day or at night, is the canvas's own toggles (#1348). */}
+      {previewName && (
+        <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-muted py-1.5 pl-4 pr-1.5 text-body" data-editor-resting="preview">
+          {`Showing ${previewName} as it is saved`}
+          <button type="button" onClick={onLeavePreview} className="min-h-[44px] rounded-full bg-background px-4 hover:bg-background/70 pointer-fine:min-h-8 pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium" data-editor-leave-preview>Back to this dashboard</button>
         </div>
       )}
       <div className="flex flex-col rounded-[1.4rem] bg-card text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl lg:min-h-0 lg:flex-1">

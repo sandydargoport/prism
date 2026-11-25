@@ -265,8 +265,8 @@ function ScreensHelp() {
       <H2>Through the day</H2>
       <P>More &gt; Edit layout &gt; Through the day sets how the screen idles and what it shows at night.</P>
       <Ul>
-        <Li><strong>The day&apos;s line</strong> has a dot wherever what the screen shows changes: night starting and ending, and each of the screen&apos;s switches. Tap a dot, or step with ◀ ▶, to see the screen at that moment. Tapping a switch&apos;s dot opens it in Screen</Li>
-        <Li><strong>Resting</strong>: what shows when nobody is using the screen: <strong>This dashboard</strong>, <strong>Photos</strong> or <strong>Night sky</strong>. <strong>See it</strong> shows it on the canvas</Li>
+        <Li><strong>The day&apos;s line</strong> has a dot wherever what the screen shows changes: night starting and ending, and each of the screen&apos;s switches. Tap a dot, or step with ◀ ▶, to see the screen at that moment; the toggles over the canvas follow. Tapping a switch&apos;s dot opens it in Screen</Li>
+        <Li><strong>Resting</strong>: what shows when nobody is using the screen: <strong>This dashboard</strong>, <strong>Photos</strong> or <strong>Night sky</strong>. Picking one shows it on the canvas, idle</Li>
         <Li><strong>At night</strong>: <strong>Dim this dashboard</strong>, <strong>Night sky</strong>, <strong>Photos</strong> or <strong>Screen off</strong>. Night runs from dusk to dawn, moved earlier or later if you like, or at set times</Li>
       </Ul>
       <P>Idle and night belong to the screen, not to the dashboard it shows, so a switch to another dashboard does not change how the screen idles. Done saves them to the screen. A device with no name uses the household&apos;s starting day until it sets its own; a screen named on it keeps that day. On a new install that is the dashboard, quieter, from dusk to dawn, 50% darker at night.</P>
@@ -318,6 +318,7 @@ function DashboardHelp() {
         <Li><strong>Look</strong>: the <strong>Screen shape</strong>, <strong>See it at a screen size</strong>, and this screen&apos;s own settings under <strong>This screen</strong></Li>
         <Li><strong>More</strong>: the <strong>Overview</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong> and <strong>Reset this layout</strong></Li>
       </Ul>
+      <P>Over the canvas, two toggles pick which of the screen&apos;s four states it draws: <strong>In use</strong> or <strong>Idle</strong>, and <strong>Day</strong> or <strong>Night</strong>. Each is drawn as the screen draws it: idle, the photo frame over its photo, the night sky, or the dashboard with the widgets that do not stay faded; at night, as much darker as the screen is set to go, over every look; Glance in use at night under its night veil. The line under the canvas names what is drawn and the screen&apos;s size, for example &quot;Main, idle, at night: a photo frame, 50% darker. 1280 x 800.&quot; Day or Night starts at the time it is now.</P>
       <P>Everything in the editor waits for <strong>Done</strong>, which saves it all; <strong>Cancel</strong> leaves without saving any of it. A dot on a tab means it has changes not saved yet.</P>
       <P>Opening another dashboard (More &gt; Edit layout &gt; Dashboard) or another screen (More &gt; Edit layout &gt; Screen) with changes not saved asks first: <strong>Save and switch</strong>, <strong>Discard</strong> or <strong>Stay</strong>.</P>
 
@@ -340,7 +341,7 @@ function DashboardHelp() {
       <P>Each screen chooses how the bar behaves on a dashboard with <strong>Auto-hide navigation</strong>, in Look under <strong>This screen</strong>. On, the bar hides behind a small <strong>Menu</strong> tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.</P>
 
       <H2>Resting Layout</H2>
-      <P>Each dashboard has its own layout for when the screen rests over photos or the night sky. In Through the day, set <strong>Resting</strong> to Photos or Night sky, press <strong>See it</strong>, then open <strong>Widgets</strong> to arrange what shows over it; step to night on the day&apos;s line to arrange the night. <strong>Rest after</strong>, in Screen, sets how long the screen waits. The resting templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
+      <P>Each dashboard has its own layout for when the screen rests over photos or the night sky. In Through the day, set <strong>Resting</strong> to Photos or Night sky, pick <strong>Idle</strong> over the canvas, then open <strong>Widgets</strong> to arrange what shows over it; pick <strong>Night</strong> too to arrange the night. <strong>Rest after</strong>, in Screen, sets how long the screen waits. The resting templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
 
       <H2>Import, Export &amp; Community Layouts</H2>
       <Ul>
@@ -668,7 +669,7 @@ function ScreensaverHelp() {
         <Li><strong>Resting</strong>: This dashboard, Photos, or a <strong>Night sky</strong> (the stars, Milky Way and moon as they are outside now, naming one constellation at a time)</Li>
         <Li><strong>At night</strong>: Dim this dashboard, Night sky, Photos or Screen off, from dusk to dawn or at set times</Li>
         <Li><strong>Motion and photo rotation</strong>: Through the day &gt; More &gt; <strong>Screensaver motion</strong> has the transition effect and how often the photo changes</Li>
-        <Li><strong>Arranging it</strong>: Resting &gt; See it, then Widgets. The arrangement is saved with the dashboard, so a change made on another device reaches the screen within a minute, without a reload</Li>
+        <Li><strong>Arranging it</strong>: <strong>Idle</strong> over the editor&apos;s canvas (and <strong>Night</strong> for the night), then Widgets. The arrangement is saved with the dashboard, so a change made on another device reaches the screen within a minute, without a reload</Li>
         <Li><strong>Aurora</strong>: Settings &gt; Appearance &gt; <strong>Night sky</strong> can say when aurora may be visible, on every screen</Li>
       </Ul>
       <P>A phone never rests. An app installed on a wall screen (added to its home screen) rests only once it has a name: More &gt; Edit layout &gt; Screen &gt; <strong>Name this device</strong>.</P>

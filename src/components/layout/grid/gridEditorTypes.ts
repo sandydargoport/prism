@@ -22,7 +22,8 @@ export const DASHBOARD_THEME: EditorTheme = {
 };
 
 export const SCREENSAVER_THEME: EditorTheme = {
-  gridBg: 'bg-black/80',
+  // Clear: the canvas draws the photo or the night sky behind it, as the wall does (#1348).
+  gridBg: '',
   gridStroke: 'white',
   gridOpacity: 0.2,
   gridPatternId: 'grid-ss',

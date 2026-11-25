@@ -63,7 +63,9 @@ import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setDashboardShown, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useScreenDay } from '@/components/screensaver/useScreenDay';
 import { usePreviewScene } from '@/components/screensaver/useScene';
-import type { ScreenState } from '@/lib/throughTheDay';
+import { CanvasBackdrop, idleInk } from '@/components/screensaver/IdleBackdrop';
+import { canvasCaption, canvasDarkness, type CanvasToggles } from '@/lib/canvasScene';
+import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { useScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 
 class WidgetBoundary extends React.Component<
@@ -239,29 +241,36 @@ export function Dashboard({
   }, [isMobile]);
   const { day: screenDay } = useScreenDay();
   const calmIdle = useCalmIdle() && !layout.isEditing;
-  const fadedIds = useMemo(
-    () => calmIdle ? new Set(layout.activeWidgets.filter(w => !shownWhenIdle(w)).map(w => w.i)) : undefined,
-    [calmIdle, layout.activeWidgets],
-  );
+
   // The widgets that stay drift while idle, so a screen that shows the same
   // board all night does not hold every edge on the same pixels (part 2).
   const { drift, outlines: ssOutlines } = useScreensaverMotion();
   const idleDrift = calmIdle && drift;
-  // Through the day (#1152): the state the editor is showing, if any. The
-  // Through the day sheet's strip sets it: Active is the dashboard in use,
-  // Resting and Night are the idle screen by day and by night.
-  const previewState: ScreenState | null = !layout.isEditing ? null
-    : layout.editTab !== 'idle' ? 'active'
-      : layout.idleHalf === 'night' ? 'night' : 'resting';
+  // The canvas's toggles (#1348), In use | Idle and Day | Night: the state
+  // the editor draws, all four of them, whatever the time.
+  const preview: CanvasToggles | null = layout.isEditing
+    ? { idle: layout.editTab === 'idle', night: layout.idleHalf === 'night' }
+    : null;
   const shownBackground = layout.isEditing ? layout.editingBackground : backgroundOf(screenDay);
   // One function says what the screen shows (#1344): the veil, the dim and
-  // the backdrop all go by the screen's rule.
-  const scene = usePreviewScene({ previewState, calmIdle, background: shownBackground });
+  // the backdrop all go by the screen's rule, on the wall and on the canvas.
+  const scene = usePreviewScene({ preview, calmIdle, background: shownBackground });
   const sceneNight = scene.night;
-  const previewBackdrop = previewState ? scene.look : null;
-  // The preview draws the dim over the dashboard look only; the wall dims
-  // every look (#1348).
-  const previewDim = previewState === 'night' && previewBackdrop === 'dashboard' ? scene.dim : 0;
+  // Day | Night starts at the time it is now, so opening the editor at night
+  // draws the night, as before.
+  const { setIdleHalf } = layout;
+  useResetOn(layout.isEditing, () => { if (layout.isEditing) setIdleHalf(scene.clockNight ? 'night' : 'day'); });
+  // The darkness over the canvas: the wall's, over every look (#1348).
+  const darkness = layout.isEditing ? canvasDarkness(scene) : null;
+  // The canvas is a frame of the screen's own size, so this is the screen's.
+  const viewport = useViewportSize();
+  // Idle with the dashboard as its look, on the wall or on the canvas
+  // (#1348): the widgets that do not stay fade.
+  const fading = calmIdle || (layout.isEditing && scene.state !== 'active' && scene.look === 'dashboard');
+  const fadedIds = useMemo(
+    () => fading ? new Set(layout.activeWidgets.filter(w => !shownWhenIdle(w)).map(w => w.i)) : undefined,
+    [fading, layout.activeWidgets],
+  );
 
   // The screen shape the editor's guides are drawn for: the dashboard's, or
   // the one picked on Look, which is saved with Done like the rest (#1341).
@@ -607,10 +616,22 @@ export function Dashboard({
               // As the grid being edited draws the selected widget.
               hideEmptyByDefault={layout.editingScreensaver || calmIdle}
               idleToggles={!layout.editingScreensaver && idleToggles}
+              canvasCaption={canvasCaption({
+                name: (previewLayout ?? layout.activeLayout)?.name ?? 'This dashboard',
+                scene,
+                width: viewport.width,
+                height: viewport.height,
+                glance: isBuiltInView((previewLayout ?? layout.activeLayout)?.view),
+                saved: !!previewLayout,
+              })}
             />
           )}
 
           {layout.editingScreensaver ? (
+            // The photo frame over the photo the wall shows, or the night sky
+            // (#1348), in the wall's ink.
+            <div className="contents" style={{ '--ss-ink': idleInk(sceneNight) } as React.CSSProperties} data-canvas-photo-frame>
+            <CanvasBackdrop look={scene.look === 'sky' ? 'sky' : 'photos'} lat={scene.lat} lon={scene.lon} eclipse={scene.eclipse} />
             <LayoutGridEditor
               layout={layout.ssLayout}
               onLayoutChange={layout.handleSsLayoutChange}
@@ -632,6 +653,7 @@ export function Dashboard({
               selectedWidgetId={selectedWidgetId}
               onSelectedWidgetChange={setSelectedWidgetId}
             />
+            </div>
           ) : previewLayout ? (
             // Another dashboard as it is saved, for a moment in its switch
             // (#1294): seen on the canvas, not edited. Open on its row edits it.
@@ -695,14 +717,14 @@ export function Dashboard({
             </WidgetErrorBoundary>
           )}
 
-          {/* The editor's Night preview: the dim over this dashboard, or the
-              black of a screen set to go off (#1152). Under the editing bar. */}
-          {previewState === 'night' && (previewBackdrop === 'off' || previewDim > 0) && (
+          {/* The canvas's night (#1348): darker over every look, as the wall
+              is, or the black of a screen set to go off (#1152). */}
+          {darkness && (
             <div
               aria-hidden
               className="pointer-events-none fixed inset-0 z-150 bg-black"
-              style={{ opacity: previewBackdrop === 'off' ? 1 : previewDim }}
-              data-preview-night={previewBackdrop === 'off' ? 'off' : 'dim'}
+              style={{ opacity: darkness.opacity }}
+              data-preview-night={darkness.kind}
             />
           )}
           {eventSheet.element}

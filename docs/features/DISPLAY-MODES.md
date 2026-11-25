@@ -20,7 +20,9 @@ Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitch
 
 The layout is saved with the dashboard, not in the browser, so a screen showing that dashboard picks up a change made on another device, such as a phone or a laptop, within a minute, without a reload.
 
-A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. Tapping a switch's dot opens that switch in the **Screen** panel, where switches are set. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
+A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. Tapping a switch's dot opens that switch in the **Screen** panel, where switches are set. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night.
+
+Over the canvas, two toggles are always there: **In use | Idle** and **Day | Night**. Together they pick which of the four states the canvas draws, and it draws each as the screen does: idle, the photo frame over its photo, the night sky, or the dashboard with the widgets that do not stay faded; at night, as much darker as the screen is set to go, over every look, or black for **Screen off**; Glance in use at night under its night veil. The line under the canvas names what is drawn and at what size, for example "Main, idle, at night: a photo frame, 50% darker. 1280 x 800." **Day | Night** starts at the time it is now, and the day's line sets both toggles as it steps.
 
 The panel is a few rows, all the screen's own: **Resting** (what it shows idle by day) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it. Idle and night belong to the screen, not to the dashboard it shows, and **Done** saves them to the screen, so a switch to another dashboard does not change how the screen idles. Which dashboard a screen shows, its switches, how soon it goes idle and how much darker it goes at night are in the editor's **Screen** panel (More > Edit layout > Screen; see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)).
 
@@ -28,7 +30,7 @@ The panel is a few rows, all the screen's own: **Resting** (what it shows idle b
 
 A dashboard set to rest as **This dashboard** (in the Through the day panel) has no separate screensaver. When the display goes idle, some widgets fade out where they are and the others stay. A tap brings everything back, and nothing moves.
 
-Tap **See it** on the **Resting** row of the Through the day panel and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
+Pick **Idle** over the editor's canvas and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner, and the ones that fade are drawn faint. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
 
 #### Resting, night and what shows
 

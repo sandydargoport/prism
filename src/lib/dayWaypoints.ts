@@ -32,12 +32,12 @@ export type Waypoint = { kind: WaypointKind; minute: number; switchIndex?: numbe
 export type Stop = { minute: number; marks: Waypoint[] };
 
 /**
- * What the screen shows at a minute: a dashboard, in use or at night, and the
- * switch in force (-1 for none). Only the dashboard being edited is shown at
- * night: its night is the one on the line and in the At night row; any other
- * shows as it is in use.
+ * What the screen shows at a minute: a dashboard, in use or idle at night,
+ * whether it is night, and the switch in force (-1 for none). Night is the
+ * screen's own (#1345), whichever dashboard is up or being edited (#1348); a
+ * switch that starts shows its dashboard in use, at night too.
  */
-export type Scene = { dashboardId: string; state: 'active' | 'night'; switchIndex: number };
+export type Scene = { dashboardId: string; state: 'active' | 'night'; night: boolean; switchIndex: number };
 
 const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -128,10 +128,10 @@ export function dayStops({ now, nights, switches }: { now: number; nights: reado
 /**
  * What the screen shows at `minute`: the first switch in force, in order,
  * whose dashboard still exists; otherwise its own dashboard. At a switch's
- * end it is already back. The dashboard being edited shows its night look
- * during its night.
+ * end it is already back. Outside a switch the screen shows its night look
+ * during its night, whichever dashboard is being edited.
  */
-export function sceneAt(minute: number, { spans, switches, nights, shownId, editedId, exists = () => true }: {
+export function sceneAt(minute: number, { spans, switches, nights, shownId, exists = () => true }: {
   /** Where the switches fall today, from `switchSpans`. */
   spans: readonly SwitchSpan[];
   /** The screen's switches, in order. */
@@ -139,16 +139,14 @@ export function sceneAt(minute: number, { spans, switches, nights, shownId, edit
   nights: readonly Span[];
   /** The dashboard the screen shows outside its switches. */
   shownId: string;
-  /** The dashboard being edited. */
-  editedId: string;
   exists?: (dashboardId: string) => boolean;
 }): Scene {
   const inForce = spans
     .filter((s) => s.from <= minute && minute < s.to && !!switches[s.index] && exists(switches[s.index]!.dashboardId))
     .sort((a, b) => a.index - b.index)[0];
   const dashboardId = inForce ? switches[inForce.index]!.dashboardId : shownId;
-  const night = dashboardId === editedId && nights.some((n) => n.from <= minute && minute < n.to);
-  return { dashboardId, state: night ? 'night' : 'active', switchIndex: inForce?.index ?? -1 };
+  const night = nights.some((n) => n.from <= minute && minute < n.to);
+  return { dashboardId, state: night && !inForce ? 'night' : 'active', night, switchIndex: inForce?.index ?? -1 };
 }
 
 /** The stop nearest `minute`, as a drag lets go of the line. */

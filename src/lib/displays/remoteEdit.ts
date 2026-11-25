@@ -54,6 +54,9 @@ export type RemoteEditHost = {
   settingsUpdatedAt: string | null;
   /** Where the frame draws its editing bar and dialogs, on the phone page. */
   root: HTMLElement;
+  /** Above and below the picture, where the frame draws the canvas's toggles and its caption (#1348). */
+  canvasAbove?: HTMLElement | null;
+  canvasBelow?: HTMLElement | null;
   /** The dashboard the frame is showing. */
   onDashboard: (layoutId: string, isDefault: boolean) => void;
   /** Editing ended: saved with Done, or not. */
@@ -206,4 +209,10 @@ installRemoteStorage();
  */
 export function remotePortalRoot(): HTMLElement | undefined {
   return remoteEditHost()?.root ?? undefined;
+}
+
+/** On the editor page, above or below the picture (#1348); undefined when there is no such place. */
+export function remoteCanvasSlot(where: 'above' | 'below'): HTMLElement | undefined {
+  const host = remoteEditHost();
+  return (where === 'above' ? host?.canvasAbove : host?.canvasBelow) ?? undefined;
 }

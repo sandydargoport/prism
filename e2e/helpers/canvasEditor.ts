@@ -36,3 +36,15 @@ export async function openPanel(page: Page, id: Panel): Promise<void> {
   await page.locator(`[data-editor-open="${id}"]`).click();
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
 }
+
+/** One of the canvas's toggles (#1348), above it on the editor page: In use | Idle, Day | Night. */
+export type CanvasPick = 'in-use' | 'idle' | 'day' | 'night';
+
+/** Picks on the canvas's toggles, in order, and waits for each to hold. */
+export async function canvasShows(page: Page, ...picks: CanvasPick[]): Promise<void> {
+  for (const pick of picks) {
+    const button = page.locator(`[data-canvas-above] [data-canvas-pick="${pick}"]`);
+    await button.click();
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+  }
+}
