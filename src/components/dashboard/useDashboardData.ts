@@ -149,6 +149,7 @@ export function useDashboardData(
     saveLayout,
     deleteLayout,
     loading: layoutsLoading,
+    refresh: refreshLayouts,
   } = useLayouts();
 
   // Auto-sync task sources when dashboard is visible
@@ -210,6 +211,6 @@ export function useDashboardData(
     meals: { meals, loading: mealsLoading, error: mealsError, refresh: refreshMeals, markCooked },
     birthdays: { birthdays: birthdaysList, loading: birthdaysLoading, error: birthdaysError, syncFromGoogle: syncBirthdays },
     points: { points: pointsList, goals: goalsList, progress: goalsProgress, goalChildren, loading: pointsLoading || goalsLoading, error: pointsError || goalsError },
-    layouts: { allLayouts, savedLayout, saveLayout, deleteLayout, loading: layoutsLoading },
+    layouts: { allLayouts, savedLayout, saveLayout, deleteLayout, loading: layoutsLoading, refresh: refreshLayouts },
   };
 }

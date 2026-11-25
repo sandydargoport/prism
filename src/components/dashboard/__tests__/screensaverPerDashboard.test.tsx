@@ -1,14 +1,19 @@
 /**
  * @jest-environment jsdom
  *
- * The running screensaver reads its layout from browser storage, which the
- * dashboard writes when it opens. A dashboard that never saved a screensaver
+ * The running photo frame shows the arrangement of the dashboard the screen
+ * shows, as saved on that dashboard (#1346). A dashboard that never saved one
  * must get the default there, not the previous dashboard's (#688).
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { useDashboardLayout } from '../useDashboardLayout';
+import { useDashboardLayout, LAYOUTS_REFRESH_MS } from '../useDashboardLayout';
+import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
+import {
+  currentPhotoFrameArrangement,
+  resetPhotoFrameArrangement,
+} from '@/components/screensaver/photoFrameArrangement';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
 import { backgroundOf, parseScreenDay, serializeScreenDay } from '@/lib/screenDay';
 import { DEFAULT_NIGHT } from '@/lib/throughTheDay';
@@ -41,14 +46,15 @@ const data = (all: Layout[]) => ({
   loading: false,
 });
 
-const stored = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
+/** What the running photo frame shows. */
+const stored = () => currentPhotoFrameArrangement();
 /** This screen's day (#1345): one look by day and night, how much darker. */
 const DAY_KEY = 'prism-screen-day';
 const screenIdles = (look: IdleSource, nightLevel: 0 | 25 | 50 | 75 = 0) =>
   localStorage.setItem(DAY_KEY, serializeScreenDay({ day: look, night: look, switch: DEFAULT_NIGHT, nightLevel }));
 const screenDay = () => parseScreenDay(localStorage.getItem(DAY_KEY));
 
-beforeEach(() => { localStorage.clear(); activeUser = null; mockInFrame = false; });
+beforeEach(() => { localStorage.clear(); resetPhotoFrameArrangement(); activeUser = null; mockInFrame = false; });
 
 describe('screensaver per dashboard', () => {
   it('gives a dashboard with no saved screensaver the default, not the last one shown', () => {
@@ -73,12 +79,60 @@ describe('screensaver per dashboard', () => {
     expect(stored()).toEqual(DEFAULT_SCREENSAVER_LAYOUT);
   });
 
-  it('carries over a screensaver from before dashboards had their own', () => {
+  it('shows the default, not the copy this browser kept, where nothing is owed (#1346)', () => {
+    // No dashboard has one and the screen idles as its dashboard, so the
+    // kept copy is not carried, and nothing else reads it.
     localStorage.setItem(KEY, JSON.stringify(custom));
     const layouts = data([dashboard('a', null), dashboard('b', null)]);
     const { result } = renderHook(() => useDashboardLayout(layouts, 'a'));
-    expect(result.current.ssLayout.find((w) => w.i === 'clock')).toMatchObject(custom[0]!);
-    expect(stored().find((w: WidgetConfig) => w.i === 'clock')).toMatchObject(custom[0]!);
+    expect(result.current.ssLayout).toEqual(DEFAULT_SCREENSAVER_LAYOUT);
+    expect(stored()).toEqual(DEFAULT_SCREENSAVER_LAYOUT);
+  });
+});
+
+describe('the running photo frame (#1346)', () => {
+  const other: WidgetConfig[] = [{ i: 'weather', x: 8, y: 8, w: 16, h: 16, visible: true }];
+
+  it('gets an arrangement saved from another device without a reload', () => {
+    const { rerender } = renderHook(({ layouts }) => useDashboardLayout(layouts, 'a'), {
+      initialProps: { layouts: data([dashboard('a', custom)]) },
+    });
+    expect(stored()).toEqual(custom);
+    // The dashboards fetched again, with the edit made elsewhere.
+    rerender({ layouts: data([dashboard('a', other)]) });
+    expect(stored()).toEqual(other);
+  });
+
+  it('fetches the dashboards again while the screen is idle, so the edit arrives', () => {
+    jest.useFakeTimers();
+    try {
+      const refresh = jest.fn(async () => {});
+      renderHook(() => useDashboardLayout({ ...data([dashboard('a', custom)]), refresh }, 'a'));
+      expect(refresh).not.toHaveBeenCalled();
+      // The photo frame is up: widget data pauses, this does not.
+      act(() => { setDisplayIdle(true); });
+      act(() => { jest.advanceTimersByTime(LAYOUTS_REFRESH_MS); });
+      expect(refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => { setDisplayIdle(false); });
+      jest.useRealTimers();
+    }
+  });
+
+  it('never reads the copy kept in this browser once carried', () => {
+    localStorage.setItem(KEY, JSON.stringify(custom));
+    localStorage.setItem('prism-screensaver-carried', '1');
+    const read = jest.spyOn(Storage.prototype, 'getItem');
+    try {
+      const { rerender } = renderHook(({ layouts }) => useDashboardLayout(layouts, 'a'), {
+        initialProps: { layouts: data([dashboard('a', null), dashboard('b', null)]) },
+      });
+      rerender({ layouts: data([dashboard('a', null), dashboard('b', null)]) });
+      expect(stored()).toEqual(DEFAULT_SCREENSAVER_LAYOUT);
+      expect(read.mock.calls.map(([k]) => k)).not.toContain(KEY);
+    } finally {
+      read.mockRestore();
+    }
   });
 });
 
@@ -151,6 +205,8 @@ describe('one editor, two tabs, one Save (#782)', () => {
     expect(result.current.editingWidgets).toEqual(edited);
     act(() => { result.current.setEditTab('idle'); });
     expect(result.current.ssLayout).toEqual(idleEdited);
+    // The running photo frame gets it once saved, not while it is edited.
+    expect(stored()).toEqual(custom);
 
     await act(async () => { await result.current.handleSave(); });
     expect(layouts.saveLayout).toHaveBeenCalledTimes(1);
@@ -162,8 +218,6 @@ describe('one editor, two tabs, one Save (#782)', () => {
     expect(layouts.saveLayout.mock.calls[0]![0]).not.toHaveProperty('idleBackground');
     expect(screenDay()).toEqual({ day: 'sky', night: 'sky', switch: DEFAULT_NIGHT, nightLevel: 50 });
     expect(result.current.isEditing).toBe(false);
-    // The running screensaver gets the new layout once saved.
-    expect(stored()).toEqual(idleEdited);
   });
 
   it('saves nothing until Save, and Cancel undoes both tabs', async () => {

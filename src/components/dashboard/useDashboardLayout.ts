@@ -7,8 +7,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import {
-  loadScreensaverLayout,
-  saveScreensaverLayout,
   DEFAULT_SCREENSAVER_LAYOUT,
   screensaverForDashboard,
   legacyScreensaver,
@@ -16,6 +14,8 @@ import {
   owesLegacyScreensaver,
   saveScreensaverPreset,
 } from '@/components/screensaver/screensaverStorage';
+import { setPhotoFrameArrangement } from '@/components/screensaver/photoFrameArrangement';
+import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
 import { idleSources, sameIdleBackground, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
 import { backgroundOf, withBackground } from '@/lib/screenDay';
@@ -30,7 +30,16 @@ interface LayoutsData {
   deleteLayout: (id: string) => Promise<void>;
   allLayouts: Layout[];
   loading: boolean;
+  /** Fetches them again, so an edit made on another device shows here. */
+  refresh?: () => Promise<void>;
 }
+
+/**
+ * How often the dashboards are fetched again, so an edit made on another
+ * device reaches this screen without a reload (#1346). It keeps going while
+ * the photo frame is up: its arrangement is what an idle screen shows.
+ */
+export const LAYOUTS_REFRESH_MS = 60 * 1000;
 
 /** The query parameter that opens a dashboard in edit mode. */
 export const EDIT_PARAM = 'edit';
@@ -90,7 +99,6 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   useHoldEditing(isEditing);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
   const [preEditWidgets, setPreEditWidgets] = useState<WidgetConfig[]>([]);
-  const [preEditSs, setPreEditSs] = useState<WidgetConfig[]>([]);
   const [editTab, setEditTab] = useState<EditTab>('dashboard');
   const [idleHalf, setIdleHalf] = useState<IdleHalf>('day');
 
@@ -99,10 +107,20 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     ? layouts.allLayouts.find(l => l.slug === slug) || null
     : layouts.savedLayout;
 
-  const [ssLayout, setSsLayout] = useState<WidgetConfig[]>(() => {
-    if (activeLayout) return screensaverForDashboard(activeLayout, layouts.allLayouts);
-    return loadScreensaverLayout();
-  });
+  // The arrangement a browser kept from v1.30.1, while it is owed to this
+  // dashboard (#1154): shown until the dashboard has one of its own.
+  const [owed, setOwed] = useState<{ id: string; widgets: WidgetConfig[] } | null>(null);
+  // The photo frame arrangement as saved (#1346): the dashboard's own, which
+  // follows the dashboard as it is fetched again, so an edit made on another
+  // device shows here without a reload.
+  const savedSs = activeLayout?.screensaverWidgets
+    ?? (owed && owed.id === activeLayout?.id ? owed.widgets : null)
+    ?? (activeLayout ? screensaverForDashboard(activeLayout) : DEFAULT_SCREENSAVER_LAYOUT);
+  // As being edited: null until it is changed, so it follows the saved one,
+  // a dashboard that finishes loading after editing starts included.
+  const [editedSs, setEditedSs] = useState<WidgetConfig[] | null>(null);
+  const ssLayout = isEditing && editedSs !== null ? editedSs : savedSs;
+  const ssDirty = isEditing && editedSs !== null && JSON.stringify(editedSs) !== JSON.stringify(savedSs);
   // What shows behind it when idle, as saved and as being edited. It is the
   // screen's own day (#1345), whichever dashboard is open; the dashboard's
   // old `idleBackground` is no longer read. Nothing is stored until Save, so
@@ -122,35 +140,41 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const editingOrientation = editedOrientation ?? savedOrientation;
   const [defaultPending, setDefaultPending] = useState(false);
 
-  // Bridge: write active dashboard's screensaver to localStorage on layout change
-  // so the global Screensaver component (which reads from localStorage) uses the right one
-  const bridgedLayoutId = useRef<string | null>(null);
+  // The upgrade from v1.30.1 (#1154), once per dashboard opened: a dashboard
+  // with no photo frame arrangement of its own showed the one this browser
+  // kept. It is shown and carried onto the dashboard; the server keeps it only
+  // while the dashboard still has none. Until that works (a wall nobody signed
+  // in to cannot save) it keeps showing here, as before. Nothing else reads
+  // the browser's copy (#1346).
+  useResetOn(activeLayout?.id ?? null, () => {
+    const legacy = activeLayout && !remoteEditHost() ? legacyScreensaver() : null;
+    setOwed(activeLayout && owesLegacyScreensaver(activeLayout, editsIdleLayout(savedBackground), legacy)
+      ? { id: activeLayout.id, widgets: legacy }
+      : null);
+  });
+  const carriedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!activeLayout) return;
-    if (bridgedLayoutId.current === activeLayout.id) return;
-    bridgedLayoutId.current = activeLayout.id;
-
-    // The upgrade from v1.30.1 (#1154): a dashboard with no screensaver of its
-    // own showed the one this browser kept. It is read before the line below
-    // writes over it, shown, and carried onto the dashboard; the server keeps
-    // it only while the dashboard still has none. Until that works (a wall
-    // nobody signed in to cannot save) it keeps showing here, as before.
-    const legacy = remoteEditHost() ? null : legacyScreensaver();
-    const owed = owesLegacyScreensaver(activeLayout, editsIdleLayout(savedBackground), legacy);
-    const widgets = owed ? legacy : screensaverForDashboard(activeLayout, layouts.allLayouts);
-    if (owed) {
-      void carryScreensaver(activeLayout.id, legacy).then((ok) => { if (ok) markScreensaverCarried(); });
+    if (carriedFor.current === activeLayout.id) return;
+    carriedFor.current = activeLayout.id;
+    if (owed && owed.id === activeLayout.id) {
+      void carryScreensaver(owed.id, owed.widgets).then((ok) => { if (ok) markScreensaverCarried(); });
     } else {
       markScreensaverCarried();
     }
-    setSsLayout(widgets);
-    // Also what Cancel returns to and the dot compares with, for a dashboard
-    // that finishes loading after editing starts.
-    setPreEditSs(widgets);
-    saveScreensaverLayout(widgets);
     // Runs once per dashboard (the ref above); the screen's day at that
-    // moment decides whether a carried arrangement is owed.
-  }, [activeLayout, layouts.allLayouts, savedBackground]);
+    // moment decided whether a carried arrangement is owed.
+  }, [activeLayout, owed]);
+
+  // The running photo frame shows the saved arrangement of the dashboard this
+  // screen shows (#1346); an edit reaches it once saved.
+  useEffect(() => {
+    if (layouts.loading) return;
+    setPhotoFrameArrangement(savedSs);
+  }, [layouts.loading, savedSs]);
+  // Fetched again while open, so an edit from another device arrives.
+  const refreshLayouts = layouts.refresh;
+  useVisibilityPolling(() => { void refreshLayouts?.(); }, LAYOUTS_REFRESH_MS, { pollWhileIdle: true });
 
   // Switching dashboards from the editor opens the next one with ?edit=1, and
   // it opens in edit mode once its layout has loaded. Only for a parent, so a
@@ -165,14 +189,14 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     const current = activeLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
     setPreEditWidgets(current);
     setEditingWidgets(current);
-    setPreEditSs(ssLayout);
+    setEditedSs(null);
     setEditedBackground(null);
     setEditedOrientation(null);
     setDefaultPending(false);
     setEditTab('dashboard');
     setIdleHalf('day');
     setIsEditing(true);
-  }, [activeLayout, ssLayout]);
+  }, [activeLayout]);
   // A device that edits on a canvas (#1265) is sent there instead, in place
   // of this address, so Back does not land on the link again.
   const resumeOnCanvas = resumeKey !== null && editsOnCanvas();
@@ -221,7 +245,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // Which tabs hold changes not yet saved, for the dot on each.
   const dashboardDirty = isEditing && withoutIdleTicks(editingWidgets) !== withoutIdleTicks(preEditWidgets);
   const idleDirty = isEditing && (
-    JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)
+    ssDirty
     || !sameIdleBackground(editingBackground, savedBackground)
     || idleTicks(editingWidgets) !== idleTicks(preEditWidgets)
   );
@@ -229,15 +253,15 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const lookDirty = isEditing && editingOrientation !== savedOrientation;
   const defaultDirty = isEditing && defaultPending && !activeLayout?.isDefault;
 
-  // The running screensaver reads its layout from the browser; it gets the
-  // edited one only once saved.
+  // The running photo frame gets the edited arrangement once it is saved to
+  // the dashboard, which is fetched again on save.
   const finishEditing = useCallback(() => {
-    saveScreensaverLayout(ssLayout);
+    setEditedSs(null);
     setEditTab('dashboard');
     setEditedOrientation(null);
     setDefaultPending(false);
     setIsEditing(false);
-  }, [ssLayout]);
+  }, []);
 
   const handleSave = useCallback(async (name?: string) => {
     try {
@@ -253,7 +277,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
       // Done saves only what changed (#1162). A dashboard with no screensaver
       // layout or background of its own keeps none until someone sets one;
       // saving the default it was showing would pin it there for good.
-      if (activeLayout?.screensaverWidgets || JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)) {
+      if (activeLayout?.screensaverWidgets || ssDirty) {
         saveData.screensaverWidgets = ssLayout;
       }
       // The idle and night looks are the screen's (#1345): Done writes them
@@ -267,7 +291,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, screenDay, setScreenDay, defaultPending, editingOrientation, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, ssDirty, editingBackground, savedBackground, screenDay, setScreenDay, defaultPending, editingOrientation, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
@@ -319,16 +343,16 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // Cancel undoes both tabs.
   const handleCancel = useCallback(() => {
     setEditingWidgets(preEditWidgets);
-    setSsLayout(preEditSs);
+    setEditedSs(null);
     setEditedBackground(null);
     setEditedOrientation(null);
     setDefaultPending(false);
     setEditTab('dashboard');
     setIsEditing(false);
-  }, [preEditWidgets, preEditSs]);
+  }, [preEditWidgets]);
 
   const handleSsLayoutChange = useCallback((newLayout: WidgetConfig[]) => {
-    setSsLayout(newLayout);
+    setEditedSs(newLayout);
   }, []);
 
   const handleSsSaveAs = useCallback(() => {
@@ -339,7 +363,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
 
   const handleSsReset = useCallback(() => {
     const fresh = DEFAULT_SCREENSAVER_LAYOUT.map(w => ({ ...w }));
-    setSsLayout(fresh);
+    setEditedSs(fresh);
   }, []);
 
   const handleSelectSsTemplate = useCallback((templateWidgets: WidgetConfig[]) => {
@@ -354,11 +378,11 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         merged.push({ ...tw, visible: visibleIds.has(tw.i) });
       }
     });
-    setSsLayout(merged);
+    setEditedSs(merged);
   }, []);
 
   const handleSelectSsPreset = useCallback((presetWidgets: WidgetConfig[]) => {
-    setSsLayout(presetWidgets);
+    setEditedSs(presetWidgets);
   }, []);
 
   // Make the default, done on Done (#1341).

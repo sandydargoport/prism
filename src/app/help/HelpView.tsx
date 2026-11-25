@@ -668,7 +668,7 @@ function ScreensaverHelp() {
         <Li><strong>Resting</strong>: This dashboard, Photos, or a <strong>Night sky</strong> (the stars, Milky Way and moon as they are outside now, naming one constellation at a time)</Li>
         <Li><strong>At night</strong>: Dim this dashboard, Night sky, Photos or Screen off, from dusk to dawn or at set times</Li>
         <Li><strong>Motion and photo rotation</strong>: Through the day &gt; More &gt; <strong>Screensaver motion</strong> has the transition effect and how often the photo changes</Li>
-        <Li><strong>Arranging it</strong>: Resting &gt; See it, then Widgets</Li>
+        <Li><strong>Arranging it</strong>: Resting &gt; See it, then Widgets. The arrangement is saved with the dashboard, so a change made on another device reaches the screen within a minute, without a reload</Li>
         <Li><strong>Aurora</strong>: Settings &gt; Appearance &gt; <strong>Night sky</strong> can say when aurora may be visible, on every screen</Li>
       </Ul>
       <P>A phone never rests. An app installed on a wall screen (added to its home screen) rests only once it has a name: More &gt; Edit layout &gt; Screen &gt; <strong>Name this device</strong>.</P>

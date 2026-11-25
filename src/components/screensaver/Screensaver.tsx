@@ -22,7 +22,7 @@ import { buildWidgetProps } from '@/components/dashboard/useWidgetProps';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
-import { loadScreensaverLayout } from './screensaverStorage';
+import { usePhotoFrameArrangement } from './photoFrameArrangement';
 import { hidesWhenEmpty } from '@/components/layout/grid/hideWhenEmpty';
 import { rotate, showingCount } from './screensaverRotation';
 import { useScreensaverMotion } from './useScreensaverMotion';
@@ -73,8 +73,6 @@ export function screensaverOutlineClass(outlines: boolean): string {
 // Re-export storage utilities for consumers
 export {
   DEFAULT_SCREENSAVER_LAYOUT,
-  loadScreensaverLayout,
-  saveScreensaverLayout,
   getScreensaverPresets,
   saveScreensaverPreset,
   deleteScreensaverPreset,
@@ -293,7 +291,9 @@ function giveItBody(clone: HTMLElement) {
 }
 
 function ScreensaverGrid() {
-  const layout = useMemo(() => loadScreensaverLayout(), []);
+  // The arrangement of the dashboard the screen shows (#1346), which follows
+  // that dashboard: an edit from another device arrives without a reload.
+  const layout = usePhotoFrameArrangement();
   // The editor's Screen frame for this screen's orientation: what the layout
   // was sized against, so it is what gets fitted to the screen.
   const { zones } = useScreenSafeZones();
@@ -393,9 +393,10 @@ function ScreensaverGrid() {
   // copy of all of it. The overlay used to be up for seconds at a time, so the
   // waste was a burst; it is worth fixing on a display that is never closed.
   //
-  // deferRest is off because the screensaver's widget set is fixed for as long
-  // as it is mounted, so the usual two-second "enable everything" catch-up has
-  // nothing to catch up on and would simply undo the gating.
+  // deferRest is off because the screensaver's widget set changes only when
+  // its dashboard's arrangement does, and then this set changes with it, so
+  // the usual two-second "enable everything" catch-up has nothing to catch up
+  // on and would simply undo the gating.
   const visibleWidgets = useMemo(
     () => new Set(layout.filter((w) => w.visible !== false).map((w) => w.i)),
     [layout],
