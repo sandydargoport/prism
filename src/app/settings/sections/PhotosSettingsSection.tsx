@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useTargetResolution } from '../SettingsView';
+import { PhotoCaptionsCard } from './PhotoCaptionsCard';
 import { usePinnedPhoto } from '@/components/layout/WallpaperBackground';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { toast } from '@/components/ui/use-toast';
@@ -296,9 +297,11 @@ export function PhotosSettingsSection() {
       <div>
         <h2 className="text-2xl font-bold">Photos</h2>
         <p className="text-muted-foreground">
-          Manage photo sources and resolution settings
+          Photo sources, captions and On this day, pinned photos and resolution
         </p>
       </div>
+
+      <PhotoCaptionsCard />
 
       <PinnedPhotosCard />
 

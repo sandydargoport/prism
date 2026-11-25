@@ -7,8 +7,8 @@ import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './he
  * after unless the switch has routes and minutes of its own (#1291), or at
  * set times. The editor's Screen tab shows them as rows with a line each and
  * Edit (#1294, #1326, #1349), kept there until Done, under a strip of today
- * that draws each one as a band in its row's colour; Settings > Screens picks
- * the dashboard on the screen's row. The home page opens a named screen on
+ * that draws each one as a band in its row's colour; Settings > Screens says
+ * the screen's sentence on its row (#1351). The home page opens a named screen on
  * the dashboard it shows now, a switch's included.
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
@@ -206,14 +206,21 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     }
   });
 
-  test('the Settings row\'s dropdown saves the screen\'s dashboard, and its line names the switches', async ({ browser }) => {
+  test('the Settings row says the screen\'s sentence, its times included, and has no dashboard picker (#1351)', async ({ browser }) => {
     const tag = Date.now().toString(36);
     const setup = await browser.newPage();
     await signIn(setup);
     const kitchen = await addDashboard(setup, `Kitchen ${tag}`);
     const school = await addDashboard(setup, `School run ${tag}`);
     const NAME = `Hall ${tag}`;
-    const screen = await namedScreen(browser, NAME, { switches: [{ when: 'bus', dashboardId: school.id }] });
+    const screen = await namedScreen(browser, NAME, {
+      dashboardId: kitchen.id,
+      switches: [{ when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: school.id }],
+      settings: {
+        'prism-screensaver-timeout': '600',
+        'prism-screen-day': JSON.stringify({ day: 'sky', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 25 }),
+      },
+    });
     try {
       const probe = await browser.newPage();
       const parent = await getFirstParent(probe);
@@ -221,9 +228,18 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       await verifySettingsPinViaAPI(setup, parent.name);
       await setup.goto('/settings?section=displays');
       const row = setup.getByTestId('display-row').filter({ hasText: NAME });
-      await row.getByLabel(`Dashboard for ${NAME}`).selectOption({ label: `Kitchen ${tag}` });
-      await expect.poll(async () => (await screens(setup)).find((d) => d.id === screen.id)?.dashboardId).toBe(kitchen.id);
-      await expect(row.locator('[data-screen-summary]')).toContainText(`Shows Kitchen ${tag}, School run ${tag} at bus time, rests after`);
+      // The sentence the editor's Screen tab says, from the screen's own settings.
+      await expect(row.locator('[data-screen-sentence]')).toHaveText(new RegExp(
+        `^Hall ${tag} shows Kitchen ${tag}\\. Mon to Fri, [^,.]+ to [^,.]+ it shows School run ${tag}\\. `
+        + 'Idle for 10 minutes, it becomes the night sky\\. At night the night sky is 25% darker\\.$',
+        'i',
+      ), { timeout: 60_000 });
+      await expect(row.locator('select')).toHaveCount(0);
+      // A change made elsewhere shows in the sentence once the list is read again.
+      expect((await setup.request.patch(`/api/displays/${screen.id}`, { data: { settings: { 'prism-screensaver-timeout': '0' } } })).ok()).toBe(true);
+      await setup.reload();
+      await expect(setup.getByTestId('display-row').filter({ hasText: NAME }).locator('[data-screen-sentence]'))
+        .toHaveText(new RegExp(`It never idles, so it has no night look\\.$`), { timeout: 60_000 });
       // Edit opens the screen's own editor (#1267).
       await row.getByRole('link', { name: 'Edit' }).click();
       await expect(setup).toHaveURL(new RegExp(`/screens/${screen.id}$`), { timeout: 60_000 });

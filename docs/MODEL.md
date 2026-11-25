@@ -42,14 +42,14 @@ Editor directions start at the editor of a screen, for example Editor > Screen >
 | Language | row `locale` | unchanged | Settings > Appearance |
 | Location | row `location` | unchanged | Settings > General |
 | Time zone | row `timezone` | unchanged | Settings > General |
-| Photo captions: when and where taken | rows `photoCaptionDate`, `photoCaptionPlace` | unchanged | Settings > Photos (today behind the wallpaper switch in Appearance, #1351) |
+| Photo captions: when and where taken | rows `photoCaptionDate`, `photoCaptionPlace` | unchanged | Settings > Photos (#1351) |
 | On this day | row `photoOnThisDay` | unchanged | Settings > Photos |
 | Bundled scenery while there are no photos | row `wallpaperScenery`, set by setup, no control | unchanged | none |
 | Household on-screen keyboard | row `input.virtualKeyboardEnabled` | unchanged | Settings > Input |
 | Away | row `awayMode` | unchanged | Settings > Screens; More > Away |
 | Away turns on after | row `awayModeAutoAfterHours` | unchanged | Settings > Screens |
 | Sitter | row `babysitterMode` | unchanged | More > Babysitter |
-| New and unnamed screens show | `layouts.is_default` on one dashboard | unchanged | Settings > Screens > New and unnamed screens show (today Make the default, in the editor) |
+| New and unnamed screens show | `layouts.is_default` on one dashboard | unchanged | Settings > Screens > New and unnamed screens show (#1351) |
 | Starting idle and night look | the default dashboard's `layouts.idle_background` | row `screenStartingDay`, seeded by migration 0057 and `02-schema.sql` (#1345) | Settings > Screens > New and unnamed screens show |
 
 ### Screen
@@ -101,7 +101,7 @@ Editor directions start at the editor of a screen, for example Editor > Screen >
 | Address | `layouts.slug` | unchanged | none; follows the name |
 | How it is drawn (grid or Glance) | `layouts.view` | unchanged; the type loses `'calendar'` (#1343) | none; chosen when the dashboard is made |
 | Widgets and their arrangement | `layouts.widgets` | unchanged | Editor > Widgets |
-| Text size (13 steps, 75% to 150%) | `layouts.font_scale` | unchanged | Editor > Look (today Settings > Text Size, #1351) |
+| Text size (13 steps, 75% to 150%) | `layouts.font_scale` | unchanged | Editor > Look (#1350) |
 | Photo frame arrangement | `layouts.screensaver_widgets` | unchanged; the running photo frame reads it from here (#1346) | Editor > Screen > When idle > Arrange the photo frame |
 | Idle and night look | `layouts.idle_background` | kept unread after 0057, dropped after the release (#1345) | none; it moves to the screen |
 | Screen shape | `layouts.orientation` | the column stays; its control goes | none |

@@ -1,9 +1,10 @@
 /**
  * @jest-environment jsdom
  *
- * One save rule (#1341): the text size (#1350) and Show on new and unnamed
- * screens wait for Done like everything else in the editor. Nothing reaches the server before Done,
- * and Cancel sends nothing at all.
+ * One save rule (#1341): the text size (#1350) waits for Done like everything
+ * else in the editor. Nothing reaches the server before Done, and Cancel sends
+ * nothing at all. Which dashboard new and unnamed screens show is not the
+ * editor's: Settings > Screens sets it (#1351), and Done never sends it.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useDashboardLayout } from '../useDashboardLayout';
@@ -62,31 +63,23 @@ it('an unchanged text size is not sent', async () => {
   expect((saveLayout.mock.calls[0] as unknown[])[0]).not.toHaveProperty('fontScale');
 });
 
-it('Make the default is held until Done, then saved as the default, with no reload', async () => {
+it('Done never sends which dashboard new and unnamed screens show, so what Settings > Screens set stays (#1351)', async () => {
   const { result } = await editing();
-  act(() => result.current.makeDefault());
-  expect(result.current.defaultDirty).toBe(true);
-  expect(saveLayout).not.toHaveBeenCalled();
-  expect(writes()).toHaveLength(0);
-
-  // Edits made after it are kept: nothing reloads under them.
+  expect(result.current).not.toHaveProperty('makeDefault');
   act(() => result.current.setEditingWidgets([{ i: 'clock', x: 0, y: 0, w: 8, h: 8, visible: true }]));
   await act(async () => { await result.current.handleSave(); });
-  expect(saveLayout).toHaveBeenCalledWith(expect.objectContaining({
-    id: 'hall', isDefault: true, widgets: [expect.objectContaining({ i: 'clock' })],
-  }));
+  expect(saveLayout).toHaveBeenCalledTimes(1);
+  expect((saveLayout.mock.calls[0] as unknown[])[0]).not.toHaveProperty('isDefault');
 });
 
-it('Cancel sends nothing and puts both back', async () => {
+it('Cancel sends nothing and puts the text size back', async () => {
   const { result } = await editing();
   act(() => {
     result.current.setEditingFontScale(80);
-    result.current.makeDefault();
   });
   act(() => result.current.handleCancel());
   expect(saveLayout).not.toHaveBeenCalled();
   expect(writes()).toHaveLength(0);
   expect(result.current.editingFontScale).toBe(100);
-  expect(result.current.defaultDirty).toBe(false);
   expect(result.current.lookDirty).toBe(false);
 });

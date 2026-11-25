@@ -67,8 +67,6 @@ export function LayoutEditor({
   lookDirty = false,
   fontScale = 100,
   onFontScaleChange,
-  defaultPending = false,
-  onMakeDefault,
   onSaveDashboard,
   editingScreensaver = false,
   screensaverWidgets,
@@ -142,7 +140,7 @@ export function LayoutEditor({
   const screenDirty = held.screen || screenDayDirty;
   // What a switch to another dashboard would lose; the screen's own settings
   // stay held on the editor page through it.
-  const dashboardChanged = !!dashboardDirty || !!idleDirty || lookDirty || defaultPending;
+  const dashboardChanged = !!dashboardDirty || !!idleDirty || lookDirty;
   const anyChanged = dashboardChanged || held.screen;
   const { ask: askSwitch, promptProps } = useSwitchPrompt();
   const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
@@ -271,13 +269,6 @@ export function LayoutEditor({
       { id: 'import', label: 'Import', onSelect: () => state.setShowImportDialog(true) },
       { id: 'share', label: 'Share to the gallery', onSelect: () => state.setShowShareDialog(true) },
     ] : []),
-    ...(onMakeDefault ? [{
-      id: 'default',
-      // Held until Done (#1341); Settings > Screens is to hold it (#1351).
-      label: current?.isDefault ? 'Shown on new and unnamed screens' : defaultPending ? 'Shown on new and unnamed screens after Done' : 'Show on new and unnamed screens',
-      disabled: !!current?.isDefault || defaultPending,
-      onSelect: () => onMakeDefault(),
-    }] : []),
     ...(reset ? [{ id: 'reset', label: 'Reset', onSelect: () => reset() }] : []),
     {
       id: 'delete', label: 'Delete', destructive: true,

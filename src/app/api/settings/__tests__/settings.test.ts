@@ -377,6 +377,26 @@ describe('PATCH /api/settings', () => {
       expect(res.status).toBe(200);
     });
 
+    // New and unnamed screens' idle and night look (#1351): every unnamed browser reads it.
+    it.each([
+      'photos',
+      { day: 'photos', night: 'photos', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 40 },
+      { day: 'lamp', night: 'photos', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 0 },
+      { day: 'photos', night: 'photos', switch: { by: 'clock', from: '21:00', to: '21:00' }, nightLevel: 0 },
+    ])('refuses the starting idle and night look %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'screenStartingDay', value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('accepts a starting idle and night look', async () => {
+      const res = await PATCH(makePatchRequest({
+        key: 'screenStartingDay',
+        value: { day: 'photos', night: 'off', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 }, nightLevel: 50 },
+      }));
+      expect(res.status).toBe(200);
+    });
+
     it('refuses "show", which the agenda no longer offers', async () => {
       const res = await PATCH(makePatchRequest({ key: 'calendarPastEvents', value: 'show' }));
       expect(res.status).toBe(400);

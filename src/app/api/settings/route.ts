@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { publicSettings } from '@/lib/settings/publicSettings';
 import { PHOTO_DATE_SETTING, PHOTO_ON_THIS_DAY_SETTING, PHOTO_PLACE_SETTING } from '@/lib/photos/caption';
+import { HOUSEHOLD_DAY_SETTING, screenDaySchema } from '@/lib/screenDay';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
@@ -163,6 +164,10 @@ export async function PATCH(request: NextRequest) {
     }
     if ((body.key === PHOTO_DATE_SETTING || body.key === PHOTO_PLACE_SETTING || body.key === PHOTO_ON_THIS_DAY_SETTING) && typeof body.value !== 'boolean') {
       return NextResponse.json({ error: 'Invalid value' }, { status: 400 });
+    }
+    // Every unnamed browser reads it as its day (#1345); Settings > Screens writes it (#1351).
+    if (body.key === HOUSEHOLD_DAY_SETTING && !screenDaySchema.safeParse(body.value).success) {
+      return NextResponse.json({ error: 'Invalid idle and night look' }, { status: 400 });
     }
 
     // The two below are checked only on the unauthenticated setup path, where

@@ -38,9 +38,6 @@ export interface LayoutEditorProps {
   /** The dashboard's text size as being edited, a percentage (#1350); Done saves it. */
   fontScale?: number;
   onFontScaleChange?: (scale: number) => void;
-  /** Show on new and unnamed screens was pressed in the header menu: Done makes it so (#1341). */
-  defaultPending?: boolean;
-  onMakeDefault?: () => void;
   /** Saves this dashboard without leaving the editor page, for Save and switch (#1341). */
   onSaveDashboard?: () => Promise<void>;
   /** The idle view, arranging a screensaver layout. */

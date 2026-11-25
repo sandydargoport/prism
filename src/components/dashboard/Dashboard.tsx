@@ -579,8 +579,6 @@ export function Dashboard({
               lookDirty={layout.lookDirty}
               fontScale={layout.editingFontScale}
               onFontScaleChange={layout.setEditingFontScale}
-              defaultPending={layout.defaultDirty}
-              onMakeDefault={layout.makeDefault}
               onSaveDashboard={layout.handleSave}
               editingScreensaver={layout.editingScreensaver}
               screensaverWidgets={layout.ssLayout}

@@ -100,3 +100,27 @@ describe('PhotosSettingsSection "Sync now"', () => {
     expect(toastMock).not.toHaveBeenCalled();
   });
 });
+
+// #1351: captions and On this day are household settings for every screen,
+// here in Settings > Photos, not behind the wallpaper switch in Appearance.
+describe('PhotosSettingsSection captions and On this day', () => {
+  it('shows the three switches with their saved values, and a change saves at once', async () => {
+    const fetchMock = jest.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/settings' && !init?.method) return json(200, { settings: { photoCaptionDate: false, photoCaptionPlace: true } });
+      if (url === '/api/settings') return json(200, {});
+      if (url === '/api/photo-sources') return json(200, { sources: [] });
+      return json(404, {});
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PhotosSettingsSection />);
+    const date = await screen.findByRole('switch', { name: 'Show when photos were taken' });
+    expect(date.getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('switch', { name: 'Show where photos were taken' }).getAttribute('aria-checked')).toBe('true');
+    const onThisDay = screen.getByRole('switch', { name: 'On this day' });
+    expect(onThisDay.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(onThisDay);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/settings', expect.objectContaining({
+      method: 'PATCH', body: JSON.stringify({ key: 'photoOnThisDay', value: true }),
+    })));
+  });
+});

@@ -6,7 +6,6 @@
  */
 import { changedSettings, installRemoteStorage, releaseHeldSettings, REMOTE_EDIT_GLOBAL, remoteStorage, resetRemoteEditHost, type RemoteEditHost } from '../remoteEdit';
 import { writeStored } from '@/lib/hooks/useStoredValue';
-import { screenSummary } from '../screenSummary';
 
 function host(settings: Record<string, string>): RemoteEditHost {
   return {
@@ -156,17 +155,5 @@ describe('changedSettings', () => {
       { 'prism-screensaver-timeout': '120', 'prism-screensaver-dim': '0.5' },
       { 'prism-screensaver-timeout': '3600', 'prism-perf-mode': 'full' },
     )).toEqual({ 'prism-screensaver-timeout': '3600', 'prism-screensaver-dim': null, 'prism-perf-mode': 'full' });
-  });
-});
-
-describe('screenSummary', () => {
-  it('says what it shows and when it switches, then when it rests (#1282)', () => {
-    expect(screenSummary({}, 'Shows Kitchen, School run at bus time')).toBe('Shows Kitchen, School run at bus time, rests after 2 min');
-    expect(screenSummary({ 'prism-screensaver-timeout': '0' }, 'Shows Kitchen')).toBe('Shows Kitchen, never rests');
-    expect(screenSummary({ 'prism-screensaver-timeout': '3600' }, null)).toBe('Rests after 1 hour');
-  });
-
-  it('leaves night out: each dashboard has its own (#1281)', () => {
-    expect(screenSummary({}, 'Shows Kitchen')).not.toMatch(/night/);
   });
 });

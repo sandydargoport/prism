@@ -34,7 +34,6 @@ function editor(extra: Partial<React.ComponentProps<typeof LayoutEditor>> = {}) 
     onSave: jest.fn(async () => {}),
     onSaveDashboard: jest.fn(async () => {}),
     onSwitchDashboard: jest.fn(),
-    onMakeDefault: jest.fn(),
   };
   render(
     <LayoutEditor
@@ -137,24 +136,5 @@ describe('changing the screen being edited', () => {
     await choose('Save and switch');
     expect(calls.onSave).toHaveBeenCalledTimes(1);
     expect(mockHost.next).toBe('/screens/main');
-  });
-});
-
-describe('Show on new and unnamed screens, in the header menu (#1341, #1350)', () => {
-  it('writes nothing and reloads nothing: Done makes it so', async () => {
-    const calls = editor();
-    await act(async () => {});
-    fetchMock.mockClear();
-    fireEvent.click(job('Show on new and unnamed screens'));
-    await act(async () => {});
-    expect(calls.onMakeDefault).toHaveBeenCalledTimes(1);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('says it waits for Done once pressed', async () => {
-    editor({ defaultPending: true });
-    await act(async () => {});
-    const button = job('Shown on new and unnamed screens after Done');
-    expect(button.disabled).toBe(true);
   });
 });
