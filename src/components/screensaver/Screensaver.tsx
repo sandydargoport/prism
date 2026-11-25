@@ -41,6 +41,7 @@ import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useWallScene } from './useScene';
 import { setCalmIdle } from './calmMode';
 import { IdleDim } from './idleDim';
+import { idleInk, PhotoShade } from './IdleBackdrop';
 
 // Only displays that choose the sky load its star catalogue.
 const NightSky = React.lazy(() => import('./nightSky/NightSky').then((m) => ({ default: m.NightSky })));
@@ -200,7 +201,7 @@ export function Screensaver() {
         }`}
         // Today's materials (#929): one ink, warm after dusk, and the shades
         // under the corners and the foot solved for this photo.
-        style={{ '--ss-ink': night ? 'rgb(255 226 190)' : 'white', ...shadeVars } as React.CSSProperties}
+        style={{ '--ss-ink': idleInk(night), ...shadeVars } as React.CSSProperties}
         data-screensaver-night={night || undefined}
         data-screensaver
       >
@@ -228,16 +229,7 @@ export function Screensaver() {
           // A light dim over the photo, and the shades only where text sits,
           // as on the wall (#799, #929). The sky is already dark where it matters.
           <>
-            <div className="pointer-events-none absolute inset-0 bg-black/25" />
-            <div
-              className="pointer-events-none absolute inset-0"
-              data-screensaver-shade
-              style={{ backgroundImage: [
-                'radial-gradient(45% 40% at 0% 0%, rgb(0 0 0 / var(--ds-shade-tl, 0.35)), transparent)',
-                'radial-gradient(45% 40% at 100% 0%, rgb(0 0 0 / var(--ds-shade-tr, 0.35)), transparent)',
-                'linear-gradient(to top, rgb(0 0 0 / var(--ds-shade-bottom, 0.35)), transparent 35%)',
-              ].join(', ') }}
-            />
+            <PhotoShade />
             {/* When it was taken, and where if shown (#958). */}
             <PhotoCaption photo={pinnedId ? { id: pinnedId, takenAt: null } : photos[currentIndex] ? { id: photos[currentIndex]!.id, takenAt: photos[currentIndex]!.takenAt } : null} />
           </>

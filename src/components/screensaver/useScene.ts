@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { needsLocation, withoutDashboard, type IdleBackground } from '@/lib/idleBackground';
 import { backgroundOf, nightOpacity } from '@/lib/screenDay';
-import { nightRule, screenStateAt, type Scene, type ScreenState } from '@/lib/throughTheDay';
+import { nightRule, screenStateAt, type Scene } from '@/lib/throughTheDay';
+import type { CanvasToggles } from '@/lib/canvasScene';
 import { useSkyLocation } from './useIdleBackground';
 import { useDashboardShown } from './calmMode';
 import { useScreenDay } from './useScreenDay';
@@ -59,30 +60,35 @@ export function useWallScene({ idle, away, sitter, editing = false }: {
 
 /**
  * The scene the dashboard draws (#1344), from `screenStateAt`: Glance's
- * night veil, whether its parts fade, and in the editor the state the
- * Through the day strip previews (null when not editing).
+ * night veil, whether its parts fade, and in the editor the scene the canvas
+ * draws (#1348).
  *
- * The editor's Resting and Night previews give night outright; otherwise it
- * is night by the screen's rule, rechecked each minute. `background` is the
- * screen's day as the editor has it, which may not be saved yet.
+ * In the editor the canvas's two toggles, In use | Idle and Day | Night,
+ * give idle and night outright, so all four states can be seen at any time
+ * of day; the rest are the wall's own inputs: the screen's day as the editor
+ * has it (which may not be saved yet) and how much darker it goes at night.
+ * Otherwise it is night by the screen's rule, rechecked each minute.
+ * `clockNight` is that night now, whatever the toggles say, for Day | Night
+ * to start from.
  */
-export function usePreviewScene({ previewState, calmIdle, background }: {
-  previewState: ScreenState | null;
+export function usePreviewScene({ preview, calmIdle, background }: {
+  /** In the editor, the canvas's toggles; null when not editing. */
+  preview: CanvasToggles | null;
   /** The wall is showing this dashboard as its own idle screen. */
   calmIdle: boolean;
   background: IdleBackground;
-}): Scene {
-  const { lat, lon } = useSkyLocation(nightRule(background).by === 'sun');
+}): Scene & { clockNight: boolean; lat: number; lon: number; eclipse?: ReturnType<typeof useSkyLocation>['eclipse'] } {
+  const { lat, lon, eclipse } = useSkyLocation(nightRule(background).by === 'sun' || needsLocation(background));
   const { day } = useScreenDay();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  return screenStateAt({
-    idle: calmIdle || previewState === 'resting' || previewState === 'night',
-    background,
-    at: previewState === 'resting' ? { night: false } : previewState === 'night' ? { night: true } : { now, lat, lon },
-    dimLevel: nightOpacity(day),
-  });
+  const dimLevel = nightOpacity(day);
+  const live = screenStateAt({ idle: calmIdle, background, at: { now, lat, lon }, dimLevel });
+  const scene = preview
+    ? screenStateAt({ idle: preview.idle, background, at: { night: preview.night }, dimLevel })
+    : live;
+  return { ...scene, clockNight: live.night, lat, lon, eclipse };
 }

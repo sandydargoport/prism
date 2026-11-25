@@ -70,6 +70,8 @@ const COMMON: Size[] = [
 const RENEW_MS = 60 * 1000;
 /** On a phone the picture is above the panels and takes no more of the height than this. */
 const PICTURE_MAX_HEIGHT = 0.45;
+/** Beside the panels, the room kept under the picture for its caption (#1348), in px. */
+const CAPTION_ROOM = 48;
 /** From this width the panels sit beside the picture (Tailwind's `lg`). */
 const SIDE_BY_SIDE = '(min-width: 1024px)';
 
@@ -134,6 +136,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
   const [problem, setProblem] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const aboveRef = useRef<HTMLDivElement>(null);
+  const belowRef = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState({ width: 0, height: 0 });
   // The screen being edited is this browser (#1280): known once hydrated, as
   // it lives in this browser's storage.
@@ -261,6 +265,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
       settings,
       settingsUpdatedAt: null,
       root: rootRef.current,
+      canvasAbove: aboveRef.current,
+      canvasBelow: belowRef.current,
       onDashboard: (layoutId, isDefault) => { chosen.current = { id: layoutId, isDefault }; },
       onFinish: (saved) => { void finishRef.current(saved); },
       unsaved: () => Object.keys(changedSettings(original.current, next.settings)).length > 0
@@ -313,7 +319,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
     const side = window.matchMedia(SIDE_BY_SIDE);
     const measure = () => {
       const r = el.getBoundingClientRect();
-      setRoom({ width: r.width, height: side.matches ? r.height : window.innerHeight * PICTURE_MAX_HEIGHT });
+      // The caption under the picture keeps its line in the box (#1348).
+      setRoom({ width: r.width, height: side.matches ? Math.max(0, r.height - CAPTION_ROOM) : window.innerHeight * PICTURE_MAX_HEIGHT });
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -403,8 +410,10 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
           </div>
         )}
       </header>
-      <div className="px-4 lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:overflow-hidden lg:px-6 lg:pb-6">
-        <div ref={boxRef} className="flex w-full justify-center lg:h-full lg:items-start" data-canvas-room>
+      <div className="px-4 lg:col-start-1 lg:row-start-2 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:px-6 lg:pb-6">
+        {/* The frame draws the canvas's toggles here, In use | Idle and Day | Night (#1348). */}
+        <div ref={aboveRef} className="shrink-0" data-canvas-above />
+        <div ref={boxRef} className="flex w-full flex-col items-center lg:min-h-0 lg:flex-1" data-canvas-room>
           {src && scale > 0 && (
             <div
               className="relative shrink-0 overflow-hidden rounded-xl bg-black shadow-xl ring-1 ring-border"
@@ -423,6 +432,8 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
               )}
             </div>
           )}
+          {/* And what it draws, under it. */}
+          <div ref={belowRef} className="w-full shrink-0" style={shown.width ? { maxWidth: shown.width } : undefined} data-canvas-below />
         </div>
       </div>
       {/* The frame draws its editing panels and dialogs here. */}

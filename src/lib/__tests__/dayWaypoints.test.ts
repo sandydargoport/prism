@@ -119,27 +119,29 @@ describe('dayStops', () => {
 describe('sceneAt', () => {
   const nights = nightSpans(new Date(2026, 10, 23, 12), { by: 'clock', from: '21:00', to: '06:30' }, 45, -100);
   const spans = switchSpans(SWITCHES, MONDAY, ROUTES);
-  const scene = (hhmm: string, editedId = KITCHEN, exists?: (id: string) => boolean) =>
-    sceneAt(at(hhmm), { spans, switches: SWITCHES, nights, shownId: KITCHEN, editedId, exists });
+  const scene = (hhmm: string, exists?: (id: string) => boolean) =>
+    sceneAt(at(hhmm), { spans, switches: SWITCHES, nights, shownId: KITCHEN, exists });
 
   it('the switch\'s dashboard during a switch, the night look at night, its own dashboard otherwise', () => {
-    expect(scene('07:15')).toEqual({ dashboardId: SCHOOL, state: 'active', switchIndex: 0 });
+    expect(scene('07:15')).toEqual({ dashboardId: SCHOOL, state: 'active', night: false, switchIndex: 0 });
     // At its end it is back.
-    expect(scene('08:00')).toEqual({ dashboardId: KITCHEN, state: 'active', switchIndex: -1 });
-    expect(scene('10:00')).toEqual({ dashboardId: KITCHEN, state: 'active', switchIndex: -1 });
-    expect(scene('21:00')).toEqual({ dashboardId: KITCHEN, state: 'night', switchIndex: -1 });
-    // A switch at night shows its dashboard; after it, night again.
-    expect(scene('01:45')).toEqual({ dashboardId: AMBIENT, state: 'active', switchIndex: 1 });
-    expect(scene('02:45')).toEqual({ dashboardId: KITCHEN, state: 'night', switchIndex: -1 });
+    expect(scene('08:00')).toEqual({ dashboardId: KITCHEN, state: 'active', night: false, switchIndex: -1 });
+    expect(scene('10:00')).toEqual({ dashboardId: KITCHEN, state: 'active', night: false, switchIndex: -1 });
+    expect(scene('21:00')).toEqual({ dashboardId: KITCHEN, state: 'night', night: true, switchIndex: -1 });
+    // A switch at night shows its dashboard in use, at night; after it, idle at night again.
+    expect(scene('01:45')).toEqual({ dashboardId: AMBIENT, state: 'active', night: true, switchIndex: 1 });
+    expect(scene('02:45')).toEqual({ dashboardId: KITCHEN, state: 'night', night: true, switchIndex: -1 });
   });
 
-  it('night is shown only for the dashboard being edited', () => {
-    // Editing Ambient from Kitchen's editor: Kitchen's night is not this one.
-    expect(scene('21:00', AMBIENT)).toEqual({ dashboardId: KITCHEN, state: 'active', switchIndex: -1 });
+  it('night is the screen\'s own, whichever dashboard is being edited (#1348)', () => {
+    // Editing Ambient from Kitchen's editor: the line drew no night, as it
+    // was not Ambient's; the screen idles at night all the same.
+    expect(sceneAt(at('21:00'), { spans, switches: SWITCHES, nights, shownId: KITCHEN }))
+      .toEqual({ dashboardId: KITCHEN, state: 'night', night: true, switchIndex: -1 });
   });
 
   it('a switch to a dashboard that is gone does not count', () => {
-    expect(scene('07:15', KITCHEN, (id) => id !== SCHOOL)).toEqual({ dashboardId: KITCHEN, state: 'active', switchIndex: -1 });
+    expect(scene('07:15', (id) => id !== SCHOOL)).toEqual({ dashboardId: KITCHEN, state: 'active', night: false, switchIndex: -1 });
   });
 
   it('the first switch in order wins an overlap', () => {
@@ -147,7 +149,7 @@ describe('sceneAt', () => {
       { when: 'times', days: [MONDAY], from: '07:00', to: '09:00', dashboardId: AMBIENT },
       { when: 'bus', dashboardId: SCHOOL },
     ];
-    const s = sceneAt(at('07:30'), { spans: switchSpans(both, MONDAY, ROUTES), switches: both, nights, shownId: KITCHEN, editedId: KITCHEN });
-    expect(s).toEqual({ dashboardId: AMBIENT, state: 'active', switchIndex: 0 });
+    const s = sceneAt(at('07:30'), { spans: switchSpans(both, MONDAY, ROUTES), switches: both, nights, shownId: KITCHEN });
+    expect(s).toEqual({ dashboardId: AMBIENT, state: 'active', night: false, switchIndex: 0 });
   });
 });

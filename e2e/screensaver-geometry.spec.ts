@@ -1,5 +1,5 @@
 import { test, expect, type FrameLocator, type Page } from '@playwright/test';
-import { onCanvas } from './helpers/canvasEditor';
+import { canvasShows, onCanvas } from './helpers/canvasEditor';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import {
   facingFor, localSiderealTime, moonPosition, project, toHorizontal,
@@ -191,15 +191,14 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
   const { width, height } = CANVAS[orientation];
   await page.locator('[data-canvas-size]').selectOption(`${width}x${height}`);
   await frame.locator('[data-editor-widget="clock"]').waitFor({ timeout: 90_000 });
-  // The seeded dashboard shows the screensaver over photos, so the resting
-  // screen (See it on Through the day's Resting row, #1294) arranges its
-  // layout; it stays with another panel open.
-  await openSheet(page, 'day');
-  await page.locator('[data-editor-sheet="day"] [data-see="resting"]').click();
+  // The seeded dashboard shows the screensaver over photos, so the idle
+  // screen (Idle over the canvas, #1348) arranges its layout, whichever
+  // panel is open.
+  await canvasShows(page, 'idle', 'day');
   // The guide orientation is saved on the dashboard, so another test may have
   // left it either way.
   await openSheet(page, 'look');
-  await expect(page.locator('[data-editor-resting]')).toBeVisible();
+  await expect(page.locator('[data-canvas-pick="idle"]')).toHaveAttribute('aria-pressed', 'true');
   const shape = page.getByRole('radio', { name: orientation === 'landscape' ? 'Landscape' : 'Portrait' });
   await shape.click();
   await expect(shape).toHaveAttribute('aria-checked', 'true');
@@ -878,7 +877,7 @@ test.describe('calm mode idle screen', () => {
       await done(page).click();
       expect((await save).ok()).toBe(true);
       await backOn(page, layout.slug);
-      await expect(page.locator('[data-editor-resting]')).toHaveCount(0);
+      await expect(page.locator('[data-canvas-toggles]')).toHaveCount(0);
 
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(saved.screensaverWidgets, 'Done saved no screensaver layout of its own').toBeNull();
@@ -915,15 +914,14 @@ test.describe('calm mode idle screen', () => {
       await page.goto(`/d/${layout.slug}`);
       const frame = await openEditor(page);
       const toggle = (i: string) => frame.locator(`[data-editor-widget="${i}"] [data-idle-toggle]`);
-      const resting = page.locator('[data-editor-resting]');
-      // Resting is seen from its row; Back to in use is beside the day's slider (#1294).
-      const see = (state: 'active' | 'resting') => page.locator(`[data-editor-sheet="day"] ${state === 'active' ? '[data-day-back]' : '[data-see="resting"]'}`).click();
+      // In use or idle, on the canvas's toggles (#1348).
+      const see = (state: 'active' | 'resting') => canvasShows(page, state === 'active' ? 'in-use' : 'idle', 'day');
       const dot = (id: string) => page.locator(`[data-editor-open="${id}"] [aria-label="unsaved changes"]`);
-      // In use, the dashboard is arranged; what stays while resting is Through the day's.
-      await expect(resting).toHaveCount(0);
+      // In use, the dashboard is arranged; what stays when idle is set on the idle canvas.
+      await expect(page.locator('[data-canvas-pick="in-use"]')).toHaveAttribute('aria-pressed', 'true');
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await openSheet(page, 'day');
-      // Opening Through the day leaves the canvas in use; Resting's See it shows it resting.
+      // Opening Through the day leaves the canvas in use; Idle shows it idle.
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await see('resting');
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'true');
@@ -997,11 +995,11 @@ test.describe('idle background picker', () => {
    * day: its own canvas, or with `asScreen` this browser's screen's editor,
    * which adds the screen's own rows.
    */
-  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground: IdleBackground = { source: 'dashboard' }, asScreen = false) {
+  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground: IdleBackground = { source: 'dashboard' }, asScreen = false, nightLevel: 0 | 25 | 50 | 75 = 0) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     // The idle look is the screen's (#1345), not the dashboard's.
-    await screenIdles(page, idleBackground);
+    await screenIdles(page, idleBackground, nightLevel);
     const created = await page.request.post('/api/layouts', {
       data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }] },
     });
@@ -1025,8 +1023,8 @@ test.describe('idle background picker', () => {
     try {
       const sheet = page.locator('[data-editor-sheet="day"]');
       const shows = sheet.locator('[data-day-sheet]');
-      // Resting is this dashboard: Stays / Fades. A night sky at night has its own layout.
-      await sheet.locator('[data-see="resting"]').click();
+      // Idle by day is this dashboard: Stays / Fades. A night sky at night has its own layout.
+      await canvasShows(page, 'idle', 'day');
       await expect(shows).toHaveAttribute('data-day-shows', 'resting');
       await expect(frame.locator('[data-idle-toggle]').first()).toBeVisible();
       // Night folds to a line that says what it does, and opens on a tap.
@@ -1036,9 +1034,9 @@ test.describe('idle background picker', () => {
       await sheet.getByLabel('Night look').selectOption({ label: 'Night sky' });
       await expect(shows).toHaveAttribute('data-day-shows', 'night');
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
-      await sheet.locator('[data-see="resting"]').click();
+      await canvasShows(page, 'day');
       await expect(frame.locator('[data-idle-toggle]').first()).toBeVisible();
-      await sheet.locator('[data-day-back]').click();
+      await canvasShows(page, 'in-use');
       await expect(shows).toHaveAttribute('data-day-shows', 'active');
       // The slider's night dot shows night (#1294).
       await sheet.locator('[data-waypoint="night-start"]').click();
@@ -1076,8 +1074,9 @@ test.describe('idle background picker', () => {
     const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }, true);
     try {
       const sheet = page.locator('[data-editor-sheet="day"]');
-      await expect(sheet.locator('[data-see-it]')).toHaveCount(0);
-      await expect(sheet.locator('[data-see="resting"]')).toBeVisible();
+      // No See it (#1348): the canvas's toggles above it say what it draws.
+      await expect(sheet.locator('[data-see-it], [data-see="resting"], [data-day-back]')).toHaveCount(0);
+      await expect(page.locator('[data-canvas-above] [data-canvas-toggles]')).toBeVisible();
       // Night opens to every one of its choices.
       await sheet.locator('[data-night-row] [data-fold-toggle]').click();
       for (const label of ['While resting', 'When night is', 'Night look', 'Night starts', 'Night ends']) {
@@ -1115,6 +1114,85 @@ test.describe('idle background picker', () => {
       for (const n of g.names) expect(Math.abs(n.box.left - g.names[0]!.box.left), `${n.name} in the name column`).toBeLessThanOrEqual(0.5);
     } finally {
       await layout.removeScreen();
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
+  // #1348: the canvas draws what the wall draws, in each of the four states
+  // its toggles pick: the photo or the sky, the fading, and the darkness over
+  // every look, measured on the frame.
+  test('In use | Idle and Day | Night draw the wall\'s scene: the photo or sky, the fading and the darkness over every look', async ({ page }) => {
+    const layout = await editIdle(page, { lat: 45, lon: -100 },
+      { day: 'dashboard', night: 'photos', switch: { by: 'clock', from: '21:00', to: '06:30' } }, false, 50);
+    const { frame } = layout;
+    try {
+      const caption = page.locator('[data-canvas-below] [data-canvas-caption]');
+      const size = await frame.locator('body').evaluate(() => `${window.innerWidth} x ${window.innerHeight}`);
+      /** What the frame draws: the darkness over it, the backdrop, and each widget's opacity. */
+      const drawn = () => frame.locator('body').evaluate(() => {
+        const dark = document.querySelector<HTMLElement>('[data-preview-night]');
+        const backdrop = document.querySelector<HTMLElement>('[data-canvas-backdrop]');
+        const opacity = (id: string) => {
+          const el = document.querySelector<HTMLElement>(`[data-editor-widget="${id}"] [data-editor-content]`);
+          return el ? Number(getComputedStyle(el).opacity) : null;
+        };
+        return {
+          dark: dark ? { kind: dark.dataset.previewNight, opacity: Number(getComputedStyle(dark).opacity), bg: getComputedStyle(dark).backgroundColor, position: getComputedStyle(dark).position } : null,
+          backdrop: backdrop ? { look: backdrop.dataset.canvasBackdrop, bg: getComputedStyle(backdrop).backgroundColor, sky: !!backdrop.querySelector('canvas'), w: backdrop.getBoundingClientRect().width, h: backdrop.getBoundingClientRect().height } : null,
+          clock: opacity('clock'),
+          tasks: opacity('tasks'),
+          photoFrame: document.querySelectorAll('[data-canvas-photo-frame] [data-editor-widget]').length,
+        };
+      });
+
+      // The toggles are always there, whichever panel is open, and start in use.
+      await expect(page.locator('[data-canvas-pick="in-use"]')).toHaveAttribute('aria-pressed', 'true');
+
+      // In use by day: the dashboard, all there, nothing over it.
+      await canvasShows(page, 'in-use', 'day');
+      await expect.poll(drawn).toMatchObject({ dark: null, backdrop: null, clock: 1, tasks: 1 });
+      await expect(caption).toHaveText(new RegExp(`^Behind it e2e \\d+, in use, by day: the dashboard as someone using it sees it\\. ${size}\\.$`));
+
+      // In use at night: still all there, and no darker (the wall dims only while idle).
+      await canvasShows(page, 'night');
+      await expect.poll(drawn).toMatchObject({ dark: null, backdrop: null, clock: 1, tasks: 1 });
+      await expect(caption).toHaveText(/, in use, at night: the dashboard as someone using it sees it\./);
+
+      // Idle by day: the dashboard, quieter: the clock stays, tasks fade.
+      await canvasShows(page, 'idle', 'day');
+      await expect.poll(drawn).toMatchObject({ dark: null, backdrop: null, clock: 1, tasks: 0.12 });
+      await expect(caption).toHaveText(new RegExp(`, idle, by day: the dashboard, quieter\\. ${size}\\.$`));
+
+      // Idle at night: the photo frame over the photo, half darker, at the screen's size.
+      await canvasShows(page, 'night');
+      await expect.poll(drawn).toMatchObject({
+        dark: { kind: 'dim', opacity: 0.5, bg: 'rgb(0, 0, 0)', position: 'fixed' },
+        backdrop: { look: 'photos', bg: 'rgb(0, 0, 0)' },
+      });
+      const night = await drawn();
+      expect(night.photoFrame, 'the photo frame\'s arrangement is on the canvas').toBeGreaterThan(0);
+      expect(night.backdrop!.w).toBe(Number(size.split(' x ')[0]));
+      expect(night.backdrop!.h).toBe(Number(size.split(' x ')[1]));
+      await expect(caption).toHaveText(new RegExp(`, idle, at night: a photo frame, 50% darker\\. ${size}\\.$`));
+
+      // The night sky at night: the sky drawn, and darker too, as every look is on the wall.
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      await sheet.locator('[data-night-row] [data-fold-toggle]').click();
+      await sheet.getByLabel('Night look').selectOption({ label: 'Night sky' });
+      await expect.poll(drawn).toMatchObject({ dark: { kind: 'dim', opacity: 0.5 }, backdrop: { look: 'sky', sky: true } });
+      await expect(caption).toHaveText(/, idle, at night: the night sky, 50% darker\./);
+
+      // The dashboard at night, dimmed; and Screen off, black.
+      await sheet.getByLabel('Night look').selectOption({ label: 'Dim this dashboard' });
+      await expect.poll(drawn).toMatchObject({ dark: { kind: 'dim', opacity: 0.5 }, backdrop: null, clock: 1, tasks: 0.12 });
+      await sheet.getByLabel('Night look').selectOption({ label: 'Screen off' });
+      await expect.poll(drawn).toMatchObject({ dark: { kind: 'off', opacity: 1 } });
+      await expect(caption).toHaveText(/, idle, at night: screen off\./);
+
+      // Back in use, by day: nothing over it again.
+      await canvasShows(page, 'in-use', 'day');
+      await expect.poll(drawn).toMatchObject({ dark: null, backdrop: null, tasks: 1 });
+    } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });

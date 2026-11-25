@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { onCanvas } from './helpers/canvasEditor';
+import { canvasShows, onCanvas } from './helpers/canvasEditor';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
@@ -708,6 +708,13 @@ test.describe('the Today view', () => {
       await expect(frame.locator('[data-today-shade]')).toHaveCount(0);
       // The ink eases to warm.
       await expect.poll(() => frame.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 226, 190)');
+      // Glance in use at night (#1348): its veil, as the wall draws it, and nothing faded.
+      await canvasShows(page, 'in-use');
+      await expect(shown).toHaveAttribute('data-today-night', 'true');
+      await expect(shown).not.toHaveAttribute('data-today-idle', 'true');
+      await expect(frame.locator('[data-today-veil]')).toHaveCount(1);
+      await expect(page.locator('[data-canvas-caption]')).toContainText(', in use, at night: the dashboard as someone using it sees it, under its night veil.');
+      await canvasShows(page, 'idle');
 
       // Screen off: the preview goes black over the scene, and the panels stay.
       await sheet.getByLabel('Night look').selectOption({ label: 'Screen off' });
@@ -716,8 +723,8 @@ test.describe('the Today view', () => {
       expect(await off.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
       await expect(page.locator('[data-editor-bar] nav')).toBeVisible();
 
-      // Back to in use: the day again.
-      await sheet.locator('[data-day-back]').click();
+      // In use by day, on the canvas's toggles (#1348): the day again.
+      await canvasShows(page, 'in-use', 'day');
       await expect(shown).not.toHaveAttribute('data-today-night', 'true');
       await expect(off).toHaveCount(0);
       await expect(frame.locator('[data-today-shade]')).toHaveCount(1);

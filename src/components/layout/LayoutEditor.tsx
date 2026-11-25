@@ -26,6 +26,7 @@ import { SCREEN_SETTING_FIELDS } from '@/lib/displays/screenSettingFields';
 import { SCREEN_ATTENTION_KEY } from '@/lib/displays/screenAttention';
 import { useStoredRevision } from '@/lib/hooks/useStoredValue';
 import { SwitchPrompt, useSwitchPrompt } from './SwitchPrompt';
+import { CanvasCaption, CanvasToggles } from './CanvasToggles';
 
 /** The screen settings each tab sets (#1341); the Screen tab has the rest. */
 const LOOK_KEYS = new Set<string>(SCREEN_SETTING_FIELDS.map((f) => f.key));
@@ -107,6 +108,7 @@ export function LayoutEditor({
   onSelectedWidgetChange,
   hideEmptyByDefault = false,
   idleToggles = false,
+  canvasCaption,
 }: LayoutEditorProps) {
   const { confirm: confirmDelete, dialogProps: confirmDialogProps } = useConfirmDialog();
   const { measureMode, measureHideNav, toggleMeasureMode, toggleMeasureNav } = useMeasureMode();
@@ -120,18 +122,17 @@ export function LayoutEditor({
   // opens on Dashboard still.
   const [sheet, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
   useEffect(() => { forgetKeptPanel(); }, []);
-  // Through the day's slider and Resting's See it show the screen resting or
-  // at night, which stays with another panel open so its layout can be
-  // arranged; Dashboard, or Back to in use, goes back. Another dashboard shown
-  // as it is saved (#1294) is only for the slider, and for Screen, where a
-  // switch's dot tapped on the slider opens (#1326): any other panel edits this one.
+  // The canvas's toggles (#1348) say which state it draws, whichever panel
+  // is open, so an idle layout can be arranged from Widgets. Another
+  // dashboard shown as it is saved (#1294) is only for the slider, and for
+  // Screen, where a switch's dot tapped on the slider opens (#1326): any
+  // other panel edits this one.
   const [openSwitch, setOpenSwitch] = useState<number | null>(null);
   const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
     setOpenSwitch(null);
     if (next !== 'day' && next !== 'screen') onPreviewDashboardChange?.(null);
-    if (next === 'dashboard') onEditTabChange?.('dashboard');
-  }, [onEditTabChange, onPreviewDashboardChange]);
+  }, [onPreviewDashboardChange]);
   // A widget selected on the canvas brings Widgets forward, where its own
   // settings are (#1323). Only a new selection does: another panel opened
   // while it stays selected stays open.
@@ -140,10 +141,7 @@ export function LayoutEditor({
     if (selectedWidgetId && selectedWidgetId !== shownSelection.current) setSheet('widgets');
     shownSelection.current = selectedWidgetId;
   }, [selectedWidgetId, setSheet]);
-  const backToInUse = useCallback(() => {
-    onPreviewDashboardChange?.(null);
-    onEditTabChange?.('dashboard');
-  }, [onEditTabChange, onPreviewDashboardChange]);
+  const backToThis = useCallback(() => onPreviewDashboardChange?.(null), [onPreviewDashboardChange]);
   const openScreenAt = useCallback((index: number) => {
     setSheet('screen');
     setOpenSwitch(index);
@@ -408,10 +406,18 @@ export function LayoutEditor({
         doneBlocked={saveBlocked}
         onDone={state.handleSave}
         onCancel={onCancel}
-        resting={editTab === 'idle' ? (idleHalf === 'night' ? 'night' : 'resting') : null}
         previewName={editTab === 'idle' ? null : previewName}
-        onLeaveResting={backToInUse}
+        onLeavePreview={backToThis}
       />
+
+      {/* Over the canvas: which state it draws, and under it what that is (#1348). */}
+      <CanvasToggles
+        idle={editTab === 'idle'}
+        night={idleHalf === 'night'}
+        onIdleChange={(idle) => { onPreviewDashboardChange?.(null); onEditTabChange?.(idle ? 'idle' : 'dashboard'); }}
+        onNightChange={(night) => { onPreviewDashboardChange?.(null); onIdleHalfChange?.(night ? 'night' : 'day'); }}
+      />
+      {canvasCaption && <CanvasCaption text={canvasCaption} />}
 
       <CreateDashboardDialog
         open={state.showCreateDialog}

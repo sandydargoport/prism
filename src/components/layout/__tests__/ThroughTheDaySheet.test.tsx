@@ -5,8 +5,8 @@
  * a day slider that steps through the day's waypoints and shows the screen
  * then, with a dot for each of the screen's switches; tapping one opens it on
  * the Screen sheet, where the switches are set (#1326). Then the screen's
- * own idle look and night (#1345), saved to the screen: Resting with See it,
- * and At night as a row shaped like a switch, folded to one line. A day
+ * own idle look and night (#1345), saved to the screen: Resting, and At
+ * night as a row shaped like a switch, folded to one line. A day
  * nobody gave a night is stored as before.
  */
 import React, { useState } from 'react';
@@ -81,7 +81,7 @@ afterEach(() => { localStorage.clear(); lookOpened.mockReset(); switchOpened.moc
 
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 const pick = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
-const seeResting = () => fireEvent.click(document.querySelector<HTMLElement>('[data-see="resting"]')!);
+const pickResting = (value: string) => fireEvent.change(screen.getByLabelText('While resting'), { target: { value } });
 /** Opens a folded row by its toggle. */
 const unfold = (row: Element) => fireEvent.click(row.querySelector<HTMLElement>('[data-fold-toggle]')!);
 const nightRow = () => document.querySelector<HTMLElement>('[data-night-row]')!;
@@ -91,7 +91,7 @@ const summary = (row: Element) => row.querySelector('[data-fold-summary]')!.text
 
 describe('ThroughTheDaySheet', () => {
   describe('plain rows (#1281)', () => {
-    it('the slider first, then a row for resting with See it and a folded one for night', () => {
+    it('the slider first, then a row for resting and a folded one for night', () => {
       render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
       // The See it strip went: the slider shows in use and night (#1294).
       expect(document.querySelector('[data-see-it]')).toBeNull();
@@ -110,16 +110,13 @@ describe('ThroughTheDaySheet', () => {
       expect((screen.getByLabelText('Night look') as HTMLSelectElement).value).toBe('sky');
     });
 
-    it('Resting\'s See it shows the canvas resting, and Back to in use brings it back', () => {
+    it('has no See it or Back to in use: the canvas\'s own toggles say what it draws (#1348)', () => {
       render(<Harness initial={{ source: 'photos' }} />);
       expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-shows')).toBe('active');
+      expect(document.querySelector('[data-see="resting"]')).toBeNull();
       expect(document.querySelector('[data-day-back]')).toBeNull();
-      seeResting();
-      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-      expect(document.querySelector('[data-see="resting"]')!.getAttribute('aria-pressed')).toBe('true');
-      fireEvent.click(document.querySelector<HTMLElement>('[data-day-back]')!);
-      expect(seen.tab).toBe('dashboard');
-      expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-shows')).toBe('active');
+      expect(screen.queryByRole('button', { name: 'See it' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Back to in use' })).toBeNull();
     });
 
     it('picks what it shows resting, and shows it', () => {
@@ -287,16 +284,17 @@ describe('ThroughTheDaySheet', () => {
       earlier();
       expect(label()).toBe('07:15, Bus starts');
       earlier();
-      // Night ends: Home in use again, not the night look.
+      // Night ends: Home in use again by day, not the night look.
       expect(label()).toBe('06:30, night ends');
-      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
+      expect(seen).toMatchObject({ tab: 'dashboard', half: 'day', preview: null });
       earlier();
       // A switch at night shows its dashboard.
       expect(label()).toBe('02:45, Ambient ends');
       expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
       earlier();
       expect(label()).toBe('01:45, Ambient starts');
-      expect(seen).toMatchObject({ tab: 'dashboard', preview: AMBIENT });
+      // In use, and at night: the canvas's Night is the line's (#1348).
+      expect(seen).toMatchObject({ tab: 'dashboard', half: 'night', preview: AMBIENT });
       expect((screen.getByRole('button', { name: 'Earlier' }) as HTMLButtonElement).disabled).toBe(true);
     });
 
@@ -350,12 +348,11 @@ describe('ThroughTheDaySheet', () => {
       await act(async () => {});
       later();
       expect(caption()).toBe('Shows Bus as it is saved');
-      seeResting();
+      // Picking what it shows idle draws it idle, as the canvas's Idle does.
+      pickResting('sky');
       expect(seen).toMatchObject({ tab: 'idle', half: 'day', preview: null });
       expect(label()).toBe('Step through the day to see the screen then.');
       expect(document.querySelector('[data-day-sheet]')!.hasAttribute('data-day-at')).toBe(false);
-      fireEvent.click(document.querySelector<HTMLElement>('[data-day-back]')!);
-      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
     });
 
     it('a dashboard edited on its own shows only night\'s start and end, and its own night', async () => {

@@ -54,7 +54,16 @@ export interface CssGridEditorProps {
   idleToggles?: boolean;
   /** See CssGridDisplayProps: whether an unset widget hides when empty. */
   hideEmptyByDefault?: boolean;
+  /**
+   * The widgets that fade on the idle screen, drawn faint while the canvas
+   * shows it idle (#1348); faint rather than gone, so each can still be
+   * picked and set to stay.
+   */
+  fadedIds?: ReadonlySet<string>;
 }
+
+/** How much of a fading widget the canvas still draws, idle (#1348). */
+export const CANVAS_FADED_OPACITY = 0.12;
 
 export function CssGridEditor({
   layout,
@@ -72,6 +81,7 @@ export function CssGridEditor({
   theme,
   idleToggles = false,
   hideEmptyByDefault = false,
+  fadedIds,
 }: CssGridEditorProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const { emptyIds, reporterFor } = useEmptyWidgets();
@@ -300,6 +310,7 @@ export function CssGridEditor({
             renderWidget={renderWidget}
             theme={theme}
             onToggleIdle={idleToggles ? handleToggleIdle : undefined}
+            faded={fadedIds?.has(w.i) ?? false}
             reportEmpty={reporterFor(w.i)}
             emptyHidden={!emptyIds.has(w.i) ? null
               : hidesWhenEmpty(w, hideEmptyByDefault) ? 'always'
@@ -372,6 +383,8 @@ interface DraggableWidgetProps {
   renderWidget: (widget: WidgetConfig) => React.ReactNode;
   theme: EditorTheme;
   onToggleIdle?: (id: string) => void;
+  /** Fades on the idle screen, which the canvas shows. */
+  faded?: boolean;
   reportEmpty: (empty: boolean) => void;
   /** Empty now and so hidden on the live screen, always or only when idle. */
   emptyHidden: 'always' | 'idle' | null;
@@ -388,6 +401,7 @@ function DraggableWidget({
   renderWidget,
   theme,
   onToggleIdle,
+  faded = false,
   reportEmpty,
   emptyHidden,
 }: DraggableWidgetProps) {
@@ -448,8 +462,10 @@ function DraggableWidget({
       <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: widget.textColor, textOpacity: widget.textOpacity, gridLineOpacity: widget.gridLineOpacity, cellBackgroundColor: widget.cellBackgroundColor, cellBackgroundOpacity: widget.cellBackgroundOpacity }}>
         <WidgetEmptyReportContext.Provider value={reportEmpty}>
           <div
-            className={`h-full w-full overflow-hidden ${textClass} ${outlineClass} ${emptyHidden ? 'opacity-50' : ''}`}
-            style={{ pointerEvents: 'none', ...contentStyle }}
+            className={`h-full w-full overflow-hidden transition-opacity duration-300 ${textClass} ${outlineClass} ${emptyHidden && !faded ? 'opacity-50' : ''}`}
+            style={{ pointerEvents: 'none', ...contentStyle, ...(faded ? { opacity: CANVAS_FADED_OPACITY } : {}) }}
+            data-faded={faded || undefined}
+            data-editor-content
           >
             {renderWidget(widget)}
           </div>

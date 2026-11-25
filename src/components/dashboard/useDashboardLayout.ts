@@ -44,10 +44,10 @@ export const LAYOUTS_REFRESH_MS = 60 * 1000;
 /** The query parameter that opens a dashboard in edit mode. */
 export const EDIT_PARAM = 'edit';
 
-/** What the canvas shows (#782): the dashboard in use, or the screen idle (from Through the day). */
+/** What the canvas shows (#782): the dashboard in use, or the screen idle; the canvas's In use | Idle (#1348). */
 export type EditTab = 'dashboard' | 'idle';
 
-/** Which half of a day and night pair the idle view previews and edits. */
+/** Day or night on the canvas, in use or idle: the canvas's Day | Night (#1348). */
 export type IdleHalf = 'day' | 'night';
 
 /** The background the idle view shows: the one there is, or the previewed half. */

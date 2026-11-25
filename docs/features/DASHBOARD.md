@@ -27,6 +27,8 @@ What each panel holds:
 - **Look**: the screen shape, **See it at a screen size**, and this screen's own settings under **This screen**.
 - **More**: the overview, notices, **Export**, **Import**, **Share to the gallery** and **Reset this layout**.
 
+Over the canvas, the toggles **In use | Idle** and **Day | Night** pick which of the screen's four states it draws, each as the screen draws it, and the line under the canvas names it: "Main, idle, at night: a photo frame, 50% darker. 1280 x 800." (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
+
 Everything in the editor waits for **Done**, including which dashboard is the default, the screen shape and the screen's own settings, on a device with no name too. A dot on a tab means that panel has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
 
 Opening another dashboard from **Dashboard**, or another screen from **Screen**, with changes not saved asks first: **Save and switch** saves them and opens it, **Discard** opens it without them, and **Stay** keeps you where you are.
@@ -194,7 +196,7 @@ Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigat
 
 ### Screensaver layout
 
-Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In the editor, open **Through the day**, tap **See it** on the **Resting** row (or step to night on the day's line), then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
+Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In the editor, pick **Idle** over the canvas (and **Night** for the night), then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
 
 The screen rests after the time set as **Rest after** in the Screen panel: 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests**, 2 minutes by default. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
 

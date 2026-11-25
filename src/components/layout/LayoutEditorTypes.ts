@@ -46,7 +46,7 @@ export interface LayoutEditorProps {
   /** What the display shows behind it when idle (#782). Omitted: no picker. */
   idleBackground?: IdleBackground;
   onIdleBackgroundChange?: (bg: IdleBackground) => void;
-  /** Which half of a day and night pair the idle view shows. */
+  /** Day or night on the canvas (#1348), in use or idle. */
   idleHalf?: IdleHalf;
   onIdleHalfChange?: (half: IdleHalf) => void;
   /** Tonight's times and whether the offsets cross, for a day and night pair. */
@@ -96,6 +96,8 @@ export interface LayoutEditorProps {
   /** How the grid being edited draws the selected widget: see LayoutGridEditorProps. */
   hideEmptyByDefault?: boolean;
   idleToggles?: boolean;
+  /** The line under the canvas naming what it draws (#1348), from the scene the wall reads. */
+  canvasCaption?: string;
 }
 
 export interface ExportWidget {

@@ -7,13 +7,14 @@
  * First a day slider: the day as a line with a dot wherever what the screen
  * shows changes (night's start and end, each switch's start and end today),
  * and ◀ ▶ to step from one to the next. The canvas shows the screen then: a
- * switch's dashboard during the switch, the night look at night, its own
- * dashboard otherwise. The slider only shows; tapping a dot opens its row:
+ * switch's dashboard during the switch, idle at night at night, its own
+ * dashboard otherwise, and the canvas's toggles (#1348) say so. The slider
+ * only shows; tapping a dot opens its row:
  * night's here, a switch's on the Screen sheet, where the screen's switches
  * are set (#1326).
  *
- * Then the screen's own day (#1345): what it shows idle by day, with See it to
- * arrange what shows over the photos or the sky, and At night, a row shaped
+ * Then the screen's own day (#1345): what it shows idle by day, and At
+ * night, a row shaped
  * like a switch: its look, when night is, tonight's times and the offsets. It
  * belongs to the screen, so a switch to another dashboard does not change how
  * it idles, and Done saves it to the screen. At night folds to one line
@@ -39,7 +40,6 @@ import { DaySlider } from './DaySlider';
 import { chip, field, Fold, hhmm, note, Row, useBusRoutes } from './sheetRows';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { DashboardInfo } from './LayoutEditorTypes';
-import { cn } from '@/lib/utils';
 
 const RESTING: { value: IdleSource; label: string }[] = [
   { value: 'dashboard', label: 'This dashboard' },
@@ -124,13 +124,12 @@ export function ThroughTheDaySheet({
   const night = tonight(today, rule, lat, lon);
 
   const state: ScreenState = editTab !== 'idle' ? 'active' : idleHalf === 'night' ? 'night' : 'resting';
-  const show = (s: ScreenState) => {
-    if (s === 'active') { onEditTabChange?.('dashboard'); return; }
-    onPreviewDashboardChange?.(null);
-    onEditTabChange?.('idle');
-    onIdleHalfChange?.(s === 'night' ? 'night' : 'day');
+  // Sets the canvas's toggles (#1348): in use or idle, by day or at night.
+  const show = (s: ScreenState, atNight = s === 'night') => {
+    if (s !== 'active') onPreviewDashboardChange?.(null);
+    onEditTabChange?.(s === 'active' ? 'dashboard' : 'idle');
+    onIdleHalfChange?.(atNight ? 'night' : 'day');
   };
-  const backToInUse = () => { onPreviewDashboardChange?.(null); show('active'); };
   const change = (patch: Partial<typeof pair>) => onIdleBackgroundChange?.(simplest({ ...pair, ...patch }));
 
   const exists = (id: string) => allDashboards.some((d) => d.id === id);
@@ -149,12 +148,13 @@ export function ThroughTheDaySheet({
   const stops = dayStops({ now: minuteNow, nights, switches: spans });
   const nowIndex = Math.max(0, stops.findIndex((s) => s.marks.some((m) => m.kind === 'now')));
   // A dashboard edited on its own is the one on show all day.
-  const sceneOf = (i: number): Scene => sceneAt(stops[i]!.minute, { spans, switches, nights, shownId: plan ? shownId : editedId, editedId, exists });
-  // The stop picked shows only while the canvas shows its moment: Back to in
-  // use, or Resting's See it, show something else.
+  const sceneOf = (i: number): Scene => sceneAt(stops[i]!.minute, { spans, switches, nights, shownId: plan ? shownId : editedId, exists });
+  // The stop picked shows only while the canvas shows its moment: the
+  // canvas's toggles can show something else.
+  const halfNow = idleHalf === 'night';
   const showing = (sc: Scene) => (sc.state === 'night'
     ? state === 'night' && !previewDashboardId
-    : state === 'active' && (previewDashboardId ?? editedId) === sc.dashboardId);
+    : state === 'active' && halfNow === sc.night && (previewDashboardId ?? editedId) === sc.dashboardId);
   const shownStop = stopAt !== null && stopAt < stops.length && showing(sceneOf(stopAt)) ? stopAt : null;
   const goTo = (i: number, tapped: boolean) => {
     setStopAt(i);
@@ -162,7 +162,7 @@ export function ThroughTheDaySheet({
     if (sc.state === 'night') show('night');
     else {
       onPreviewDashboardChange?.(sc.dashboardId === editedId ? null : sc.dashboardId);
-      show('active');
+      show('active', sc.night);
     }
     // A tapped dot opens the row that makes it: a switch's is on the Screen sheet.
     const mark = stops[i]!.marks.find((m) => m.kind !== 'now');
@@ -209,9 +209,6 @@ export function ThroughTheDaySheet({
           labelOf={stopInWords}
           tick={(m) => clock(hhmm(m))}
           caption={shownStop === null ? undefined : sceneInWords(sceneOf(shownStop))}
-          back={(state !== 'active' || previewDashboardId) && (
-            <button type="button" className={cn(chip(false), 'shrink-0')} onClick={backToInUse} data-day-back>Back to in use</button>
-          )}
         />
       </section>
 
@@ -222,11 +219,6 @@ export function ThroughTheDaySheet({
             onChange={(e) => { change({ day: e.target.value as IdleSource }); show('resting'); }}>
             {RESTING.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          {/* Resting is not a time of day, so it is seen here, not on the line. */}
-          <button type="button" className={cn(chip(state === 'resting'), 'ml-auto')} aria-pressed={state === 'resting'}
-            onClick={() => show('resting')} data-see="resting">
-            See it
-          </button>
         </Row>
         <Fold name="At night" summary={nightInShort()} colorIndex={-1} open={openRow === 'night'} onToggle={() => toggle()} data-night-row>
           <span className="flex flex-wrap items-center gap-2">
@@ -294,7 +286,7 @@ export function ThroughTheDaySheet({
         {moreOpen && (
           <div className="mt-4 flex flex-col gap-4 pointer-fine:mt-3 pointer-fine:gap-3">
             <p className="m-0 text-body text-muted-foreground">
-              Photos and the night sky have their own arrangement: See it on Resting, or step to night on the line, then Widgets.
+              Photos and the night sky have their own arrangement: pick Idle over the canvas, and Night for the night, then Widgets.
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(false)} onClick={() => setMotionOpen(true)}>Screensaver motion</button>

@@ -1,5 +1,6 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
+import { canvasShows } from './helpers/canvasEditor';
 
 /**
  * A screen shows one dashboard and switches to another for a while (#1282):
@@ -253,7 +254,7 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
         // Folded, a row is one button; opening the switch shows its days (#1294).
         const fold = await box('[data-switch-row="0"] [data-fold-toggle]');
         await rows(page).first().locator('[data-fold-toggle]').click();
-        // The words on each kind of control: a day, + Switch, then See it and More.
+        // The words on each kind of control: a day, + Switch, then More.
         const fontOf = (sheet: typeof screenSheet, selectors: string[]) => sheet.evaluate((el, list) => list
           .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`), selectors);
         const switchFonts = await fontOf(screenSheet, ['[data-day-chip="1"]', '[data-switch-add="times"]']);
@@ -270,7 +271,7 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
         const sheet = page.locator('[data-editor-sheet="day"]');
         box = boxIn(sheet);
         const nightFold = await box('[data-night-row] [data-fold-toggle]');
-        const fonts = [...switchFonts, ...await fontOf(sheet, ['[data-see="resting"]', '[data-day-more]'])];
+        const fonts = [...switchFonts, ...await fontOf(sheet, ['[data-day-more]'])];
         // The tab bar: the Through the day tab's words, and the ground the tabs are drawn on.
         const tabWords = (await page.locator('[data-editor-open="day"] span').last().boundingBox())!;
         const tabGround = await page.locator('[data-editor-panels] nav').evaluate((nav) => {
@@ -284,8 +285,9 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
         const measured = {
           ...switchBoxes,
           resting: await box('[data-resting-look]'),
-          see: await box('[data-see="resting"]'),
           step: await box('[data-day-step="next"]'),
+          // The canvas's toggles (#1348), above the picture.
+          toggle: (await page.locator('[data-canvas-above] [data-canvas-pick="idle"]').boundingBox())!,
           nightFold,
         };
         // Night opens on its own row.
@@ -461,8 +463,8 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
         await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible();
       }
       await sheet.locator('[data-waypoint][data-minute="1260"]').click();
-      // Back to in use.
-      await sheet.locator('[data-day-back]').click();
+      // In use by day, on the canvas's toggles (#1348).
+      await canvasShows(page, 'in-use', 'day');
       await expect(frame.locator('[data-preview-night]')).toHaveCount(0);
       await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'active');
 
