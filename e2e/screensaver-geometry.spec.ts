@@ -403,6 +403,36 @@ test.describe('screensaver night sky', () => {
     expect(gutter, 'no scrollbar drawn on the resting screen').toBe('none');
   });
 
+  // Widgets on the photo frame drop their backings to sit on the photo; the
+  // calendar's name chips keep their colours, so each calendar reads as its own.
+  test('the calendar name chips keep their colours on the photo frame', async ({ page }) => {
+    await page.route('**/api/calendar-groups', (route) => route.fulfill({ json: { groups: [
+      { id: 'g-robin', name: 'Robin', color: '#e11d48', type: 'user' },
+      { id: 'g-family', name: 'Family', color: '#2563eb', type: 'family' },
+    ] } }));
+    await page.clock.setFixedTime(new Date(NOON));
+    await weatherAt(page, { lat: 45, lon: -100 });
+    await screenIdles(page, BACKGROUNDS.photos);
+    await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
+      ? route.fulfill({ json: { layouts: [{
+        ...idleLayout(BACKGROUNDS.photos),
+        screensaverWidgets: [{ i: 'calendar', x: 0, y: 0, w: 24, h: 24, visible: true }],
+      }] } })
+      : route.fallback());
+    await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
+    await page.goto('/');
+    await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
+    await waitForQuiet(page);
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+
+    // On a cleared cell, where every other backing is gone.
+    const chip = page.locator('[data-screensaver] .widget-cell.idle-clear [data-calendar-chip="g-robin"]');
+    await expect(chip).toBeVisible({ timeout: 15000 });
+    expect(await chip.evaluate((el) => getComputedStyle(el).backgroundColor), 'Robin keeps red').toBe('rgb(225, 29, 72)');
+    const family = page.locator('[data-screensaver] .widget-cell.idle-clear [data-calendar-chip="g-family"]');
+    expect(await family.evaluate((el) => getComputedStyle(el).backgroundColor), 'Family keeps blue').toBe('rgb(37, 99, 235)');
+  });
+
   test('Night sky fills the screen instead of the photos', async ({ page }) => {
     await openScreensaver(page, 'sky', NIGHT);
     const s = await sky(page);

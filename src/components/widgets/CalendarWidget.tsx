@@ -258,11 +258,15 @@ export const CalendarWidget = React.memo(function CalendarWidget({
           )}
           style={
             selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all')
-              ? { backgroundColor: group.color }
+              ? { backgroundColor: group.color, textShadow: 'none' }
               : undefined
           }
+          // Each calendar keeps its colour on the photo frame, where every
+          // other backing in a widget is cleared to sit on the photo.
+          data-keep-bg
+          data-calendar-chip={group.id}
         >
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all') ? 'rgba(255,255,255,0.55)' : group.color }} />
+          <span data-keep-bg className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all') ? 'rgba(255,255,255,0.55)' : group.color }} />
           {group.name}
         </button>
       ))}
