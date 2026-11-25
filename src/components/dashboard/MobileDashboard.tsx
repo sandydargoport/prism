@@ -29,6 +29,8 @@ import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useRemoveBirthday } from './useRemoveBirthday';
 import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, useHiddenCards } from './useMobileCardOrder';
+import { PhoneCardsSheet } from './PhoneCardsSheet';
+import { PHONE_CARDS_EVENT, PHONE_REORDER_EVENT } from '@/lib/constants/dock';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import { pickShownTrack, useBusLive } from '@/lib/hooks/useBusLive';
 import { useNow } from '@/lib/hooks/useNow';
@@ -85,8 +87,12 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   // As on the bus widget: with a live provider, today's trip on an open route
   // stands in for the email view, before it starts and once it is done.
   const liveBus = pickShownTrack(busLive.tracks, busRoutes.map((r) => r.id), busLive.provider, now.getTime() + busLive.clockOffsetMs);
-  const [hiddenCards] = useHiddenCards();
+  const [hiddenCards, setHiddenCards] = useHiddenCards();
   const [reorderMode, setReorderMode] = useState(false);
+  const [cardsOpen, setCardsOpen] = useState(false);
+  const toggleCard = useCallback((id: string) => {
+    setHiddenCards((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  }, [setHiddenCards]);
   // Birthdays has no page of its own, so its card opens the full widget here.
   const [birthdaysOpen, setBirthdaysOpen] = useState(false);
   const openBirthdays = useCallback(() => setBirthdaysOpen(true), []);
@@ -94,17 +100,25 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   const removeBirthday = useRemoveBirthday(confirm);
 
   const { pullDistance, refreshing } = usePullToRefresh();
-  const { layout } = useMobileLayout();
+  const { layout, setLayout } = useMobileLayout();
 
-  // Listen for reorder mode toggle from FAB
+  // More > This phone > Cards and Reorder (#1354), sent once More has closed.
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      setReorderMode(detail?.active ?? false);
+    const reorder = (e: Event) => setReorderMode((e as CustomEvent).detail?.active ?? false);
+    const cards = () => setCardsOpen(true);
+    window.addEventListener(PHONE_REORDER_EVENT, reorder);
+    window.addEventListener(PHONE_CARDS_EVENT, cards);
+    return () => {
+      window.removeEventListener(PHONE_REORDER_EVENT, reorder);
+      window.removeEventListener(PHONE_CARDS_EVENT, cards);
     };
-    window.addEventListener('prism:mobile-reorder', handler);
-    return () => window.removeEventListener('prism:mobile-reorder', handler);
   }, []);
+
+  // The same hidden list and layout the dashboard draws from, so a tap shows
+  // at once and Done only closes the sheet.
+  const cardsSheet = (
+    <PhoneCardsSheet open={cardsOpen} onOpenChange={setCardsOpen} hidden={hiddenCards} onToggle={toggleCard} layout={layout} onLayout={setLayout} />
+  );
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -178,9 +192,22 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
 
   if (reorderMode) {
     return (
-      <div className="p-4 pb-24 space-y-3 max-w-lg mx-auto">
-        <div className="text-center text-sm text-muted-foreground py-2">
-          Drag cards to reorder
+      <div className="p-4 pb-24 space-y-3 max-w-lg mx-auto" data-mobile-reorder>
+        {/* Done sits above the dock while reordering (#1354). */}
+        <div
+          className="fixed inset-x-2 z-40 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-lg"
+          style={{ bottom: 'calc(var(--nav-bottom, 0px) + 0.5rem)' }}
+          data-reorder-done-bar
+        >
+          <span className="text-sm text-muted-foreground">Drag cards to reorder</span>
+          <button
+            type="button"
+            onClick={() => setReorderMode(false)}
+            className="min-h-[44px] rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground"
+            data-reorder-done
+          >
+            Done
+          </button>
         </div>
         <DndContext
           sensors={sensors}
@@ -196,6 +223,7 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
             ))}
           </SortableContext>
         </DndContext>
+        {cardsSheet}
       </div>
     );
   }
@@ -265,6 +293,7 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
           </div>
         </DialogContent>
       </Dialog>
+      {cardsSheet}
       <ConfirmDialog {...confirmDialogProps} />
     </MobileLayoutProvider>
   );

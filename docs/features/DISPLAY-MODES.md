@@ -140,7 +140,7 @@ Away mode cuts the screen down to the clock, the weather and a photo.
 
 There are two ways to turn it on:
 
-1. **Manual**: open **More** on the dock and tap **Away mode** under **This screen**. Prism asks for a parent's PIN, and then the mode starts.
+1. **Manual**: open **More** on the dock and tap **Away mode** under **This screen** (on a phone, under **Screens**). Prism asks for a parent's PIN, and then the mode starts.
 2. **Auto**: set **Turn on after** in the **Away mode** card in *Settings > Appearance*. It is one setting for every screen in the house:
    - **Never (only by hand)**: never turn on by itself.
    - **4 hours** without any use, then it turns on.
@@ -206,7 +206,7 @@ A sensitive section shows a placeholder ("Tap to reveal: parent PIN required") u
 
 There are two ways to turn it on:
 
-1. **Open More** on the dock and tap **Babysitter mode** under **This screen**, then enter a parent's PIN.
+1. **Open More** on the dock and tap **Babysitter mode** under **This screen** (on a phone, under **Screens**), then enter a parent's PIN.
 2. **Share the public URL** `/babysitter`, which works without logging in. You can send it to a sitter ahead of time so they have the information on their phone as well.
 
 #### The /babysitter public URL

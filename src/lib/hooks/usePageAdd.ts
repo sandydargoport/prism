@@ -4,8 +4,8 @@
  * A page's own Add, for the phone's round button (#1028). A subpage registers
  * what "add" means there (add a chore, an item, an event); on a phone the
  * round button at the bottom right shows "+" and runs it, and the page drops
- * its header "+". The dashboard registers nothing, so there the button stays
- * the dashboard's options.
+ * its header "+". The dashboard registers nothing, so it has no round button
+ * (#1354).
  */
 import { useEffect, useSyncExternalStore } from 'react';
 import { useLatestRef } from '@/lib/hooks/useLatestRef';

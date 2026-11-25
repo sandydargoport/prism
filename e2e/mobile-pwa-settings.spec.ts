@@ -8,7 +8,7 @@
  * but the root cause was that ALL settings sections were unreachable.
  *
  * What this asserts:
- *   1. The mobile nav exposes a path to /settings.
+ *   1. The dock's More exposes a path to /settings (#1354).
  *   2. After landing on /settings, the section selector lets the user
  *      switch sections (the desktop sidebar is hidden on <md).
  *   3. The new Integrations section renders its provider cards.
@@ -67,15 +67,16 @@ test.describe('Mobile PWA settings reachability', () => {
     await page.goto('/');
     await waitForQuiet(page);
 
-    // Mobile nav at <md is MobileFab — a floating action button that opens
-    // a stack of action items. The FAB itself is aria-labeled "Dashboard options".
-    const fab = page.locator('button[aria-label="Dashboard options"]');
-    await expect(fab).toBeVisible();
-    await fab.click();
+    // On a phone Settings is under More > Prism (#1354). The dashboard has no
+    // round button: that is only a page's Add.
+    await expect(page.locator('[data-dock]')).toBeVisible();
+    await expect(page.locator('[data-mobile-options]'), 'no options button on the dashboard').toHaveCount(0);
+    await expect(page.locator('[data-page-add]'), 'the dashboard has no Add').toHaveCount(0);
+    await page.locator('[data-dock-more]').click();
+    const panel = page.locator('[data-dock-more-panel]');
+    await expect(panel).toBeVisible();
 
-    // Settings action is a <Link href="/settings"> rendered inside the open
-    // stack. Click it to navigate.
-    const settingsLink = page.locator('a[href="/settings"]');
+    const settingsLink = panel.locator('[data-dock-more-group="prism"] a[href="/settings"]');
     await expect(settingsLink).toBeVisible();
     await settingsLink.click();
 

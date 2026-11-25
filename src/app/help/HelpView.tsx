@@ -224,7 +224,7 @@ function GettingAroundHelp() {
     <>
       <P>The bar along the bottom of the screen holds your main pages. <strong>Home</strong> is the dashboard.</P>
       <Ul>
-        <Li><strong>More</strong>, on the bar, opens everything else in three groups: <strong>This screen</strong> (Edit layout, Reload, Away mode, Babysitter mode and Screensaver), <strong>Pages</strong> (the pages not on the bar), and <strong>Prism</strong> (Settings, Help, and Sign in)</Li>
+        <Li><strong>More</strong>, on the bar, opens everything else in three groups: <strong>This screen</strong> (Edit layout, Reload, Away mode, Babysitter mode and Screensaver), <strong>Pages</strong> (the pages not on the bar), and <strong>Prism</strong> (Settings, Help, and Sign in). On a phone the groups are <strong>Pages</strong>, <strong>This phone</strong> (Cards, Reorder and Reload), <strong>Screens</strong> (Edit a screen, Away mode and Babysitter mode) and <strong>Prism</strong></Li>
         <Li><strong>Sign in</strong> is also at the end of the bar. Once someone is signed in, it shows their name; tap it to sign out</Li>
         <Li><strong>Choose the bar&apos;s pages</strong> in Settings &gt; Features: tick <strong>On the dock</strong> for up to five pages beside Home. The rest are in More</Li>
       </Ul>
@@ -371,7 +371,8 @@ function MobileDashboardHelp() {
     <>
       <P>On a phone, Glance shows a page of its own: the time and the weather on top, then today as a list (Next, then Later today), the coming days as sentences, and the chores and shopping lines. Tap an event to open it.</P>
       <P>Any other dashboard shows a single column of summary cards for weather, calendar, chores, tasks, shopping, meals, messages, and birthdays. Tap a card to open the full page for that feature.</P>
-      <P>On a page that adds things, the round button at the bottom right is that page&apos;s Add. On the dashboard it is <strong>Dashboard options</strong>, with Home and Settings. On a dashboard of cards it also has <strong>Cards</strong>, which lists every card so you can hide the ones you do not use or bring back a hidden one, and <strong>Reorder</strong>, to drag the cards into a new order (tap <strong>Done</strong> when finished). Both are saved on that phone only.</P>
+      <P>The round button at the bottom right is the page&apos;s Add and nothing else. A page with nothing to add, the dashboard among them, has no round button.</P>
+      <P>On a dashboard of cards, More &gt; This phone &gt; <strong>Cards</strong> lists every card so you can hide the ones you do not use or bring back a hidden one, and choose <strong>Rows</strong> or <strong>Tiles</strong>. More &gt; This phone &gt; <strong>Reorder</strong> lets you drag the cards into a new order; tap <strong>Done</strong> on the bar above the dock when finished. Both are saved on that phone only.</P>
       <P>Sign in is in More.</P>
     </>
   );
@@ -636,7 +637,7 @@ function AwayModeHelp() {
     <>
       <P>Privacy overlay for when the dashboard is unattended. Shows a photo slideshow with clock and weather.</P>
       <Ul>
-        <Li><strong>Activate</strong>: More &gt; This screen &gt; <strong>Away mode</strong></Li>
+        <Li><strong>Activate</strong>: More &gt; This screen &gt; <strong>Away mode</strong> (on a phone, More &gt; Screens &gt; <strong>Away mode</strong>)</Li>
         <Li><strong>Auto-activate</strong>: The <strong>Away mode</strong> card in Settings &gt; Appearance sets how long nobody touches a screen before it turns on, for every screen</Li>
         <Li><strong>Exit</strong>: Tap anywhere, then enter a parent PIN</Li>
       </Ul>
@@ -649,7 +650,7 @@ function BabysitterHelp() {
     <>
       <P>Caregiver information overlay showing emergency contacts, house info, child details, and house rules.</P>
       <Ul>
-        <Li><strong>Activate</strong>: More &gt; This screen &gt; <strong>Babysitter mode</strong></Li>
+        <Li><strong>Activate</strong>: More &gt; This screen &gt; <strong>Babysitter mode</strong> (on a phone, More &gt; Screens &gt; <strong>Babysitter mode</strong>)</Li>
         <Li><strong>Exit</strong>: Tap anywhere, then enter a parent PIN</Li>
         <Li><strong>Configure</strong>: Settings &gt; Babysitter Info</Li>
         <Li>Also available at <strong>/babysitter</strong> without login</Li>

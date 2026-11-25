@@ -63,7 +63,7 @@ export interface AppShellProps {
   dock?: 'wall';
   /** This screen's jobs, for the dock's More panel; left out, the jobs every page can do (#1257). */
   screenJobs?: React.ReactNode;
-  /** The phone menu's Cards and Reorder; off when the page has no cards (Simple's Today). */
+  /** A phone's More > This phone > Cards and Reorder: only on a dashboard of cards, not Today (#1354). */
   cardTools?: boolean;
 }
 
@@ -115,7 +115,7 @@ export function AppShell({
   className,
   dock,
   screenJobs,
-  cardTools = true,
+  cardTools = false,
 }: AppShellProps) {
   const isMobile = useIsMobile();
   const { uiHidden, wallDockTucked } = useAutoHideUI();
@@ -157,7 +157,7 @@ export function AppShell({
       {showWallpaper && <WallpaperBackground />}
 
       {/* THE DOCK ON EVERY OTHER PAGE (#923) */}
-      {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} screenJobs={screenJobs} />}
+      {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} screenJobs={screenJobs} cardTools={cardTools} />}
 
       {/* THE DOCK ON THE WALL (#922) */}
       {!hideNav && wallDock && !measureHideNav && (
@@ -184,9 +184,9 @@ export function AppShell({
         {children}
       </main>
 
-      {/* MOBILE FAB - the phone's own tools (cards, reorder, scan) */}
+      {/* The phone's round button: the page's Add, or nothing (#1354) */}
       {!hideNav && showMobileNav && (
-        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} cardTools={cardTools} />
+        <MobileFab uiHidden={uiHidden || measureHideNav} />
       )}
 
       {/* Once per screen after an update (#1032). */}

@@ -1,9 +1,10 @@
 /**
  * @jest-environment jsdom
  *
- * The dock's More panel (#1257): three groups of one tile style, This screen
- * first on a wall and last on a phone, and This screen on every page, with
- * Edit layout going to the screen's dashboard with the editor open.
+ * The dock's More panel (#1257): groups of one tile style. On a wall This
+ * screen leads, on every page, with Edit layout going to the screen's
+ * dashboard with the editor open. A phone has Pages, This phone, Screens and
+ * Prism (#1354).
  */
 import { render, fireEvent, act, waitFor, screen, cleanup } from '@testing-library/react';
 
@@ -23,7 +24,7 @@ jest.mock('@/components/providers/AuthProvider', () => ({ useAuth: () => ({ acti
 // The mode toggles reach for hooks and the API; here only their markup matters.
 jest.mock('@/components/away-mode', () => ({ AwayModeToggle: ({ showLabel: _s, ...p }: { showLabel?: boolean }) => <button data-screen-job="away" {...p}>Away mode</button> }));
 jest.mock('@/components/babysitter-mode', () => ({ BabysitterModeToggle: ({ showLabel: _s, ...p }: { showLabel?: boolean }) => <button data-screen-job="babysitter" {...p}>Babysitter mode</button> }));
-jest.mock('@/components/layout/PerformanceModeBadge', () => ({ PerformanceModeBadge: () => null }));
+jest.mock('@/components/layout/PerformanceModeBadge', () => ({ PerformanceModeBadge: ({ className }: { className?: string }) => <button data-performance-badge className={className}>Performance</button> }));
 jest.mock('@/lib/hooks/useAutoHideUI', () => ({ useAutoHideUI: () => ({ uiHidden: false }) }));
 
 import { Dock, screenEditHref } from '../Dock';
@@ -34,8 +35,8 @@ import { REFERENDUM } from '@/lib/feedback/referendum';
 // so the card stays hidden in the tests above that are about the tiles.
 const fetchMock = jest.fn();
 
-function openMore() {
-  render(<Dock mode="page" user={null} onLogin={() => {}} />);
+function openMore(cardTools = false) {
+  render(<Dock mode="page" user={null} onLogin={() => {}} cardTools={cardTools} />);
   fireEvent.click(document.querySelector('[data-dock-more]')!);
   return document.querySelector<HTMLElement>('[data-dock-more-panel]')!;
 }
@@ -65,14 +66,9 @@ describe('the More panel (#1257)', () => {
     for (const tile of tiles) for (const c of MORE_TILE.split(' ')) expect(tile.className.split(' ')).toContain(c);
   });
 
-  it('on a phone: Pages, Screens, Prism, This screen, with no Edit layout or screensaver', () => {
-    narrow = true;
+  it('on a wall, This screen keeps the performance badge', () => {
     const panel = openMore();
-    expect(groups(panel)).toEqual(['pages', 'screens', 'prism', 'screen']);
-    expect(job(panel, 'reload')).not.toBeNull();
-    expect(job(panel, 'away')).not.toBeNull();
-    expect(job(panel, 'edit')).toBeNull();
-    expect(job(panel, 'screensaver')).toBeNull();
+    expect(panel.querySelector('[data-dock-more-group="screen"] [data-performance-badge]')).not.toBeNull();
   });
 
   it('a page with no jobs of its own still has This screen, and Edit layout opens the dashboard with the editor', async () => {
@@ -126,6 +122,59 @@ describe('the More panel (#1257)', () => {
     const panel = document.querySelector<HTMLElement>('[data-dock-more-panel]')!;
     expect(job(panel, 'own')).not.toBeNull();
     expect(job(panel, 'reload')).toBeNull();
+  });
+});
+
+describe("a phone's More (#1354)", () => {
+  const items = (panel: HTMLElement, group: string) =>
+    [...panel.querySelectorAll<HTMLElement>(`[data-dock-more-group="${group}"] [data-dock-more-tiles] > *`)].map((e) => e.textContent);
+  const phoneJob = (name: string) => document.querySelector<HTMLElement>(`[data-dock-more-panel] [data-phone-job="${name}"]`);
+
+  beforeEach(() => { narrow = true; activeUser = { role: 'parent' }; });
+
+  it('on a dashboard of cards: Pages, This phone (Cards, Reorder, Reload), Screens (Edit a screen, Away, Babysitter), Prism', () => {
+    const panel = openMore(true);
+    expect(groups(panel)).toEqual(['pages', 'phone', 'screens', 'prism']);
+    expect(panel.querySelector('[data-dock-more-group="phone"] p')?.textContent).toBe('This phone');
+    expect(items(panel, 'phone')).toEqual(['Cards', 'Reorder', 'Reload']);
+    expect(items(panel, 'screens')).toEqual(['Edit a screen', 'Away mode', 'Babysitter mode']);
+    expect(items(panel, 'prism')[0]).toBe('Settings');
+    expect(items(panel, 'prism')).toContain('Help');
+    expect(items(panel, 'prism').at(-1)).toBe('Sign in');
+    for (const tile of panel.querySelectorAll<HTMLElement>('[data-dock-more-tiles] > *')) for (const c of MORE_TILE.split(' ')) expect(tile.className.split(' ')).toContain(c);
+  });
+
+  it('elsewhere This phone has Reload alone, and there is no This screen, Edit layout, screensaver or performance badge', () => {
+    const panel = openMore();
+    expect(groups(panel)).toEqual(['pages', 'phone', 'screens', 'prism']);
+    expect(items(panel, 'phone')).toEqual(['Reload']);
+    for (const j of ['edit', 'screensaver', 'reload']) expect(job(panel, j)).toBeNull();
+    expect(panel.querySelector('[data-performance-badge]')).toBeNull();
+  });
+
+  it('a signed-in child keeps Away and Babysitter under Screens, with no Edit a screen', () => {
+    activeUser = { role: 'child' };
+    const panel = openMore(true);
+    expect(items(panel, 'screens')).toEqual(['Away mode', 'Babysitter mode']);
+  });
+
+  it.each([['Cards', 'cards', 'prism:phone-cards'], ['Reorder', 'reorder', 'prism:mobile-reorder']])('%s starts only once More has closed', async (_n, name, event) => {
+    openMore(true);
+    let moreWasOpen: boolean | null = null;
+    let detail: unknown = null;
+    const heard = jest.fn((e: Event) => {
+      moreWasOpen = document.querySelector('[data-dock-more-panel]') !== null;
+      detail = (e as CustomEvent).detail;
+    });
+    window.addEventListener(event, heard);
+    try {
+      act(() => { fireEvent.click(phoneJob(name)!); });
+      await waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+      expect(moreWasOpen).toBe(false);
+      expect(detail).toEqual({ active: true });
+    } finally {
+      window.removeEventListener(event, heard);
+    }
   });
 });
 
@@ -183,7 +232,6 @@ describe('a phone edits a screen from More (#1353)', () => {
     activeUser = { role: 'child' };
     let panel = openMore();
     expect(tile(panel)).toBeNull();
-    expect(groups(panel)).not.toContain('screens');
     cleanup();
     activeUser = { role: 'parent' };
     narrow = false;
