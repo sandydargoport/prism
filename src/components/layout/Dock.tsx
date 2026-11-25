@@ -318,9 +318,13 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
       <nav
         aria-label={t('nav.label', { defaultValue: 'Pages' })}
         className={cn(
-          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-[20px] bg-[rgb(22_17_13)] shadow-2xl transition-[opacity,transform] duration-200',
-          // A phone: the full width less a margin, each item an equal share.
-          narrow ? 'inset-x-2 justify-between p-1' : 'left-1/2 -translate-x-1/2 gap-1 p-1.5',
+          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-[20px] shadow-2xl transition-[opacity,transform] duration-200',
+          // A phone: the full width less a margin, each item an equal share. The
+          // bar is see-through glass, so the page reads through it as it scrolls
+          // under; Reduced performance drops the blur, so the bar goes near solid.
+          narrow
+            ? 'inset-x-2 justify-between p-1 bg-[rgb(22_17_13/0.62)] backdrop-blur-xl backdrop-saturate-150 [html.performance-mode_&]:bg-[rgb(22_17_13/0.94)]'
+            : 'left-1/2 -translate-x-1/2 gap-1 p-1.5 bg-[rgb(22_17_13)]',
           visible ? 'opacity-100' : 'pointer-events-none translate-y-4 opacity-0',
         )}
         aria-hidden={!visible || undefined}
