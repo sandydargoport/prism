@@ -9,7 +9,6 @@ import { AppShell, usePageDockRoomPx } from '@/components/layout/AppShell';
 import { DashboardLayout, DashboardHeader, ScreenJobs } from '@/components/layout/DashboardGrid';
 import { LayoutGridEditor, SCREENSAVER_THEME } from '@/components/layout/LayoutGridEditor';
 import { useAuth, useFamily } from '@/components/providers';
-import { GRID_COLS } from '@/lib/constants/grid';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
@@ -53,7 +52,7 @@ import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/Wi
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
 import { remoteEditHost, setHostPlan } from '@/lib/displays/remoteEdit';
-import { useScreenSchedule } from './useScreenSchedule';
+import { useScreenSchedule, zoomFor } from './useScreenSchedule';
 import { useRemoveBirthday } from './useRemoveBirthday';
 import { useIdleSwitchCheck } from '@/components/layout/useIdleSwitchCheck';
 import { buildWidgetProps } from './useWidgetProps';
@@ -272,24 +271,10 @@ export function Dashboard({
     [fading, layout.activeWidgets],
   );
 
-  // The screen shape the editor's guides are drawn for: the dashboard's, or
-  // the one picked on Look, which is saved with Done like the rest (#1341).
+  // The screen shape the editor's guides are drawn for: the dashboard's.
   const screenGuideOrientation = layout.editingOrientation;
-  const setScreenGuideOrientation = layout.setEditingOrientation;
 
   const [enabledSizes] = useState<string[]>(allSizeNames);
-  const [gridScrollY, setGridScrollY] = useState(0);
-  const [gridVisibleRows, setGridVisibleRows] = useState(GRID_COLS);
-  const [gridScrollX, setGridScrollX] = useState(0);
-  const [gridVisibleCols, setGridVisibleCols] = useState(GRID_COLS);
-  const scrollToGridRef = useRef<((row: number, col?: number) => void) | null>(null);
-
-  const handleScrollInfo = useCallback((info: { scrollY: number; visibleRows: number; scrollX: number; visibleCols: number; totalRows: number; totalCols: number }) => {
-    setGridScrollY(info.scrollY);
-    setGridVisibleRows(info.visibleRows);
-    setGridScrollX(info.scrollX);
-    setGridVisibleCols(info.visibleCols);
-  }, []);
 
   // Dashboard management callbacks for LayoutEditor
   // Only offered inside the layout editor, so the next dashboard opens in edit
@@ -501,12 +486,14 @@ export function Dashboard({
   const idleToggles = layout.isEditing && layout.editTab === 'idle' && !isMobile;
 
   // Always this wrapper, styled or not, so a change of text size does not
-  // remount the dashboard under it.
+  // remount the dashboard under it. While editing, the text size picked on
+  // Look shows at once (#1350), before Done saves it.
+  const zoomStyle = layout.isEditing ? zoomFor(layout.editingFontScale, schedule.pageScale) : schedule.zoomStyle;
   if (isMobile) {
     // Today reads as a phone Today (#928); a grid layout keeps its cards.
     const phoneToday = todayPage;
     return (
-      <div style={schedule.zoomStyle}>
+      <div style={zoomStyle}>
         <AppShell
           user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
           onLogout={activeUser ? clearActiveUser : undefined}
@@ -545,7 +532,7 @@ export function Dashboard({
   }
 
   return (
-    <div style={schedule.zoomStyle}>
+    <div style={zoomStyle}>
       <AppShell
         user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
         onLogout={activeUser ? clearActiveUser : undefined}
@@ -590,6 +577,8 @@ export function Dashboard({
               idleLayoutDirty={layout.idleLayoutDirty}
               screenDayDirty={layout.screenDayDirty}
               lookDirty={layout.lookDirty}
+              fontScale={layout.editingFontScale}
+              onFontScaleChange={layout.setEditingFontScale}
               defaultPending={layout.defaultDirty}
               onMakeDefault={layout.makeDefault}
               onSaveDashboard={layout.handleSave}
@@ -612,12 +601,6 @@ export function Dashboard({
               deviceNamed={deviceNamed}
               onDeviceNamed={openNamedScreen}
               screenGuideOrientation={screenGuideOrientation}
-              onScreenGuideOrientationChange={setScreenGuideOrientation}
-              gridScrollY={gridScrollY}
-              gridVisibleRows={gridVisibleRows}
-              gridScrollX={gridScrollX}
-              gridVisibleCols={gridVisibleCols}
-              scrollToGridRef={scrollToGridRef}
               allDashboards={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, slug: l.slug, isDefault: l.isDefault, view: l.view }))}
               currentDashboardId={layout.activeLayout?.id}
               onSwitchDashboard={handleSwitchDashboard}
@@ -664,8 +647,6 @@ export function Dashboard({
               className="mx-4"
               screenGuideOrientation={screenGuideOrientation}
               enabledSizes={enabledSizes}
-              onScrollInfo={handleScrollInfo}
-              scrollToRef={scrollToGridRef}
               selectedWidgetId={selectedWidgetId}
               onSelectedWidgetChange={setSelectedWidgetId}
             />
@@ -724,8 +705,6 @@ export function Dashboard({
                   bottomOffset={bottomOffset + editorBarRoom}
                   screenGuideOrientation={screenGuideOrientation}
                   enabledSizes={enabledSizes}
-                  onScrollInfo={handleScrollInfo}
-                  scrollToRef={scrollToGridRef}
                   selectedWidgetId={selectedWidgetId}
                   onSelectedWidgetChange={setSelectedWidgetId}
                 />

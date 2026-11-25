@@ -136,6 +136,7 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
   const [problem, setProblem] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const aboveRef = useRef<HTMLDivElement>(null);
   const belowRef = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState({ width: 0, height: 0 });
@@ -265,6 +266,7 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
       settings,
       settingsUpdatedAt: null,
       root: rootRef.current,
+      canvasHeader: headerRef.current,
       canvasAbove: aboveRef.current,
       canvasBelow: belowRef.current,
       onDashboard: (layoutId, isDefault) => { chosen.current = { id: layoutId, isDefault }; },
@@ -365,7 +367,10 @@ export function CanvasEditor(target: { screenId: string; startDashboardId?: stri
     >
       <header className="px-4 pt-[max(1rem,env(safe-area-inset-top))] lg:col-start-1 lg:row-start-1 lg:px-6">
         <BackLink href={back} label={backLabel} />
-        <h1 className="m-0 mb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h1>
+        {/* The frame draws the header here (#1350): the screen, Editing and the
+            dashboard menu. Until it does, the title says what is edited. */}
+        <div ref={headerRef} data-canvas-header />
+        <h1 className="m-0 mb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }} data-canvas-title>{title}</h1>
         {narrow && (screen ?? dashboard) && (
           <p className="m-0 mb-1 text-caption text-muted-foreground" data-editing-not-this-phone>
             You are editing {(screen ?? dashboard)!.name}, not this phone.

@@ -133,11 +133,14 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // rejects a null start here; editing always begins by resetting it.)
   const [editedBackground, setEditedBackground] = useState<IdleBackground | null>(savedBackground);
   const editingBackground = editedBackground === null ? savedBackground : editedBackground;
-  // The screen shape the guides are drawn for, and Make the default, wait for
-  // Done like everything else in the editor (#1341). Null follows the saved one.
-  const savedOrientation: 'landscape' | 'portrait' = activeLayout?.orientation === 'portrait' ? 'portrait' : 'landscape';
-  const [editedOrientation, setEditedOrientation] = useState<'landscape' | 'portrait' | null>(null);
-  const editingOrientation = editedOrientation ?? savedOrientation;
+  // The screen shape the templates are offered for: the dashboard's own. Its
+  // control is gone (#1350); the column stays.
+  const editingOrientation: 'landscape' | 'portrait' = activeLayout?.orientation === 'portrait' ? 'portrait' : 'landscape';
+  // The text size, on Look (#1350), and Show on new and unnamed screens wait
+  // for Done like everything else in the editor (#1341). Null follows the saved one.
+  const savedFontScale = activeLayout?.fontScale ?? 100;
+  const [editedFontScale, setEditedFontScale] = useState<number | null>(null);
+  const editingFontScale = editedFontScale ?? savedFontScale;
   const [defaultPending, setDefaultPending] = useState(false);
 
   // The upgrade from v1.30.1 (#1154), once per dashboard opened: a dashboard
@@ -191,7 +194,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setEditingWidgets(current);
     setEditedSs(null);
     setEditedBackground(null);
-    setEditedOrientation(null);
+    setEditedFontScale(null);
     setDefaultPending(false);
     setEditTab('dashboard');
     setIdleHalf('day');
@@ -249,8 +252,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const idleLayoutDirty = isEditing && (ssDirty || idleTicks(editingWidgets) !== idleTicks(preEditWidgets));
   const screenDayDirty = isEditing && !sameIdleBackground(editingBackground, savedBackground);
   const idleDirty = idleLayoutDirty || screenDayDirty;
-  // Look's dot: the screen shape changed. Dashboard's: Make the default pressed.
-  const lookDirty = isEditing && editingOrientation !== savedOrientation;
+  // Look's dot: the text size changed. Show on new and unnamed screens, pressed, is said beside Done.
+  const lookDirty = isEditing && editingFontScale !== savedFontScale;
   const defaultDirty = isEditing && defaultPending && !activeLayout?.isDefault;
 
   // The running photo frame gets the edited arrangement once it is saved to
@@ -258,7 +261,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const finishEditing = useCallback(() => {
     setEditedSs(null);
     setEditTab('dashboard');
-    setEditedOrientation(null);
+    setEditedFontScale(null);
     setDefaultPending(false);
     setIsEditing(false);
   }, []);
@@ -274,6 +277,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         isDefault: defaultPending || (activeLayout?.isDefault ?? true),
         orientation: editingOrientation,
       };
+      // The text size only when it changed, as Settings > Text Size saved it: 100% as none.
+      if (editingFontScale !== savedFontScale) saveData.fontScale = editingFontScale === 100 ? null : editingFontScale;
       // Done saves only what changed (#1162). A dashboard with no screensaver
       // layout or background of its own keeps none until someone sets one;
       // saving the default it was showing would pin it there for good.
@@ -291,7 +296,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, ssDirty, editingBackground, savedBackground, screenDay, setScreenDay, defaultPending, editingOrientation, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, ssDirty, editingBackground, savedBackground, screenDay, setScreenDay, defaultPending, editingOrientation, editingFontScale, savedFontScale, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
@@ -345,7 +350,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setEditingWidgets(preEditWidgets);
     setEditedSs(null);
     setEditedBackground(null);
-    setEditedOrientation(null);
+    setEditedFontScale(null);
     setDefaultPending(false);
     setEditTab('dashboard');
     setIsEditing(false);
@@ -398,7 +403,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     editingScreensaver: isEditing && editTab === 'idle' && !['dashboard', 'off'].includes(shownIdleSource(editingBackground, idleHalf)),
     editingBackground, setEditingBackground: setEditedBackground,
     dashboardDirty, idleDirty, idleLayoutDirty, screenDayDirty, lookDirty, defaultDirty,
-    editingOrientation, setEditingOrientation: setEditedOrientation,
+    editingOrientation,
+    editingFontScale, setEditingFontScale: setEditedFontScale,
     makeDefault,
     ssLayout,
     activeWidgets,

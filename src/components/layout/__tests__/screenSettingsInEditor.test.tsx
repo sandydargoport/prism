@@ -105,13 +105,16 @@ describe('every screen setting has a control in the editor (#1267)', () => {
     });
   }
 
-  it('the Look and More tabs hold none of them', async () => {
-    const { LookSheet, MoreSheet } = await import('../EditorSheets');
+  it('the Look tab and the header hold none of them: they are the dashboard\'s (#1350)', async () => {
+    const { LookSheet } = await import('../EditorSheets');
+    const { EditorHeader } = await import('../EditorHeader');
     render(<>
-      <LookSheet orientation="landscape" onMeasure={() => {}} />
-      <MoreSheet builtIn={false} editingScreensaver={false} hasIdleLayout={false} idleTab={false} exportFeedback=""
-        onExport={() => {}} onImportOpen={() => {}} onShareOpen={() => {}} onReset={() => {}} />
+      <EditorHeader screenId="kitchen" deviceNamed screens={[{ id: 'kitchen', name: 'Kitchen' }]} onScreensChange={() => {}}
+        dashboards={[{ id: 'a', name: 'Main', slug: 'main', isDefault: true }]} currentDashboardId="a" onPickDashboard={() => {}}
+        jobs={[{ id: 'new', label: 'New dashboard', onSelect: () => {} }]} />
+      <LookSheet builtIn={false} fontScale={100} widgets={[{ i: 'clock', x: 0, y: 0, w: 8, h: 8 }]} onWidgetsChange={() => {}} />
     </>);
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard jobs' }));
     for (const where of Object.values(CONTROLS)) {
       if ('label' in where) expect(screen.queryAllByLabelText(where.label)).toHaveLength(0);
     }

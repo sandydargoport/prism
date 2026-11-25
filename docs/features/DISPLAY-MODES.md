@@ -268,7 +268,7 @@ You turn Away mode and Babysitter mode on from **More > This screen**, where **S
 
 The screensaver, away mode and babysitter mode each load only when they are turned on, and not every time the dashboard draws. In v1.0.4 the chain of imports that had pulled them into the root layout was cut, to keep the dashboard's first paint fast.
 
-At the Reduced and Minimal performance levels (**Performance** in More > Edit layout > Look, under **This screen**, set for each screen):
+At the Reduced and Minimal performance levels (**Performance** in More > Edit layout > Screen > Advanced, set for each screen):
 
 - The screensaver's Fireworks effect becomes a plain fade, and the night sky stops twinkling.
 - At Minimal, the fades between idle and awake are almost instant.
@@ -314,7 +314,7 @@ Make sure at least one section is filled in under *Settings > Babysitter Info*, 
 
 #### Photo slideshow stutters during screensaver
 
-The screen may be running at the Minimal performance level, where the Photo widget shows a single image. Look at **Performance** in More > Edit layout > Look, under **This screen**. On **Auto** the screen steps down a level by itself when its fades keep stuttering. While it runs below Full, a **Performance** tile shows in **More > This screen**, and a tap on it sets Full.
+The screen may be running at the Minimal performance level, where the Photo widget shows a single image. Look at **Performance** in More > Edit layout > Screen > Advanced. On **Auto** the screen steps down a level by itself when its fades keep stuttering. While it runs below Full, a **Performance** tile shows in **More > This screen**, and a tap on it sets Full.
 
 #### Wrong photo source on the screensaver
 

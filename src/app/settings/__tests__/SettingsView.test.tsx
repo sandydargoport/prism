@@ -82,7 +82,6 @@ jest.mock('../sections/FeaturesSection', () => ({ FeaturesSection: mockSection('
 jest.mock('../sections/TelemetryCard', () => ({ TelemetryCard: () => null }));
 jest.mock('../sections/ActivityLogSection', () => ({ ActivityLogSection: mockSection('Activity section') }));
 jest.mock('../sections/DisplaysSection', () => ({ DisplaysSection: mockSection('Screens section') }));
-jest.mock('../sections/TextSizeSection', () => ({ TextSizeSection: mockSection('Text size section') }));
 jest.mock('../sections/integrations/IntegrationsSection', () => {
   const { PhotoSourcesCard } = jest.requireActual('../sections/integrations/cards/PhotoSourcesCard');
   return {

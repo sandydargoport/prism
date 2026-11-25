@@ -2,8 +2,9 @@
  * @jest-environment jsdom
  *
  * One save rule (#1341): changing the dashboard being edited, or the screen,
- * with changes Done has not saved asks Save and switch, Discard or Stay; and
- * Make the default writes nothing until Done.
+ * both in the header (#1350), with changes Done has not saved asks Save and
+ * switch, Discard or Stay; and Show on new and unnamed screens, in the header
+ * menu, writes nothing until Done.
  */
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -46,14 +47,13 @@ function editor(extra: Partial<React.ComponentProps<typeof LayoutEditor>> = {}) 
   return calls;
 }
 
-const openTab = async (tab: string) => {
-  fireEvent.click(document.querySelector<HTMLElement>(`[data-editor-open="${tab}"]`)!);
+const pickDashboard = async (id: string) => {
+  fireEvent.change(screen.getByLabelText('Editing'), { target: { value: id } });
   await act(async () => {});
 };
-const pickDashboard = async (id: string) => {
-  await openTab('dashboard');
-  fireEvent.click(document.querySelector<HTMLElement>(`[data-dashboard-row="${id}"]`)!);
-  await act(async () => {});
+const job = (label: string) => {
+  fireEvent.click(screen.getByRole('button', { name: 'Dashboard jobs' }));
+  return screen.getByRole('menuitem', { name: label }) as HTMLButtonElement;
 };
 const choose = async (label: string) => {
   fireEvent.click(screen.getByRole('button', { name: label }));
@@ -115,7 +115,8 @@ describe('changing the dashboard being edited', () => {
 
 describe('changing the screen being edited', () => {
   const pickScreen = async (id: string) => {
-    await openTab('screen');
+    // The named screens, once read.
+    await act(async () => {});
     fireEvent.change(document.querySelector<HTMLSelectElement>('[data-screen-pick]')!, { target: { value: id } });
     await act(async () => {});
   };
@@ -139,12 +140,12 @@ describe('changing the screen being edited', () => {
   });
 });
 
-describe('Make the default (#1341)', () => {
+describe('Show on new and unnamed screens, in the header menu (#1341, #1350)', () => {
   it('writes nothing and reloads nothing: Done makes it so', async () => {
     const calls = editor();
-    await openTab('dashboard');
+    await act(async () => {});
     fetchMock.mockClear();
-    fireEvent.click(document.querySelector<HTMLElement>('[data-dashboard-default]')!);
+    fireEvent.click(job('Show on new and unnamed screens'));
     await act(async () => {});
     expect(calls.onMakeDefault).toHaveBeenCalledTimes(1);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -152,9 +153,8 @@ describe('Make the default (#1341)', () => {
 
   it('says it waits for Done once pressed', async () => {
     editor({ defaultPending: true });
-    await openTab('dashboard');
-    const button = document.querySelector<HTMLButtonElement>('[data-dashboard-default]')!;
-    expect(button.textContent).toBe('The default after Done');
+    await act(async () => {});
+    const button = job('Shown on new and unnamed screens after Done');
     expect(button.disabled).toBe(true);
   });
 });

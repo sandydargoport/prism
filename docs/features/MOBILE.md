@@ -127,7 +127,7 @@ Install Prism as a PWA on the phone. It opens on the dashboard: Glance's phone p
 
 #### Tablet permanently mounted in the kitchen
 
-Open it in full-screen Chrome or use kiosk mode, or install it as a PWA and name the screen (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name) so it rests and goes idle. On the dashboard the dock may wait behind the small **Menu** tab on the bottom edge; a tap brings it up. If photos come up for the wrong shape, set **Orientation** in More > Edit layout > Look, under **This screen**.
+Open it in full-screen Chrome or use kiosk mode, or install it as a PWA and name the screen (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name) so it rests and goes idle. On the dashboard the dock may wait behind the small **Menu** tab on the bottom edge; a tap brings it up. If photos come up for the wrong shape, set **Orientation** in More > Edit layout > Screen > Advanced.
 
 #### Phone in shopping mode at the grocery store
 
@@ -162,13 +162,13 @@ html { font-size: 16px; }                                        /* phone defaul
 
 The `pointer: fine` and `pointer: coarse` media queries tell a mouse (a laptop) apart from touch (a tablet kiosk) at the same screen size. The same 13" screen gets 14px on a laptop with a mouse and 20px on a touch tablet.
 
-To make a whole dashboard read larger or smaller, use *Settings > Text Size*.
+To make a whole dashboard read larger or smaller, use *More > Edit layout > Look > Text size*.
 
 ### Orientation detection
 
 The `useOrientation` hook listens for `resize` and `orientationchange` events and returns the current orientation. The navigation is the same in either orientation: the dock at the bottom.
 
-You can set an orientation in More > Edit layout > Look, under **This screen**: **Orientation** (Detect, Landscape or Portrait). It only affects which photos and wallpapers are matched by orientation. The layout keeps following the detected orientation of the screen (its width against its height).
+You can set an orientation in More > Edit layout > Screen > Advanced: **Orientation** (Detect, Landscape or Portrait). It only affects which photos and wallpapers are matched by orientation. The layout keeps following the detected orientation of the screen (its width against its height).
 
 ### Notification badges (planned)
 

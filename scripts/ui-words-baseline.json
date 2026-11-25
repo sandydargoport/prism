@@ -9,10 +9,7 @@
     "screensaver": 2
   },
   "docs/features/DASHBOARD.md": {
-    "Idle screen": 2,
-    "Make the default": 3,
-    "Resting": 4,
-    "screensaver": 10
+    "screensaver": 8
   },
   "docs/features/DISPLAY-MODES.md": {
     "How dark": 1,
@@ -33,8 +30,7 @@
     "screensaver": 2
   },
   "src/app/help/HelpView.tsx": {
-    "Make the default": 2,
-    "Resting": 2,
+    "Resting": 1,
     "screensaver": 5
   },
   "src/app/photos/PhotosView.tsx": {
@@ -49,14 +45,6 @@
   "src/components/layout/DashboardGrid.tsx": {
     "screensaver": 3
   },
-  "src/components/layout/EditorSheets.tsx": {
-    "Make the default": 1,
-    "Resting": 1
-  },
-  "src/components/layout/LayoutEditor.tsx": {
-    "Idle screen": 1,
-    "screensaver": 1
-  },
   "src/components/layout/LayoutEditorDashboardManager.tsx": {
     "screensaver": 1
   },
@@ -69,8 +57,5 @@
   "src/components/screensaver/ScreensaverQuickSettings.tsx": {
     "screensaver": 3,
     "Start after": 1
-  },
-  "src/components/today/TodayPartsPanel.tsx": {
-    "Resting": 2
   }
 }

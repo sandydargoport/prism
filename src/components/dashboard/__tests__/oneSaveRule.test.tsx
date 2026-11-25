@@ -1,8 +1,8 @@
 /**
  * @jest-environment jsdom
  *
- * One save rule (#1341): the screen shape and Make the default wait for Done
- * like everything else in the editor. Nothing reaches the server before Done,
+ * One save rule (#1341): the text size (#1350) and Show on new and unnamed
+ * screens wait for Done like everything else in the editor. Nothing reaches the server before Done,
  * and Cancel sends nothing at all.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -42,17 +42,24 @@ beforeEach(() => {
   global.fetch = fetchMock as unknown as typeof fetch;
 });
 
-it('the screen shape is held until Done, then saved with the dashboard', async () => {
+it('the text size picked on Look is held until Done, then saved with the dashboard (#1350)', async () => {
   const { result } = await editing();
-  act(() => result.current.setEditingOrientation('portrait'));
-  expect(result.current.editingOrientation).toBe('portrait');
+  expect(result.current.editingFontScale).toBe(100);
+  act(() => result.current.setEditingFontScale(130));
+  expect(result.current.editingFontScale).toBe(130);
   expect(result.current.lookDirty).toBe(true);
   expect(saveLayout).not.toHaveBeenCalled();
   expect(writes()).toHaveLength(0);
 
   await act(async () => { await result.current.handleSave(); });
   expect(saveLayout).toHaveBeenCalledTimes(1);
-  expect(saveLayout).toHaveBeenCalledWith(expect.objectContaining({ id: 'hall', orientation: 'portrait' }));
+  expect(saveLayout).toHaveBeenCalledWith(expect.objectContaining({ id: 'hall', fontScale: 130 }));
+});
+
+it('an unchanged text size is not sent', async () => {
+  const { result } = await editing();
+  await act(async () => { await result.current.handleSave(); });
+  expect((saveLayout.mock.calls[0] as unknown[])[0]).not.toHaveProperty('fontScale');
 });
 
 it('Make the default is held until Done, then saved as the default, with no reload', async () => {
@@ -73,13 +80,13 @@ it('Make the default is held until Done, then saved as the default, with no relo
 it('Cancel sends nothing and puts both back', async () => {
   const { result } = await editing();
   act(() => {
-    result.current.setEditingOrientation('portrait');
+    result.current.setEditingFontScale(80);
     result.current.makeDefault();
   });
   act(() => result.current.handleCancel());
   expect(saveLayout).not.toHaveBeenCalled();
   expect(writes()).toHaveLength(0);
-  expect(result.current.editingOrientation).toBe('landscape');
+  expect(result.current.editingFontScale).toBe(100);
   expect(result.current.defaultDirty).toBe(false);
   expect(result.current.lookDirty).toBe(false);
 });

@@ -36,7 +36,7 @@ async function openEditor(page: Page, widget?: string): Promise<FrameLocator> {
 }
 
 /** The editor's panels (#1151), by their tabs. */
-async function openSheet(page: Page, id: 'screen' | 'dashboard' | 'widgets' | 'look' | 'more') {
+async function openSheet(page: Page, id: 'screen' | 'widgets' | 'look') {
   await page.locator(`[data-editor-open="${id}"]`).click();
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
 }
@@ -184,6 +184,11 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
     if (outlines) localStorage.setItem('prism-screensaver-outlines', outlines);
     sessionStorage.setItem('ss-geometry-seeded', '1');
   }, { outlines });
+  // The guide orientation is saved on the dashboard, so another test may have
+  // left it either way. Its control is gone (#1350): set it as saved.
+  const all = (await (await page.request.get('/api/layouts')).json()).layouts as Array<{ id: string; isDefault: boolean }>;
+  const home = all.find((l) => l.isDefault);
+  if (home) expect((await page.request.patch(`/api/layouts/${home.id}`, { data: { orientation } })).ok()).toBe(true);
   await page.goto('/');
   const frame = await openEditor(page, 'clock');
   // The canvas is the screen: its size and shape for this orientation, the
@@ -195,13 +200,8 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
   // screen (Idle over the canvas, #1348) arranges its layout, whichever
   // panel is open.
   await canvasShows(page, 'idle', 'day');
-  // The guide orientation is saved on the dashboard, so another test may have
-  // left it either way.
   await openSheet(page, 'look');
   await expect(page.locator('[data-canvas-pick="idle"]')).toHaveAttribute('aria-pressed', 'true');
-  const shape = page.getByRole('radio', { name: orientation === 'landscape' ? 'Landscape' : 'Portrait' });
-  await shape.click();
-  await expect(shape).toHaveAttribute('aria-checked', 'true');
   await frame.locator('[data-editor-widget="clock"]').waitFor();
   await page.waitForTimeout(800);
   return frame;
@@ -232,13 +232,13 @@ for (const [orientation, viewport] of [
       expect(frame, 'the editor draws a Screen frame').not.toBeNull();
 
       // Preview claims to show the screen as the screensaver will draw it.
-      // Check it at a screen size, from the Look panel (#1151).
-      await openSheet(page, 'look');
-      await page.getByRole('button', { name: 'See it at a screen size' }).click();
+      // Its shortcut, Control+Shift+M, is heard where the editor runs: the
+      // frame. Once to see it at the screen's size, and again to leave.
+      const preview = () => canvas.locator('body').evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'M', ctrlKey: true, shiftKey: true })));
+      await preview();
       await page.waitForTimeout(800);
       const previewed = await boxes(canvas, '.widget-cell[data-widget]');
-      // Its shortcut, Control+Shift+M, is heard where the editor runs: the frame.
-      await canvas.locator('body').evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'M', ctrlKey: true, shiftKey: true })));
+      await preview();
 
       // The screen never goes idle while its editor is open (#1342), so the
       // live screensaver is measured on the wall, out of the editor, at the

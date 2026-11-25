@@ -1,24 +1,22 @@
 'use client';
 
 /**
- * What the editing bar's sheets hold (#1151). Each is plain content; the bar
- * draws the sheet around it.
+ * What the editor's Widgets and Look tabs hold (#1151, #1350). Each is plain
+ * content; the bar draws the tab around it. Both belong to the dashboard, so
+ * each opens with a scope line that says so: "Main · Every screen that shows
+ * it". The dashboard's jobs are in the header menu (EditorHeader).
  */
 import * as React from 'react';
 import { useMemo, useState } from 'react';
-import { Lock } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
 import { SCREENSAVER_TEMPLATES } from '@/lib/constants/screensaverTemplates';
 import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
-import { keepPanelFor } from './canvasPanel';
 import { CommunityGallery } from './CommunityGallery';
 import { CoordinateEditor } from './CoordinateEditor';
 import { WidgetStylePanel } from './WidgetStylePanel';
-import { LayoutEditorPreviewPanel } from './LayoutEditorPreviewPanel';
-import type { DashboardInfo } from './LayoutEditorTypes';
+import { ALL_WIDGET_CHOICES, colourOnAll, commonColour, differFrom, type LookPart } from './widgetLook';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -28,128 +26,40 @@ export function isBuiltIn(d: { view?: string | null } | undefined): boolean {
   return d?.view === 'today';
 }
 
+/** The text size of a whole dashboard (`layouts.font_scale`), in its 13 steps. */
+export const TEXT_SIZE_STEPS = [75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 130, 140, 150] as const;
+
 // A finger on the wall gets 44px or more; a mouse on the laptop, where editing
 // is done, gets controls sized like the rest of a desktop page, their words
 // 12px as on every sheet of the panel (see sheetRows).
 const action = 'flex min-h-[48px] items-center justify-center rounded-full border-[1.5px] border-foreground/30 px-5 text-body hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium';
-const row = 'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-left text-body hover:bg-muted pointer-fine:min-h-10 pointer-fine:px-2';
 const section = 'm-0 mb-2 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
+const SELECT = 'h-[44px] w-full min-w-0 appearance-none rounded-lg border border-border bg-background pl-3 pr-8 text-body leading-normal text-foreground pointer-fine:h-9';
+const note = 'm-0 text-caption text-muted-foreground';
 
-export function DashboardSheet({
-  allDashboards, currentDashboardId, shownHereId, onSwitchDashboard, beforeSwitch, onAddToday, onCreateOpen, onRenameOpen, onSaveAsOpen, onSetDefault, defaultPending = false, onDelete, onResetBuiltIn,
-}: {
-  allDashboards: DashboardInfo[];
-  currentDashboardId?: string;
-  /**
-   * In a screen's editor, the dashboard the screen shows (#1282), marked so
-   * that editing another one is never taken for changing what it shows.
-   */
-  shownHereId?: string | null;
-  onSwitchDashboard?: (slug: string) => void;
-  /** Asked before another dashboard opens, with changes not saved (#1341); false stays. */
-  beforeSwitch?: () => Promise<boolean>;
-  /** An install with no Today yet: add it. */
-  onAddToday?: () => void;
-  onCreateOpen: () => void;
-  onRenameOpen: () => void;
-  onSaveAsOpen: () => void;
-  onSetDefault: () => void;
-  /** Make the default was pressed: it is made so on Done (#1341). */
-  defaultPending?: boolean;
-  onDelete: () => void;
-  onResetBuiltIn?: () => void;
-}) {
-  const current = allDashboards.find((d) => d.id === currentDashboardId);
-  const builtIn = isBuiltIn(current);
-  const hasToday = allDashboards.some(isBuiltIn);
-  // Built in first, then the family's own in their order.
-  const listed = [...allDashboards.filter(isBuiltIn), ...allDashboards.filter((d) => !isBuiltIn(d))];
-  const open = async (d: DashboardInfo) => {
-    if (d.id === currentDashboardId) return;
-    if (beforeSwitch && !(await beforeSwitch())) return;
-    // Its editor opens on this panel, not Widgets.
-    keepPanelFor(d.id, 'dashboard');
-    if (d.slug) onSwitchDashboard?.(d.slug);
-    else if (d.isDefault) window.location.assign(editLink('/'));
-  };
+/** The line each tab opens with, saying whose its settings are (#1350). */
+export function ScopeLine({ text }: { text: string }) {
+  return <p className="m-0 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground" data-editor-scope>{text}</p>;
+}
+
+/** "Main · Every screen that shows it": the dashboard's own tabs. */
+export const dashboardScope = (name: string | undefined) => `${name || 'This dashboard'} · Every screen that shows it`;
+
+function Select({ className, children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <div className="flex flex-col gap-5">
-      <ul className="m-0 flex list-none flex-col gap-1 p-0" data-dashboard-list>
-        {!hasToday && onAddToday && (
-          <li>
-            <button type="button" onClick={onAddToday} className={row} data-dashboard-row="today-add">
-              <span className="flex-1 italic" style={{ fontFamily: 'var(--font-display)' }}>Glance</span>
-              <BuiltInMark />
-              <span className="text-caption text-muted-foreground">Add</span>
-            </button>
-          </li>
-        )}
-        {listed.map((d) => (
-          <li key={d.id}>
-            <button
-              type="button"
-              onClick={() => { void open(d); }}
-              aria-current={d.id === currentDashboardId || undefined}
-              className={cn(row, d.id === currentDashboardId && 'bg-muted')}
-              data-dashboard-row={d.id}
-              data-built-in={isBuiltIn(d) || undefined}
-            >
-              {/* The built-in dashboard reads differently: the display face, in italics. */}
-              <span className={cn('flex-1 truncate', isBuiltIn(d) && 'italic')} style={isBuiltIn(d) ? { fontFamily: 'var(--font-display)' } : undefined}>
-                {d.name}
-              </span>
-              {isBuiltIn(d) && <BuiltInMark />}
-              {d.isDefault && <span className="text-caption text-muted-foreground">Default</span>}
-              {d.id === shownHereId && <span className="text-caption text-muted-foreground" data-shown-here>Shown here</span>}
-              {d.id === currentDashboardId && <span className="text-caption font-medium">Editing</span>}
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onCreateOpen} className={action} data-dashboard-new>New dashboard</button>
-        <button type="button" onClick={onSaveAsOpen} className={action} data-dashboard-copy>Make a copy</button>
-        {!builtIn && <button type="button" onClick={onRenameOpen} className={action}>Rename</button>}
-        <button type="button" onClick={onSetDefault} disabled={current?.isDefault || defaultPending} className={action} data-dashboard-default>
-          {current?.isDefault ? 'The default' : defaultPending ? 'The default after Done' : 'Make the default'}
-        </button>
-        {builtIn && onResetBuiltIn && (
-          <button type="button" onClick={onResetBuiltIn} className={action} data-dashboard-reset>Reset to default</button>
-        )}
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={builtIn || allDashboards.length <= 1}
-          title={builtIn ? 'Glance is built in and cannot be deleted' : undefined}
-          className={cn(action, !builtIn && 'text-destructive')}
-          data-dashboard-delete
-        >
-          Delete
-        </button>
-      </div>
-      {builtIn && (
-        <p className="m-0 text-caption text-muted-foreground" data-built-in-note>
-          Glance is built in. You can change what it shows and reset it, but not delete it. Make a copy to arrange one of your own.
-        </p>
-      )}
+    <div className="relative min-w-0">
+      <select className={cn(SELECT, className)} {...rest}>{children}</select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
     </div>
   );
 }
 
-function BuiltInMark() {
-  return (
-    <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-caption text-muted-foreground" data-built-in-mark>
-      <Lock className="h-3 w-3" aria-hidden />
-      Built in
-    </span>
-  );
-}
-
 export function WidgetsSheet({
-  builtIn, editingScreensaver, orientation, widgets, onWidgetsChange, onScreensaverPreset, onScreensaverTemplate, onApplyCommunityLayout, onFocusedWidgetChange,
-  selectedWidgetId = null, onSelectedWidgetChange, hideEmptyByDefault = false, idleToggles = false,
+  scope, builtIn, editingScreensaver, orientation, widgets, onWidgetsChange, onScreensaverPreset, onScreensaverTemplate, onApplyCommunityLayout, onFocusedWidgetChange,
+  selectedWidgetId = null, onSelectedWidgetChange, hideEmptyByDefault = false, idleToggles = false, onCopyFromDashboard, onBackToDashboard,
 }: {
+  /** The scope line: whose these widgets are. */
+  scope?: string;
   builtIn: boolean;
   editingScreensaver: boolean;
   orientation: 'landscape' | 'portrait';
@@ -165,6 +75,10 @@ export function WidgetsSheet({
   /** How the grid being edited draws it: see LayoutGridEditorProps. */
   hideEmptyByDefault?: boolean;
   idleToggles?: boolean;
+  /** While arranging the photo frame: put the dashboard's widgets on it (#1350). */
+  onCopyFromDashboard?: () => void;
+  /** While arranging the photo frame: the canvas shows the dashboard again. */
+  onBackToDashboard?: () => void;
 }) {
   const [community, setCommunity] = useState(false);
   const { confirm, dialogProps } = useConfirmDialog();
@@ -173,7 +87,15 @@ export function WidgetsSheet({
     return Object.entries(all).filter(([, t]) => t.orientation === orientation);
   }, [editingScreensaver, orientation]);
 
-  if (builtIn && !editingScreensaver) return <TodayPartsPanel widgets={widgets} onChange={onWidgetsChange} bare />;
+  const scopeLine = scope ? <ScopeLine text={scope} /> : null;
+  if (builtIn && !editingScreensaver) {
+    return (
+      <div className="flex flex-col gap-4">
+        {scopeLine}
+        <TodayPartsPanel widgets={widgets} onChange={onWidgetsChange} bare />
+      </div>
+    );
+  }
 
   const mode = editingScreensaver ? 'screensaver' : 'dashboard';
   const change = editingScreensaver && onScreensaverPreset ? onScreensaverPreset : onWidgetsChange;
@@ -191,8 +113,20 @@ export function WidgetsSheet({
   };
   return (
     <div className="flex flex-col gap-6">
+      {scopeLine}
+      {editingScreensaver && (onCopyFromDashboard || onBackToDashboard) && (
+        // Arranging the photo frame, a banner says so (#1350), with the copy
+        // that used to be More > Use while resting.
+        <div className="flex flex-col gap-2 rounded-xl bg-muted/60 p-3" data-photo-frame-banner>
+          <p className="m-0 text-body">Arranging the photo frame: what shows over the photo when the screen is idle.</p>
+          <div className="flex flex-wrap gap-2">
+            {onCopyFromDashboard && <button type="button" className={action} onClick={onCopyFromDashboard} data-photo-frame-copy>Copy from the dashboard</button>}
+            {onBackToDashboard && <button type="button" className={action} onClick={onBackToDashboard} data-photo-frame-back>Back to the dashboard</button>}
+          </div>
+        </div>
+      )}
       <section>
-        <h3 className={section}>On this dashboard</h3>
+        <h3 className={section}>{editingScreensaver ? 'On the photo frame' : 'On this dashboard'}</h3>
         <CoordinateEditor widgets={widgets} onWidgetsChange={change} mode={mode} onFocusedWidgetChange={onFocusedWidgetChange}
           selectedWidgetId={selected?.i ?? null} onSelectWidget={onSelectedWidgetChange} />
       </section>
@@ -207,6 +141,7 @@ export function WidgetsSheet({
             onClose={onSelectedWidgetChange ? () => onSelectedWidgetChange(null) : undefined}
             hideEmptyByDefault={hideEmptyByDefault}
             idleToggles={idleToggles}
+            staysToggle={!editingScreensaver}
           />
         ) : (
           <p className="m-0 text-body text-muted-foreground" data-widget-settings-hint>
@@ -249,86 +184,83 @@ export function WidgetsSheet({
   );
 }
 
-export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
-  orientation: 'landscape' | 'portrait';
-  onOrientationChange?: (o: 'landscape' | 'portrait') => void;
-  onMeasure: () => void;
+const PART_NAMES: Record<LookPart, string> = { fill: 'Fill', outline: 'Outline', text: 'Text' };
+const PART_WORDS: Record<LookPart, string> = { fill: 'fill', outline: 'outline', text: 'text colour' };
+
+/** One row of Look > All widgets: the choice, Apply to all, and how many differ. */
+function AllWidgetsRow({ part, widgets, onWidgetsChange }: {
+  part: LookPart;
+  widgets: WidgetConfig[];
+  onWidgetsChange: (w: WidgetConfig[]) => void;
 }) {
+  // What most of them have, until another is picked.
+  const [picked, setPicked] = useState<string | null>(null);
+  const value = picked ?? commonColour(widgets, part);
+  const differ = differFrom(widgets, part, value);
+  const name = PART_NAMES[part];
+  const choices = ALL_WIDGET_CHOICES[part];
+  const known = choices.some(([v]) => v === value);
   return (
-    <div className="flex flex-col gap-5">
-      <section>
-        <h3 className={section}>Screen shape</h3>
-        <div className="flex gap-2" role="radiogroup" aria-label="Screen shape">
-          {(['landscape', 'portrait'] as const).map((o) => (
-            <button
-              key={o}
-              type="button"
-              role="radio"
-              aria-checked={orientation === o}
-              onClick={() => onOrientationChange?.(o)}
-              className={cn(action, orientation === o && 'border-foreground bg-foreground text-background hover:bg-foreground')}
-            >
-              {o === 'landscape' ? 'Landscape' : 'Portrait'}
-            </button>
-          ))}
-        </div>
-      </section>
-      <section>
-        <h3 className={section}>Check it</h3>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className={action} onClick={onMeasure}>See it at a screen size</button>
-        </div>
-      </section>
+    <div className="contents" data-all-widgets={part}>
+      <span className="text-body font-medium">{name}</span>
+      <Select aria-label={`${name} for all widgets`} value={value} onChange={(e) => setPicked(e.target.value)}>
+        {!known && <option value={value}>Own colours</option>}
+        {choices.map(([v, label]) => <option key={v || 'theme'} value={v}>{label}</option>)}
+      </Select>
+      <button type="button" className={action} disabled={differ === 0} aria-label={`Apply this ${PART_WORDS[part]} to all widgets`}
+        onClick={() => onWidgetsChange(colourOnAll(widgets, part, value))} data-apply-all-widgets={part}>
+        Apply to all
+      </button>
+      <p className={cn(note, 'col-span-3 -mt-1')} data-all-widgets-note={part}>
+        {differ === 0 ? `Every widget has this ${PART_WORDS[part]}.`
+          : `${differ} ${differ === 1 ? 'widget has' : 'widgets have'} a different ${PART_WORDS[part]}.`}
+      </p>
     </div>
   );
 }
 
-export function MoreSheet({
-  builtIn, editingScreensaver, hasIdleLayout, idleTab, exportFeedback, onExport, onImportOpen, onShareOpen, onReset, onCopyToOther, preview,
-}: {
+/**
+ * Look (#1350): the dashboard's look, on every screen that shows it. Its text
+ * size, in the 13 steps that were Settings > Text Size, and one fill,
+ * outline and text colour for all its widgets. Glance has no cards, so it has
+ * the text size only. Light or dark and the photos behind are the screen's,
+ * on the Screen tab; the palette is the household's, in Settings.
+ */
+export function LookSheet({ scope, builtIn, fontScale, onFontScaleChange, widgets, onWidgetsChange }: {
+  scope?: string;
   builtIn: boolean;
-  editingScreensaver: boolean;
-  hasIdleLayout: boolean;
-  idleTab: boolean;
-  exportFeedback: string;
-  onExport: () => void;
-  onImportOpen: () => void;
-  onShareOpen: () => void;
-  onReset: () => void;
-  onCopyToOther?: () => void;
-  preview?: React.ReactNode;
+  /** The dashboard's text size, as a percentage, as being edited. */
+  fontScale: number;
+  onFontScaleChange?: (scale: number) => void;
+  widgets: WidgetConfig[];
+  onWidgetsChange: (w: WidgetConfig[]) => void;
 }) {
-  const grid = !builtIn || editingScreensaver;
   return (
-    <div className="flex flex-col gap-5">
-      {grid && preview && (
+    <div className="flex flex-col gap-5" data-look-sheet>
+      {scope && <ScopeLine text={scope} />}
+      <div className="grid grid-cols-[5.5rem_minmax(0,12rem)] items-center gap-x-3">
+        <label htmlFor="look-text-size" className="text-body font-medium">Text size</label>
+        <Select id="look-text-size" value={String(fontScale)} data-look-text-size
+          onChange={(e) => onFontScaleChange?.(Number(e.target.value))}>
+          {TEXT_SIZE_STEPS.map((s) => <option key={s} value={String(s)}>{s}%</option>)}
+        </Select>
+      </div>
+      <p className={note}>How large everything reads, on every screen that shows this dashboard. Each widget&apos;s own text size is on Widgets.</p>
+      {builtIn ? (
+        <p className="m-0 text-body text-muted-foreground" data-look-glance>Glance has no cards.</p>
+      ) : (
         <section>
-          <h3 className={section}>Overview</h3>
-          {preview}
-        </section>
-      )}
-      <section>
-        <h3 className={section}>Share and back up</h3>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className={action} onClick={onExport}>{exportFeedback || 'Export'}</button>
-          {grid && <button type="button" className={action} onClick={onImportOpen}>Import</button>}
-          {grid && <button type="button" className={action} onClick={onShareOpen}>Share to the gallery</button>}
-        </div>
-      </section>
-      {grid && (
-        <section>
-          <h3 className={section}>Start again</h3>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={action} onClick={onReset}>Reset this layout</button>
-            {onCopyToOther && hasIdleLayout && (
-              <button type="button" className={action} onClick={onCopyToOther}>{idleTab ? 'Use as the dashboard' : 'Use while resting'}</button>
-            )}
+          <h3 className={section}>All widgets</h3>
+          <div className="grid grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3">
+            {(['fill', 'outline', 'text'] as const).map((part) => (
+              <AllWidgetsRow key={part} part={part} widgets={widgets} onWidgetsChange={onWidgetsChange} />
+            ))}
           </div>
         </section>
       )}
+      <p className={note}>
+        The photo frame has its own outline switch: Screen &gt; When idle &gt; Advanced. Light or dark and the photos behind the dashboard are on the Screen tab; the palette is in Settings &gt; Appearance.
+      </p>
     </div>
   );
 }
-
-export { LayoutEditorPreviewPanel };
-export type { ScreenSafeZones };

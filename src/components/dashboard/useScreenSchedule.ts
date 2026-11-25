@@ -104,6 +104,18 @@ function listenForInput(): void {
   for (const e of INPUT_EVENTS) window.addEventListener(e, touch, { passive: true, capture: true });
 }
 
+/**
+ * What to add on top of the page's own text size so a dashboard reads at
+ * `scale`: undefined when it is the same. `--app-vh` as the page sets it, for
+ * the scale then in force overall.
+ */
+export function zoomFor(scale: number, pageScale: number): React.CSSProperties | undefined {
+  const zoom = scale / pageScale;
+  return zoom === 1
+    ? undefined
+    : ({ zoom, '--app-vh': `${10000 / scale}vh`, ...pageZoomVars(scale) } as React.CSSProperties);
+}
+
 type Input = {
   /** The dashboard the page is for: its slug, or undefined for the home page. */
   routeSlug: string | undefined;
@@ -122,6 +134,8 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
    * undefined when it is the same.
    */
   zoomStyle: React.CSSProperties | undefined;
+  /** The text size the page applies itself, its own dashboard's. */
+  pageScale: number;
   /** Someone chose this dashboard (by slug); it stays until the screen goes idle or the next switch starts or ends. */
   pick: (slug: string) => void;
 } {
@@ -226,12 +240,8 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
   useVisibilityPolling(() => check(idle), CHECK_MS, { pollWhileIdle: true });
 
   const shown = layouts.find((l) => l.id === shownId) ?? routeLayout;
-  const shownScale = shown?.fontScale ?? 100;
-  const zoom = shownScale / (routeLayout?.fontScale ?? 100);
-  // `--app-vh` as the page sets it, for the scale now in force overall.
-  const zoomStyle = zoom === 1
-    ? undefined
-    : ({ zoom, '--app-vh': `${10000 / shownScale}vh`, ...pageZoomVars(shownScale) } as React.CSSProperties);
+  const pageScale = routeLayout?.fontScale ?? 100;
+  const zoomStyle = zoomFor(shown?.fontScale ?? 100, pageScale);
   const pick = useCallback((slug: string) => {
     const layout = layouts.find((l) => l.slug === slug);
     if (layout) showByHand(layout.id);
@@ -241,6 +251,7 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
   return {
     slug: shown ? shown.slug ?? (shown.isDefault ? undefined : routeSlug) : routeSlug,
     zoomStyle,
+    pageScale,
     pick,
   };
 }

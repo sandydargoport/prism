@@ -1,10 +1,12 @@
 'use client';
 
 /**
- * The editor's controls (#1151): Screen | Dashboard | Widgets | Look | More,
- * the same on the built-in Today and on a family's own dashboards; only what
- * is inside Widgets differs. Screen comes first (#1326): the screen's whole
- * day, what it shows when and how it idles by day and at night (#1349).
+ * The editor's controls (#1151, #1350): three tabs grouped by owner, Screen |
+ * Widgets | Look, the same on the built-in Glance and on a family's own
+ * dashboards; only what is inside them differs. Screen comes first (#1326):
+ * the screen's whole day (#1349). Widgets and Look are the dashboard's. The
+ * dashboard jobs (New, Rename, Export and the rest) are in the header menu,
+ * not a tab. Opened on a dashboard with no screen, there is no Screen tab.
  *
  * Every device edits on a canvas (#1265, #1280), so they are a panel in a
  * column beside it (below it on a phone): Cancel and Done at its top right,
@@ -13,26 +15,33 @@
  * with sheets rising from it, went with editing in place (#1283).
  */
 import * as React from 'react';
-import { LayoutDashboard, Monitor, MoreHorizontal, Palette, Shapes, type LucideIcon } from 'lucide-react';
+import { Monitor, Palette, Shapes, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type EditorSheet = 'screen' | 'dashboard' | 'widgets' | 'look' | 'more';
+export type EditorSheet = 'screen' | 'widgets' | 'look';
 
 const SHEETS: Array<{ id: EditorSheet; label: string; Icon: LucideIcon }> = [
   { id: 'screen', label: 'Screen', Icon: Monitor },
-  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'widgets', label: 'Widgets', Icon: Shapes },
   { id: 'look', label: 'Look', Icon: Palette },
-  { id: 'more', label: 'More', Icon: MoreHorizontal },
 ];
+
+/** The editor's tabs: all three, or Widgets and Look on a dashboard with no screen. */
+export function editorTabs(hasScreen: boolean): EditorSheet[] {
+  return SHEETS.map((s) => s.id).filter((id) => hasScreen || id !== 'screen');
+}
 
 export interface EditorBarProps {
   open: EditorSheet | null;
   onOpenChange: (sheet: EditorSheet) => void;
   /** The open sheet's contents. */
   sheet?: React.ReactNode;
+  /** Which tabs there are; all three by default. */
+  tabs?: EditorSheet[];
   /** Sheets with changes not yet saved get a dot. */
   dirty?: Partial<Record<EditorSheet, boolean>>;
+  /** Something Done has not saved yet, on a tab or in the header menu: said beside Done. */
+  unsaved?: boolean;
   doneLabel?: string;
   /** Why Done cannot save right now, or null. */
   doneBlocked?: string | null;
@@ -45,10 +54,11 @@ export interface EditorBarProps {
 }
 
 export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(function EditorBar(
-  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, previewName = null, onLeavePreview },
+  { open, onOpenChange, sheet, tabs, dirty = {}, unsaved = false, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, previewName = null, onLeavePreview },
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
+  const shown = SHEETS.filter((s) => !tabs || tabs.includes(s.id));
   // Where the tabs do not fit on one line (a 1024px laptop's panel, a
   // phone under 390px) the row scrolls sideways; the open one is kept in view.
   const navRef = React.useRef<HTMLElement>(null);
@@ -60,12 +70,13 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
     else if (tab.offsetLeft + tab.offsetWidth > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = tab.offsetLeft + tab.offsetWidth - nav.clientWidth;
   }, [open]);
   // A panel on a light page, as a desktop app has it: Cancel and Done at the
-  // top right, and the six sheets as tabs along the top of the panel they
+  // top right, and the three sheets as tabs along the top of the panel they
   // open, so nothing dark sits beside the picture. With a mouse a tab is one
   // line of words; a finger keeps 44px or more and the icons.
   return (
     <div ref={ref} className="flex flex-col gap-3 lg:h-full lg:min-h-0" data-editor-bar data-editor-panels>
       <div className="flex min-h-[44px] shrink-0 items-center justify-end gap-2" data-editor-actions>
+        {unsaved && <span className="mr-auto text-caption text-muted-foreground" data-editor-unsaved>Unsaved changes</span>}
         <button
           type="button"
           onClick={onCancel}
@@ -94,7 +105,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
       )}
       <div className="flex flex-col rounded-[1.4rem] bg-card text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl lg:min-h-0 lg:flex-1">
         <nav ref={navRef} aria-label="Edit" className="flex shrink-0 overflow-x-auto border-b border-border px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-editor-tabs>
-          {SHEETS.map(({ id, label, Icon }) => (
+          {shown.map(({ id, label, Icon }) => (
             <button
               key={id}
               type="button"

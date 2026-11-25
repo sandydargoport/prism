@@ -9,7 +9,7 @@
  */
 import * as React from 'react';
 import { useRef, useState } from 'react';
-import { EyeOff, Minimize2, X } from 'lucide-react';
+import { EyeOff, Minimize2, Moon, X } from 'lucide-react';
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { useTheme } from '@/components/providers';
 import { getColorPalette, FIXED_COLORS, PALETTE_ORDER, type PaletteId } from '@/lib/constants/colorPalettes';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { canHideWhenEmpty, hidesWhenEmpty } from './grid/hideWhenEmpty';
 import { isTypingTarget } from './grid/editorKeys';
 import { applyLookToAll, countDiffering, type LookPart } from './widgetLook';
+import { shownWhenIdle } from '@/components/screensaver/calmMode';
 
 /** A change to a widget's look. `null` puts a colour back to the default; a field left out is kept. */
 export type WidgetStyleUpdate = {
@@ -144,9 +145,11 @@ export type WidgetStylePanelProps = {
   allWidgets?: WidgetConfig[];
   /** The dashboard's widgets with this widget's fill, outline or text on each. */
   onAllChange?: (next: WidgetConfig[]) => void;
+  /** A Stays when idle switch (#1350): on a dashboard's widgets, not the photo frame's. */
+  staysToggle?: boolean;
 };
 
-export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault = false, idleToggles = false, allWidgets, onAllChange }: WidgetStylePanelProps) {
+export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault = false, idleToggles = false, allWidgets, onAllChange, staysToggle = false }: WidgetStylePanelProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const [paletteId, setPaletteId] = useState<PaletteId>('seasonal');
@@ -379,6 +382,20 @@ export function WidgetStylePanel({ widget, onChange, onClose, hideEmptyByDefault
       <section data-widget-style="showing">
         <h3 className={section}>When it shows</h3>
         <div className="flex flex-col gap-3">
+          {staysToggle && (
+            // Whether it stays when the screen is idle as the dashboard, quieter (#1350).
+            <div className="flex flex-col gap-1">
+              {/* A chip, as its neighbours are, so it is as big a target as they are. */}
+              <button type="button" role="switch" aria-checked={shownWhenIdle(widget)} onClick={() => set({ showWhenIdle: !shownWhenIdle(widget) })}
+                className={cn(chip(shownWhenIdle(widget)), 'self-start')} data-stays-when-idle>
+                <Moon className="h-4 w-4" aria-hidden />
+                Stays when idle
+              </button>
+              <p className={note}>
+                {shownWhenIdle(widget) ? 'Stays on the dashboard, quieter, when the screen is idle.' : 'Fades when the screen is idle.'}
+              </p>
+            </div>
+          )}
           {hideEmpty}
           <div className="flex flex-col gap-1">
             <button type="button" onClick={() => set({ hideOnSmallScreen: !smallOn })} aria-pressed={smallOn} className={cn(chip(smallOn), 'self-start')} data-hide-small-screen>
