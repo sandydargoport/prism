@@ -264,6 +264,8 @@ export const CalendarWidget = React.memo(function CalendarWidget({
           // Each calendar keeps its colour on the photo frame, where every
           // other backing in a widget is cleared to sit on the photo.
           data-keep-bg
+          // Its own black or white text, chosen against its colour.
+          data-keep-color
           data-calendar-chip={group.id}
         >
           <span data-keep-bg className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all') ? 'rgba(255,255,255,0.55)' : group.color }} />

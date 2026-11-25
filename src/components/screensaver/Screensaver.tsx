@@ -55,7 +55,9 @@ const NightSky = React.lazy(() => import('./nightSky/NightSky').then((m) => ({ d
  */
 export const SCREENSAVER_WIDGET_CLASS =
   'h-full w-full ' +
-  '**:bg-transparent! [&_.bg-card]:bg-white/10! ' +
+  // Every backing goes, except one a widget marks to keep (data-keep-bg): a
+  // calendar's colour on its name chip, the bus widget's status dots.
+  '[&_*:not([data-keep-bg])]:bg-transparent! [&_.bg-card]:bg-white/10! ' +
   // Force white text for legibility over the photo — EXCEPT elements marked
   // data-keep-color (e.g. the birthdays "days until" urgency coloring), which
   // keep their own color but still get the shadow.
