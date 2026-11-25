@@ -17,7 +17,9 @@ const mockEdit = jest.fn();
 const items: ShoppingItem[] = [
   { id: 'i1', listId: 'l1', name: 'Pears', category: 'produce', checked: false, createdAt: '2026-01-01' },
   { id: 'i2', listId: 'l1', name: 'Oat milk', category: 'dairy', checked: false, createdAt: '2026-01-01' },
+  { id: 'i3', listId: 'l1', name: 'Rye bread', category: 'bakery', checked: true, createdAt: '2026-01-01' },
 ];
+let mockShowChecked = true;
 const list = { id: 'l1', name: 'Weekend groceries', sortOrder: 0, createdAt: '2026-01-01', items } as ShoppingList;
 const categories = [
   { id: 'produce', name: 'Produce', emoji: '🥬', color: '#22C55E' },
@@ -29,14 +31,14 @@ jest.mock('../useShoppingViewData', () => ({
     lists: [list], loading: false, error: null, refreshLists: jest.fn(), familyMembers: [],
     requireAuth: jest.fn(), apiAddItem: jest.fn(),
     activeListId: 'l1', setActiveListId: jest.fn(),
-    showChecked: false, setShowChecked: jest.fn(),
+    showChecked: mockShowChecked, setShowChecked: jest.fn(),
     showAddItemModal: false, setShowAddItemModal: jest.fn(),
     editingItem: null, setEditingItem: jest.fn(),
     showListModal: false, setShowListModal: jest.fn(),
     editingList: null, setEditingList: jest.fn(),
     activeList: list, filteredItems: {},
     toggleItem: (id: string) => mockToggle(id), deleteItem: jest.fn(),
-    totalItems: 2, checkedItems: 0, progress: 0,
+    totalItems: 3, checkedItems: 1, progress: 0,
   }),
 }));
 jest.mock('@/lib/hooks/useShoppingCategories', () => ({
@@ -88,7 +90,7 @@ jest.mock('@/app/shopping/KrogerCartModal', () => ({ KrogerCartModal: () => null
 
 import { ShoppingView } from '../ShoppingView';
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => { jest.clearAllMocks(); mockShowChecked = true; });
 
 function expectTheListToShopFrom(container: HTMLElement) {
   const calm = container.querySelector<HTMLElement>('[data-shopping-calm]');
@@ -136,5 +138,21 @@ describe('Shopping mode', () => {
     expect(calm.querySelectorAll('[data-shopping-edit]')).toHaveLength(2);
     fireEvent.click(within(calm).getByRole('button', { name: 'Edit Pears' }));
     expect(mockEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }));
+  });
+});
+
+describe('Hide Checked Items', () => {
+  it('shown, the list has its Checked off section; hidden, it is gone', () => {
+    const shown = render(<ShoppingView />);
+    expect(shown.container.querySelector('[data-shopping-cart]')).not.toBeNull();
+    expect(within(shown.container.querySelector<HTMLElement>('[data-shopping-cart]')!).getByText('Checked off (1)')).toBeTruthy();
+    shown.unmount();
+
+    mockShowChecked = false;
+    const hidden = render(<ShoppingView />);
+    expect(hidden.container.querySelector('[data-shopping-cart]')).toBeNull();
+    expect(screen.queryByText(/Checked off/)).toBeNull();
+    // The items still to buy stay.
+    expect(screen.getByText('Pears')).toBeTruthy();
   });
 });
