@@ -487,6 +487,11 @@ function CalendarViewHydrated() {
               </Button>
             )}
           </>}
+          // A phone hides the view options, so Manage calendars sits in the
+          // header's menu instead (#1314).
+          overflow={isMobile ? [
+            { label: t('toolbar.manageCalendars'), icon: CalendarCog, onClick: () => setShowManageCalendars(true) },
+          ] : undefined}
         />
 
         {!isMobile && calendarGroups.length > 0 && (

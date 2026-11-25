@@ -8,7 +8,7 @@ Meals, chores and to-dos show up next to the events. Google calendars sync both 
 
 ## Set it up
 
-Calendar settings live in **Manage calendars**, on the Calendar page itself: open the **View** menu (the gear beside the view dropdown) and tap **Manage calendars** at its foot. Each mention of Manage calendars below means this window.
+Calendar settings live in **Manage calendars**, on the Calendar page itself: open the **View** menu (the gear beside the view dropdown) and tap **Manage calendars** at its foot. On a phone, which has no View menu, it is in the header menu: *Calendar > header menu > **Manage calendars***. Each mention of Manage calendars below means this window.
 
 ### Setting up calendar sources
 
@@ -259,6 +259,7 @@ Subscription and read-only calendars are left out of the picker automatically.
 
 - On a phone the calendar shows only the **Agenda view**: a list of upcoming events that you can swipe to dismiss.
 - The view switcher is hidden.
+- **Manage calendars** is in the header menu.
 - The header just says "Upcoming Events."
 - Swipe left or right to move between periods.
 
