@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  *
  * Help describes the app as it is after the new look (#1308): Glance, the bar
- * at the bottom, screens and Through the day each have a topic, What's new
+ * at the bottom and screens each have a topic, What's new
  * links to the full changelog, and no topic still sends anyone to a control
  * that is gone.
  */
@@ -44,7 +44,7 @@ describe('Help after the new look (#1308)', () => {
     render(<HelpView />);
     const names = topics();
     const at = names.indexOf('Getting Started');
-    expect(names.slice(at + 1, at + 4)).toEqual(['Glance', 'Getting Around', 'Screens & Through the Day']);
+    expect(names.slice(at + 1, at + 4)).toEqual(['Glance', 'Getting Around', 'Screens']);
     // The scroll spec reaches for the last topic.
     expect(names.at(-1)).toBe('Troubleshooting');
   });
@@ -68,14 +68,17 @@ describe('Help after the new look (#1308)', () => {
     render(<HelpView />);
     const text = allTopicText();
     for (const direction of [
-      'More > Edit layout > Through the day',
       'More > Edit layout > Screen',
-      'Base dashboard',
-      'When nobody is using it',
+      // The Screen tab holds the screen's day (#1349).
+      'More > Edit layout > Screen > Shows',
+      'More > Edit layout > Screen > When idle',
+      'Idle after',
+      'Same as new screens',
+      'Arrange the photo frame',
+      'Someone using the screen sees the dashboard for that time.',
       'More > Edit layout > Widgets',
       'More > This screen > Away mode',
       'Settings > Security > Require the PIN for every change',
-      'Look > This screen',
       // A phone's own cards (#1354).
       'More > This phone > Cards',
       'More > This phone > Reorder',
@@ -96,11 +99,21 @@ describe('Help after the new look (#1308)', () => {
       // A screen's name, dashboard and switches moved to the Screen tab (#1326).
       'Through the day > Name this device',
       'Through the day > Shows',
-      'Screen > Shows',
       'Other screens',
       'Name of screen',
       'Dashboard it shows',
       'go to Through the day',
+      // Through the day is gone, and its words with it (#1349).
+      'Through the day',
+      'Through the Day',
+      'Base dashboard',
+      'When nobody is using it',
+      'Rest after',
+      'How dark',
+      'Dim this dashboard',
+      'Look > This screen',
+      'editor\'s More',
+      'Screensaver motion',
       // The round button is only a page's Add (#1354).
       'Dashboard options',
     ]) expect(text).not.toContain(gone);
@@ -109,7 +122,7 @@ describe('Help after the new look (#1308)', () => {
   it('on a phone, still has the topics a phone needs', () => {
     mobile = true;
     render(<HelpView />);
-    expect(topics()).toEqual(expect.arrayContaining(['Glance', 'Getting Around', 'Screens & Through the Day', 'Mobile Dashboard']));
+    expect(topics()).toEqual(expect.arrayContaining(['Glance', 'Getting Around', 'Screens', 'Mobile Dashboard']));
     expect(topics()).not.toContain('Dashboard Editor');
   });
 });

@@ -12,8 +12,8 @@ import { useScreensaverInterval } from '@/components/layout/WallpaperBackground'
 /**
  * The screensaver's own settings, reachable from the screensaver.
  *
- * The same panel opens from the editor's Through the day > More, as
- * Screensaver motion. Tuning something you can only judge by looking at it
+ * The editor has the same controls inline, under Screen > When idle >
+ * Advanced (#1349). Tuning something you can only judge by looking at it
  * needs to happen in front of it, so the screensaver's corner opens it too.
  *
  * Only per-screen preferences are here: which effect, how often, how many

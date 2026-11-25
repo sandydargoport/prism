@@ -1,8 +1,6 @@
 {
   "docs/HELP.md": {
-    "How dark": 1,
-    "screensaver": 7,
-    "Through the day": 1
+    "screensaver": 6
   },
   "docs/features/BUS.md": {
     "screensaver": 2
@@ -11,26 +9,15 @@
     "screensaver": 2
   },
   "docs/features/DASHBOARD.md": {
-    "Base dashboard": 2,
-    "calm": 1,
-    "How dark": 1,
-    "Idle screen": 3,
+    "Idle screen": 2,
     "Make the default": 3,
-    "Rest after": 2,
     "Resting": 4,
-    "screensaver": 16,
-    "Through the day": 2
+    "screensaver": 10
   },
   "docs/features/DISPLAY-MODES.md": {
-    "calm": 3,
-    "Dim this dashboard": 1,
-    "How dark": 2,
+    "How dark": 1,
     "Idle screen": 1,
-    "Rest after": 3,
-    "Resting": 6,
-    "screensaver": 40,
-    "Start after": 1,
-    "Through the day": 7
+    "screensaver": 26
   },
   "docs/features/MOBILE.md": {
     "screensaver": 4
@@ -46,15 +33,9 @@
     "screensaver": 2
   },
   "src/app/help/HelpView.tsx": {
-    "Base dashboard": 2,
-    "calm": 1,
-    "Dim this dashboard": 2,
-    "How dark": 2,
     "Make the default": 2,
-    "Rest after": 4,
-    "Resting": 11,
-    "screensaver": 6,
-    "Through the day": 8
+    "Resting": 2,
+    "screensaver": 5
   },
   "src/app/photos/PhotosView.tsx": {
     "screensaver": 1
@@ -67,9 +48,6 @@
   },
   "src/components/layout/DashboardGrid.tsx": {
     "screensaver": 3
-  },
-  "src/components/layout/EditorBar.tsx": {
-    "Through the day": 1
   },
   "src/components/layout/EditorSheets.tsx": {
     "Make the default": 1,
@@ -84,17 +62,6 @@
   },
   "src/components/layout/LayoutEditorShareDialog.tsx": {
     "screensaver": 1
-  },
-  "src/components/layout/ScreenSheet.tsx": {
-    "Base dashboard": 1,
-    "How dark": 2,
-    "Rest after": 1
-  },
-  "src/components/layout/ThroughTheDaySheet.tsx": {
-    "Dim this dashboard": 2,
-    "Resting": 2,
-    "screensaver": 1,
-    "Through the day": 1
   },
   "src/components/photos/PhotoLightbox.tsx": {
     "screensaver": 1

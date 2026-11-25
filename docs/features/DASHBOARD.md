@@ -12,9 +12,9 @@ A parent arranges layouts in the editor: the dashboard drawn on a canvas at the 
 
 Open **More** on the dock, the row of pages at the bottom of the screen, and choose **Edit layout** under **This screen**. If the dock is tucked behind the small **Menu** tab on the bottom edge, tap the tab first. Signed out, **Edit layout** asks for a parent's PIN, and while a child is signed in it isn't there. From a page other than the dashboard it opens the screen's dashboard with the editor open.
 
-The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Screen**, **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, with **Cancel** and **Done** above them.
+The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Screen**, **Dashboard**, **Widgets**, **Look** and **More**, with **Cancel** and **Done** above them.
 
-- **On a named screen** (named in **Screen**, listed in *Settings > Screens*) **Edit layout** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
+- **On a named screen** (named in **Screen**, listed in *Settings > Screens*) **Edit layout** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Screen**) reach it when you press **Done**, and it goes back to its dashboard.
 - **On a laptop or any other device** it opens at the size of a screen that shows the dashboard. **Shown at** above the canvas picks another: a named screen or a common screen size.
 - **For another named screen**, **Edit** on its row in *Settings > Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**. From a phone, **More > Edit a screen** gets there: one named screen opens its editor, two or more open *Settings > Screens*, and with none it opens the default dashboard's editor.
 
@@ -22,10 +22,17 @@ What each panel holds:
 
 - **Dashboard**: every dashboard, to switch to one, with **New dashboard**, **Make a copy**, **Rename**, **Make the default** and **Delete** (see [Multiple dashboards](#multiple-dashboards)).
 - **Widgets**: the widgets on this dashboard, the templates and the community gallery.
-- **Screen**, first: the screen being edited. A **Screen** drop-down lists every named screen, set to this one; picking another opens that screen's editor, asking first when changes are not saved (see below). The pencil beside it renames the screen in place: type the name and press Enter, or leave the field, and it is saved as *Settings > Screens* renames one; Esc keeps the old name. **Base dashboard** and **Switches** set what it shows and when it switches (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches)); **When nobody is using it** has **Rest after** and **How dark**; **Light and photos** has the screen's **Light or dark**, **Photos behind the dashboard** and **New photo every**. On a device with no name the drop-down says **This device (not named)** and **Name this device** is below it; editing a dashboard with no screen, from a phone say, it says **No screen**.
-- **Through the day**: what the screen shows idle and at night, its own whichever dashboard is up, and the day's line, with a dot for each of the screen's switches; tapping a switch's dot opens it in **Screen** (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
-- **Look**: the screen shape, **See it at a screen size**, and this screen's own settings under **This screen**.
-- **More**: the overview, notices, **Export**, **Import**, **Share to the gallery** and **Reset this layout**.
+- **Screen**, first: the screen's whole day, in rows (see [Which dashboard a screen shows](#which-dashboard-a-screen-shows-and-when-it-switches) and [Idle, away and sitter screens](DISPLAY-MODES.md)):
+  - A line naming the screen, then one sentence that says what it does, for example "Hallway shows Main. On school days it shows Bus board around bus time and stays awake for it. Idle for 2 minutes, it becomes a photo frame. At night the photo frame is 50% darker." It follows each change before **Done**, and says so when something will not happen, such as "It never idles, so it has no night look."
+  - A strip of today: night shaded by the screen's own night, each time it shows another dashboard a band in the colour of the swatch on that row (never narrower than 12 pixels, so a short one still shows), and a line at now. The exact times are in the rows.
+  - **Shows**: **Normally**, then the screen's times, in the order that decides an overlap, each with **Edit**.
+  - **When idle**: **Idle after**, then **By day** and **At night**: what it shows, and how much **Darker** at night. **Advanced** has when night is and the photo frame's motion.
+  - **This screen: light or dark, photos behind the dashboard**: the **Screen** drop-down of every named screen, set to this one (picking another opens that screen's editor, asking first when changes are not saved), the pencil beside it that renames the screen in place (Enter or leaving the field saves it, as *Settings > Screens* renames one; Esc keeps the old name), **Light or dark**, **Photos behind the dashboard** and **New photo every**.
+  - **Advanced**: **Orientation**, **Performance**, **On-screen keyboard**, **Auto-hide navigation**, **Sign out after** and **Notices**.
+
+  On a device with no name, the idle rows work and apply to that device; **Normally** and **Add a time** ask for a name first, in place. Editing a dashboard with no screen, from a phone say, the tab says so and the drop-down says **No screen**.
+- **Look**: the screen shape and **See it at a screen size**.
+- **More**: the overview, **Export**, **Import**, **Share to the gallery** and **Reset this layout**.
 
 Over the canvas, the toggles **In use | Idle** and **Day | Night** pick which of the screen's four states it draws, each as the screen draws it, and the line under the canvas names it: "Main, idle, at night: a photo frame, 50% darker. 1280 x 800." (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
 
@@ -108,29 +115,29 @@ You can make a separate dashboard for each room or display. The **Dashboard** pa
 - **Rename**, **Make the default** and **Delete** act on the dashboard you are editing.
 - The **default** dashboard lives at **`/`**. **Make the default** makes any dashboard the default when you press **Done**.
 - Named dashboards get URLs like **`/d/kitchen`** or **`/d/living-room`**.
-- Each dashboard has its own widget layout, screensaver layout and orientation.
+- Each dashboard has its own widget layout, photo frame arrangement and orientation.
 - Bookmark a dashboard URL on a device that only shows that dashboard, so it opens straight to it.
 
 #### Which dashboard a screen shows, and when it switches
 
-A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Screen** (More > Edit layout > Screen): **Base dashboard** is its dashboard, shown except while a switch is on, and each switch is a row of its own under **Switches**. Two screens can show the same dashboard, and each keeps its own switches.
+A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in More > Edit layout > Screen > Shows: **Normally** is its dashboard, shown outside its times, and each time is a row of its own under it, with a swatch in the colour of its band on the strip. **Normally** can be **Same as new screens**, which follows whatever *Settings > Screens* sets for new and unnamed screens. Two screens can show the same dashboard, and each keeps its own times.
 
-- **At bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
+- **Bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the routes it follows and their days, and opened, the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
   - **Routes**: with two or more bus routes, the row has a chip for each, all on to begin with. Turn one off to leave that route out. With every route on, the switch also follows routes added later. One always stays on.
   - **From** so many minutes **before to** so many **after**: how long before the route's time the switch starts and how long after it ends, from 0 to 120 minutes.
   - A screen can have more than one bus switch, for example the morning route to one dashboard and the afternoon route to another.
-- **At set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
+- **Set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
 - **Stays awake**, on each row: while the switch is on, the screen does not go idle, and if it was idle when the switch starts, it wakes on the switch's dashboard as if someone had touched it. It is on for bus time and off for set times to begin with; turn it either way on the row. A row with it on ends its line with "stays awake". When the switch ends, the screen goes idle after the usual time with nobody touching it. Waking this way is not opening a dashboard by hand, so the screen goes on following its switches.
 
-**+ Switch at set times** and, if bus tracking is set up (at least one route in *Settings > Bus*), **+ Switch at bus time** add one; a bus switch made before keeps its row either way; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
+**+ Add a time** and, if bus tracking is set up (at least one route in *Settings > Bus*), **+ Add bus time** add one; a bus row made before keeps its row either way; a screen can have up to 12. Higher rows win where times overlap, and the arrow on an opened row moves it up. A row that a higher one covers says so, for example "Covered by Bus time (Bus board) above, so it never shows." A row's dashboard list ends with **New dashboard...**, which makes a new dashboard there and then and switches the row to it. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
 
-A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Screen** > **Name this device**.
+A device nobody named shows the default dashboard and never switches. To give it times, name it: open the editor on it, then **Screen** > **Normally** > **Edit** or **+ Add a time**, which ask for a name first.
 
 Make a dashboard to switch to with **Make a copy** in the Dashboard panel and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until it next goes idle, or until a switch starts or ends, and then shows its own again. This works with no switches too. The screen never goes idle while its editor is open, on the screen or from a phone, so nothing dims or covers the editor. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
 #### Notices
 
-A named screen can show small notice cards down the top right of its dashboard. In the editor's **More** panel, **Notices** turns each kind on and sets how many minutes ahead it looks:
+A named screen can show small notice cards down the top right of its dashboard. In the editor, **Screen** > **Advanced** > **Notices** turns each kind on and sets how many minutes ahead it looks:
 
 - **Bus**: the bus is due at your stop within the set minutes, using the live position where there is one and the emailed estimate otherwise. The card goes once the bus has passed the stop.
 - **Event**: a timed event starts within the set minutes. The card goes when the event starts. All-day events never show.
@@ -179,7 +186,7 @@ Pick a widget on the screen or in the list in the **Widgets** panel (**More > Ed
 - **Apply to all widgets**, under each of **Fill**, **Outline** and **Text**: puts this widget's fill, outline, or text colour and size on every widget of the dashboard, hidden ones too. The line under it says how many widgets differ, or that every widget already matches. To turn outlines off everywhere, pick **None** under **Outline** on one widget, then **Apply to all widgets**.
 - **Align**, for the clock and the weather, under **Text**: **Across** (Auto, Left, Centre, Right) and **Up/down** (Auto, Top, Middle, Bottom) set where the contents sit. On **Auto**, a small tile (a third of the width or less) that touches a screen corner hugs that corner, and any other tile is centred. A small weather tile shows the icon, temperature and condition on one line each, and the rest once the tile is wide enough.
 - **Grid**, for the calendar: the strength of its grid lines and a background colour for its cells.
-- **Hide when empty**: Prism doesn't draw the widget while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and brings it back when something arrives. Its space stays blank, so nothing else moves. It is on by default on the screensaver and on a calm dashboard's idle screen, and off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't have this option. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.
+- **Hide when empty**: Prism doesn't draw the widget while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and brings it back when something arrives. Its space stays blank, so nothing else moves. It is on by default on the photo frame and on the dashboard, quieter, when idle, and off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't have this option. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.
 - **Hide first on a small screen**: leaves the widget out on a screen below about three quarters of the design size, so the others have room.
 
 ### Overview and checks
@@ -192,13 +199,13 @@ Under it, a preview shows how your one design looks on each common screen size. 
 
 Choose **See it at a screen size** in the **Look** panel, or press **Ctrl+Shift+M**, to hide the editor's controls for a moment and see the board as it will really look. Click **Exit Preview** to go back. **Show Nav** and **Hide Nav** let you check it with and without the dock, which helps when tuning a layout for a wall display.
 
-Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigation**, in the editor's **Look** panel under **This screen**. On, the dock tucks behind a small **Menu** tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.
+Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigation**, in the editor's **Screen** panel under **Advanced**. On, the dock tucks behind a small **Menu** tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.
 
-### Screensaver layout
+### Photo frame arrangement
 
-Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In the editor, pick **Idle** over the canvas (and **Night** for the night), then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
+Each dashboard has its own photo frame arrangement, used when photos or the night sky show while the screen is idle. In More > Edit layout > Screen > When idle, choose **A photo frame** and press **Arrange the photo frame**: the canvas shows it idle and **Widgets** opens to arrange it. Picking **Idle** over the canvas (and **Night** for the night), then **Widgets**, gets there too. The templates and the community gallery switch to their photo frame sets as well.
 
-The screen rests after the time set as **Rest after** in the Screen panel: 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests**, 2 minutes by default. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
+The screen goes idle after the time set as **Idle after** in the same place: 30 sec, 1 min, 2 min, 10 min, 1 hour or **Never**, 2 min by default. The photo frame templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
 
 See [Idle, away and sitter screens](DISPLAY-MODES.md) for more on the screensaver and Away mode.
 

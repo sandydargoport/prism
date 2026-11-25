@@ -20,25 +20,25 @@ Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitch
 
 The layout is saved with the dashboard, not in the browser, so a screen showing that dashboard picks up a change made on another device, such as a phone or a laptop, within a minute, without a reload.
 
-A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** panel (More > Edit layout > Through the day), a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. Tapping a switch's dot opens that switch in the **Screen** panel, where switches are set. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night.
+A screen is in one of three states: **In use** while someone is using it, **Idle** once nobody has touched it for a while, and idle at **Night** after dark. All of it is set in the editor's **Screen** panel (More > Edit layout > Screen). At the top, one sentence says what the screen does, for example "Hallway shows Main. On school days it shows Bus board around bus time and stays awake for it. Idle for 2 minutes, it becomes a photo frame. At night the photo frame is 50% darker." Under it, a strip of today shades the screen's night, draws each of its times as a band in the colour of that row's swatch, and marks now with a line.
 
-Over the canvas, two toggles are always there: **In use | Idle** and **Day | Night**. Together they pick which of the four states the canvas draws, and it draws each as the screen does: idle, the photo frame over its photo, the night sky, or the dashboard with the widgets that do not stay faded; at night, as much darker as the screen is set to go, over every look, or black for **Screen off**; Glance in use at night under its night veil. The line under the canvas names what is drawn and at what size, for example "Main, idle, at night: a photo frame, 50% darker. 1280 x 800." **Day | Night** starts at the time it is now, and the day's line sets both toggles as it steps.
+Over the canvas, two toggles are always there: **In use | Idle** and **Day | Night**. Together they pick which of the four states the canvas draws, and it draws each as the screen does: idle, the photo frame over its photo, the night sky, or the dashboard with the widgets that do not stay faded; at night, as much darker as the screen is set to go, over every look, or black for **Screen off**; Glance in use at night under its night veil. The line under the canvas names what is drawn and at what size, for example "Main, idle, at night: a photo frame, 50% darker. 1280 x 800." **Day | Night** starts at the time it is now, and choosing an idle or night look in the Screen panel sets both toggles to show it.
 
-The panel is a few rows, all the screen's own: **Resting** (what it shows idle by day) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it. Idle and night belong to the screen, not to the dashboard it shows, and **Done** saves them to the screen, so a switch to another dashboard does not change how the screen idles. Which dashboard a screen shows, its switches, how soon it goes idle and how much darker it goes at night are in the editor's **Screen** panel (More > Edit layout > Screen; see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)).
+More > Edit layout > Screen > When idle is a few rows, all the screen's own: **Idle after**, then two columns, **By day** and **At night**, with what it shows (**It shows**) and how much darker at night (**Darker**). **Advanced** has when night is, with tonight's times and the offsets, and the photo frame's motion. Idle and night belong to the screen, not to the dashboard it shows, and **Done** saves them to the screen, so a switch to another dashboard does not change how the screen idles. Night changes how the screen idles; to show a different dashboard in the evening, add a time under More > Edit layout > Screen > Shows (see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)). A screen that never idles has no night look: its night column is greyed and says so.
 
-#### A calm dashboard is its own idle screen
+#### The dashboard, quieter, as the idle look
 
-A dashboard set to rest as **This dashboard** (in the Through the day panel) has no separate screensaver. When the display goes idle, some widgets fade out where they are and the others stay. A tap brings everything back, and nothing moves.
+A screen set to idle as **The dashboard, quieter** (Screen > When idle > It shows) has no separate photo frame. When the display goes idle, some widgets fade out where they are and the others stay. A tap brings everything back, and nothing moves.
 
-Pick **Idle** over the editor's canvas and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner, and the ones that fade are drawn faint. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
+Pick **Idle** over the editor's canvas and each widget on the quieter dashboard gets a **Stays** or **Fades** button in its top-right corner, and the ones that fade are drawn faint. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
 
-#### Resting, night and what shows
+#### Idle, night and what shows
 
-The Through the day panel sets what shows while the screen rests (**This dashboard**, **Photos** or **Night sky**, on the Resting row) and what night looks like (**Dim this dashboard**, **Night sky**, **Photos** or **Screen off**, on the At night row). Both belong to the screen, so two screens showing the same dashboard can idle differently, and a switch changes what a screen shows but not how it idles.
+More > Edit layout > Screen > When idle sets what shows while the screen is idle by day (**The dashboard, quieter**, **A photo frame** or **The night sky**) and at night (**Same as by day**, one of the others, or **Screen off**), and how much **Darker** it goes at night. Both belong to the screen, so two screens showing the same dashboard can idle differently, and a switch changes what a screen shows but not how it idles.
 
-- **Photos**: the slideshow.
-- **Night sky**: the stars, Milky Way, constellation figures and moon as they are outside right now, worked out from the household location in *Settings > General* and drawn over a treeline on the horizon. As at a real dusk, the Milky Way is the last thing to appear, and it fades when the moon is bright. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside). Then it is named, with what the name means and the names of its brightest stars, for about twenty seconds. The next one follows after a pause. Each display remembers which constellations it has shown and picks the one shown longest ago, best known first, skipping any that a widget would cover, so over the nights of a season it gets through all of them. The brightest stars twinkle, and a shooting star crosses every few minutes. On the nights around the peak of one of the ten major yearly meteor showers (the Quadrantids, Lyrids, Eta Aquariids, Southern Delta Aquariids, Perseids, Draconids, Orionids, Leonids, Geminids and Ursids), while its radiant (the point the meteors seem to come from) is above the horizon, a line at the top says so, for example "Geminids peak tonight, up to 150 an hour", and mentions whether a bright moon will hide the fainter ones. A small ring marks the radiant when it is in view, and shooting stars come more often and streak away from it. During a lunar eclipse visible from home, the moon turns copper as it moves into the Earth's shadow. If **Say when aurora may be visible** is ticked in *Settings > Appearance > Night sky* (off by default, one switch for every display), a second line says when NOAA's aurora forecast gives a chance of aurora overhead or low on the horizon toward the pole ("Aurora possible now, low in the northern sky"). When the device is set to reduced motion, or the performance level is Reduced or Minimal, the twinkling and shooting stars stop and each constellation appears whole instead of being traced. In the daytime it shows a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and visitors see no family photos.
-- **Night**: from dusk to dawn, half an hour after sunset until half an hour before sunrise where the household is, or at set times on the display's clock, such as 21:00 to 06:30. The panel shows tonight's real times, and under them you can move each edge earlier or later by some minutes or hours. Near midsummer, far from the equator, dusk and dawn are only a few hours apart and large offsets can make the night end before it starts. The editor warns you and won't save a setting like that. While resting, the display checks every minute whether night has begun. The same night also turns Glance's ink warm and brings up its veil, and it is when the screen dims.
+- **A photo frame**: the slideshow, with the widgets arranged for it. Once it is chosen, **Arrange the photo frame** opens its arrangement on the canvas.
+- **The night sky**: the stars, Milky Way, constellation figures and moon as they are outside right now, worked out from the household location in *Settings > General* and drawn over a treeline on the horizon. As at a real dusk, the Milky Way is the last thing to appear, and it fades when the moon is bright. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside). Then it is named, with what the name means and the names of its brightest stars, for about twenty seconds. The next one follows after a pause. Each display remembers which constellations it has shown and picks the one shown longest ago, best known first, skipping any that a widget would cover, so over the nights of a season it gets through all of them. The brightest stars twinkle, and a shooting star crosses every few minutes. On the nights around the peak of one of the ten major yearly meteor showers (the Quadrantids, Lyrids, Eta Aquariids, Southern Delta Aquariids, Perseids, Draconids, Orionids, Leonids, Geminids and Ursids), while its radiant (the point the meteors seem to come from) is above the horizon, a line at the top says so, for example "Geminids peak tonight, up to 150 an hour", and mentions whether a bright moon will hide the fainter ones. A small ring marks the radiant when it is in view, and shooting stars come more often and streak away from it. During a lunar eclipse visible from home, the moon turns copper as it moves into the Earth's shadow. If **Say when aurora may be visible** is ticked in *Settings > Appearance > Night sky* (off by default, one switch for every display), a second line says when NOAA's aurora forecast gives a chance of aurora overhead or low on the horizon toward the pole ("Aurora possible now, low in the northern sky"). When the device is set to reduced motion, or the performance level is Reduced or Minimal, the twinkling and shooting stars stop and each constellation appears whole instead of being traced. In the daytime it shows a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and visitors see no family photos.
+- **Night**: from dusk to dawn, half an hour after sunset until half an hour before sunrise where the household is, or at set times on the display's clock, such as 21:00 to 06:30. When idle > **Advanced** > **Night is** picks which, shows tonight's real times, and under them you can move each edge earlier or later by some minutes or hours. Near midsummer, far from the equator, dusk and dawn are only a few hours apart and large offsets can make the night end before it starts. The editor warns you and won't save a setting like that. While idle, the display checks every minute whether night has begun. The same night also turns Glance's ink warm and brings up its veil, and it is when the screen dims.
 - **Screen off**: a black screen until someone touches it, for a bedroom or a hallway.
 
 All of this is worked out on the display from the date and location, and nothing is downloaded, apart from the aurora forecast when that is switched on. The server fetches the forecast from NOAA's Space Weather Prediction Center at most every 30 minutes, and only while a display is showing the night sky after dark. If NOAA doesn't answer, the line is left off. The forecast is read for the household location, so it needs a location set in *Settings > General*. Without a location, Prism uses the time zone to estimate it, and the change at sunset is then right to within about an hour.
@@ -58,13 +58,13 @@ Fireworks is the only effect with a real cost. It switches to a plain fade autom
 
 #### Drift
 
-Separately from the transitions, the widgets that are showing move very slowly in a figure eight, 4 px each way over a minute and a half. This is for the panel. Rotating which widgets are shown helps against burn-in, and moving the ones that are up helps more, because it shifts their edges as well as what is inside them. Drift also runs on a dashboard that fades to a calm view of itself.
+Separately from the transitions, the widgets that are showing move very slowly in a figure eight, 4 px each way over a minute and a half. This is for the panel. Rotating which widgets are shown helps against burn-in, and moving the ones that are up helps more, because it shifts their edges as well as what is inside them. Drift also runs on the dashboard, quieter, when it is the idle look.
 
 All widgets move together, so the gaps between them stay as you designed them. The movement is in whole pixels, since moving by part of a pixel leaves the same physical pixels lit and does nothing. Four pixels is enough to move thin outlines and text clear of where they were. It can't move a thick stroke such as the clock's digits fully off its pixels, and any more movement would start to be noticeable.
 
-#### Dim at night
+#### Darker at night
 
-At night the resting screen gets darker: a black layer eases in over a few seconds on top of the screensaver or the calm dashboard, and a touch lifts it. Night and the darkness are the screen's own: night is set in the Through the day panel and the darkness in the Screen panel. Choosing a night look never changes the darkness.
+At night the idle screen gets darker: a black layer eases in over a few seconds on top of the photo frame or the quieter dashboard, and a touch lifts it. Night and the darkness are the screen's own, both in Screen > When idle: **Darker** in the At night column, and when night is under **Advanced**. Choosing a night look never changes the darkness.
 
 #### New and unnamed screens
 
@@ -76,24 +76,22 @@ A web page can't change the panel's own brightness or turn it off. On an OLED pa
 
 A screen's own idle settings are in its editor, More > Edit layout. From a phone, **More > Edit a screen** opens the same editor for that screen.
 
-In **Screen** (More > Edit layout > Screen), under **When nobody is using it**:
+In More > Edit layout > Screen > When idle:
 
-- **Rest after**: how long nobody touches the screen before it rests. 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or **Never rests** (default 2 minutes).
-- **How dark**: **Not dimmed**, or 25%, 50% or 75% darker at night. A new install starts at 50%; a screen that never set one is not dimmed. It isn't offered when the night look is **Screen off**.
+- **Idle after**: how long nobody touches the screen before it goes idle. 30 sec, 1 min, 2 min, 10 min, 1 hour or **Never** (default 2 min).
+- **Darker**, at night: **Not darker**, or 25%, 50% or 75%. A new install starts at 50%; a screen that never set one is not darker. It isn't offered when the night look is **Screen off**.
 
-In **Through the day**, **More** > **Screensaver motion** opens the screensaver's own panel:
+Under When idle > **Advanced**, after when night is, the photo frame's motion:
 
 - **Transition effect** and **Change every**: which effect to use, and the shortest gap between changes. It is a minimum because a new rotation never starts before the last one has finished, so a long effect sets its own pace.
 - **Show at least** and **at most**: the fewest and most widgets on screen at once. By default about two thirds of the layout shows, within those limits.
-- **Hide widget outlines**: removes the border around each widget. Lines inside a widget are left alone.
+- **Outlines on the photo frame**: off removes the border around each widget. Lines inside a widget are left alone.
 - **Transition length**: Brisk, Normal, Slow or Very slow. It scales every effect at once.
 - **Carbonation**, **Keep text clear of the waterline**, **Surface wobble**: for fill and drain only. Keep text clear of the waterline decides whether the water surface passes over the top line of a widget's text or over the empty space above it. Some people like seeing the water cover the content and others see it as a fault, so it is left as a switch.
 - **Drift**: on or off, on by default.
-- **Settings shortcut in the screensaver's corner**: off by default.
-- **Start after**: the same setting as **Rest after**.
 - **Change photo every**: how often the photo changes, from 5 seconds up to 1 hour, or Never for one still image.
 
-In **Look**, under **This screen**, are the screen's **Performance**, **On-screen keyboard**, **Orientation** and **Auto-hide navigation**, and:
+In More > Edit layout > Screen > **Advanced** are the screen's **Orientation**, **Performance**, **On-screen keyboard**, **Auto-hide navigation** and **Notices**, and:
 
 - **Sign out after**: how long the display can sit untouched before it stops being signed in as whoever used it last. The choices run from 5 minutes up to 4 hours, or Never, and the default is 30 minutes. Like the other settings here, it belongs to this screen.
 
@@ -103,13 +101,13 @@ In **Look**, under **This screen**, are the screen's **Performance**, **On-scree
 
   It is kept separate from the screensaver on purpose. The screensaver timer only changes the look and is often set to two minutes, and people who get asked for a PIN that often soon resent it.
 
-#### Changing it from the screensaver
+#### Changing it from the photo frame
 
-To judge a transition you have to watch it. With **Settings shortcut in the screensaver's corner** turned on, a Prism mark sits in the top-left corner of the screensaver. It is invisible until you hover over it, then fades in over two seconds, and it opens the same **Screensaver** panel in place. On a touchscreen you can tap that corner even when nothing is drawn there.
+To judge a transition you have to watch it. A screen whose settings shortcut was turned on before keeps a Prism mark in the top-left corner of the photo frame. It is invisible until you hover over it, then fades in over two seconds, and it opens the motion settings in place. On a touchscreen you can tap that corner even when nothing is drawn there.
 
 All of these settings are per display and stored on the screen where you set them, so two screens in one house can run different effects.
 
-The screensaver *layout*, meaning which widgets show and where, is arranged in the editor too (see [Screensaver layout](DASHBOARD.md#screensaver-layout)), from the same **Through the day** panel as **Screensaver motion**, because arranging a screensaver and choosing how it moves are two parts of the same job.
+The photo frame's *arrangement*, meaning which widgets show and where, is arranged in the editor too (see [Photo frame arrangement](DASHBOARD.md#photo-frame-arrangement)), from the same When idle rows as its motion, because arranging a photo frame and choosing how it moves are two parts of the same job.
 
 You choose which photos appear under *Settings > Photos:*
 
@@ -293,10 +291,10 @@ If you need to give a babysitter or short-term guest the information they need, 
 
 #### Screensaver doesn't activate
 
-- Check **Rest after** in More > Edit layout > Screen. **Never rests** turns the screensaver off.
+- Check **Idle after** in More > Edit layout > Screen > When idle. **Never** keeps the screen in use.
 - Check whether the layout editor is open, which stops the screensaver.
 - Check whether a modal is open, which also stops it.
-- In an installed app, the screensaver starts by itself only on a screen named in its editor (More > Edit layout > Screen > **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
+- In an installed app, the screensaver starts by itself only on a screen named in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
 
 #### Away mode won't exit
 

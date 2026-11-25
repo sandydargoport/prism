@@ -214,4 +214,4 @@ There is one row per goal for the whole family, but each child's progress is tra
 
 #### Celebration animation didn't fire
 
-Check the device's reduced-motion setting (`prefers-reduced-motion`, under System Settings > Accessibility) and Prism's performance level for that screen (in its editor, **More > Edit layout > Look > This screen > Performance**). Reduced motion on the device, or a Reduced or Minimal level in Prism, stops the animation, but the goal is still recorded as reached.
+Check the device's reduced-motion setting (`prefers-reduced-motion`, under System Settings > Accessibility) and Prism's performance level for that screen (in its editor, **More > Edit layout > Screen > Advanced > Performance**). Reduced motion on the device, or a Reduced or Minimal level in Prism, stops the animation, but the goal is still recorded as reached.

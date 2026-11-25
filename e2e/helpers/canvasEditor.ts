@@ -6,7 +6,7 @@ import { expect, type FrameLocator, type Page } from '@playwright/test';
  * the page beside it. A device nobody named opens /edit/<dashboard>, a named
  * screen its own /screens/<id>. One panel is always open; none closes.
  */
-export type Panel = 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
+export type Panel = 'screen' | 'dashboard' | 'widgets' | 'look' | 'more';
 
 /**
  * Waits for Edit to land on the canvas: the address, the dashboard in the

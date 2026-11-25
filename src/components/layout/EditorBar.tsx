@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * The editor's controls (#1151): Screen | Dashboard | Widgets | Through the
- * day | Look | More, the same on the built-in Today and on a family's own
- * dashboards; only what is inside Widgets differs. Screen comes first (#1326):
- * the screen being edited, its name, the dashboard it shows and its switches.
+ * The editor's controls (#1151): Screen | Dashboard | Widgets | Look | More,
+ * the same on the built-in Today and on a family's own dashboards; only what
+ * is inside Widgets differs. Screen comes first (#1326): the screen's whole
+ * day, what it shows when and how it idles by day and at night (#1349).
  *
  * Every device edits on a canvas (#1265, #1280), so they are a panel in a
  * column beside it (below it on a phone): Cancel and Done at its top right,
@@ -13,16 +13,15 @@
  * with sheets rising from it, went with editing in place (#1283).
  */
 import * as React from 'react';
-import { LayoutDashboard, Monitor, MoreHorizontal, Palette, Shapes, SunMoon, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Monitor, MoreHorizontal, Palette, Shapes, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type EditorSheet = 'screen' | 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
+export type EditorSheet = 'screen' | 'dashboard' | 'widgets' | 'look' | 'more';
 
 const SHEETS: Array<{ id: EditorSheet; label: string; Icon: LucideIcon }> = [
   { id: 'screen', label: 'Screen', Icon: Monitor },
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'widgets', label: 'Widgets', Icon: Shapes },
-  { id: 'day', label: 'Through the day', Icon: SunMoon },
   { id: 'look', label: 'Look', Icon: Palette },
   { id: 'more', label: 'More', Icon: MoreHorizontal },
 ];
@@ -50,7 +49,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
-  // Where the six tabs do not fit on one line (a 1024px laptop's panel, a
+  // Where the tabs do not fit on one line (a 1024px laptop's panel, a
   // phone under 390px) the row scrolls sideways; the open one is kept in view.
   const navRef = React.useRef<HTMLElement>(null);
   React.useEffect(() => {
@@ -102,9 +101,9 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
               onClick={() => onOpenChange(id)}
               aria-pressed={open === id}
               className={cn(
-                // Six tabs (#1326): each as wide as its one-line label, the room
-                // left shared out, and a narrow gap: one line each at a phone's
-                // 390px and a laptop's panel; narrower, the row scrolls.
+                // Each tab as wide as its one-line label, the room left shared
+                // out, and a narrow gap: one line each at a phone's 390px and a
+                // laptop's panel; narrower, the row scrolls.
                 'relative flex min-h-[56px] flex-auto flex-col items-center justify-center gap-1 whitespace-nowrap border-b-2 px-0.5 text-center text-caption font-medium leading-tight transition-colors',
                 'pointer-fine:min-h-10 pointer-fine:px-1.5',
                 open === id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',

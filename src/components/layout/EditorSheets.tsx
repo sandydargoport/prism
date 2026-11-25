@@ -22,12 +22,6 @@ import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
-import { changesFor, currentOption, SCREEN_SETTING_FIELDS, type ScreenSettingField } from '@/lib/displays/screenSettingFields';
-import { SCREEN_ATTENTION_KEY } from '@/lib/displays/screenAttention';
-import { loadBase } from '@/lib/displays/displaySettingsSync';
-import { remoteEditHost } from '@/lib/displays/remoteEdit';
-import { ScreenAttentionPanel } from '@/app/settings/sections/ScreenAttentionPanel';
 
 /** Glance is the one built-in dashboard: it cannot be deleted, only edited and reset. */
 export function isBuiltIn(d: { view?: string | null } | undefined): boolean {
@@ -36,7 +30,7 @@ export function isBuiltIn(d: { view?: string | null } | undefined): boolean {
 
 // A finger on the wall gets 44px or more; a mouse on the laptop, where editing
 // is done, gets controls sized like the rest of a desktop page, their words
-// 12px as on every sheet of the panel (see ThroughTheDaySheet).
+// 12px as on every sheet of the panel (see sheetRows).
 const action = 'flex min-h-[48px] items-center justify-center rounded-full border-[1.5px] border-foreground/30 px-5 text-body hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium';
 const row = 'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-left text-body hover:bg-muted pointer-fine:min-h-10 pointer-fine:px-2';
 const section = 'm-0 mb-2 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
@@ -255,8 +249,6 @@ export function WidgetsSheet({
   );
 }
 
-export { ThroughTheDaySheet as DaySheet } from './ThroughTheDaySheet';
-
 export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
   orientation: 'landscape' | 'portrait';
   onOrientationChange?: (o: 'landscape' | 'portrait') => void;
@@ -287,56 +279,7 @@ export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
           <button type="button" className={action} onClick={onMeasure}>See it at a screen size</button>
         </div>
       </section>
-      <section data-screen-options>
-        <h3 className={section}>This screen</h3>
-        <div className="flex flex-col gap-1">
-          {SCREEN_SETTING_FIELDS.map((f) => <ScreenOption key={f.key} field={f} />)}
-        </div>
-      </section>
     </div>
-  );
-}
-
-/**
- * One of the screen's own options (#1153): the edited screen's, sent on Done,
- * or with no screen this device's own, written to it on Done (#1341).
- */
-function ScreenOption({ field }: { field: ScreenSettingField }) {
-  const stored = useStoredString(field.key);
-  const value = currentOption(field, stored === null ? {} : { [field.key]: stored });
-  return (
-    <label className="flex min-h-[52px] items-center justify-between gap-3 text-body pointer-fine:min-h-10">
-      <span>{field.label}</span>
-      <select
-        aria-label={field.label}
-        className="min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9"
-        value={value}
-        onChange={(e) => {
-          for (const [key, raw] of Object.entries(changesFor(field, e.target.value))) writeStored(key, raw ?? null);
-        }}
-      >
-        {field.options.map((o) => <option key={o.raw} value={o.raw}>{o.label}</option>)}
-      </select>
-    </label>
-  );
-}
-
-/** The screen's notices (#1153): small cards at the side when something is close. Named screens only. */
-function NoticesSection() {
-  const stored = useStoredString(SCREEN_ATTENTION_KEY);
-  const [named] = useState(() => (typeof window === 'undefined' ? null : loadBase()));
-  if (!named) return null;
-  return (
-    <section data-notices-section>
-      <h3 className={section}>Notices</h3>
-      <ScreenAttentionPanel
-        name="This screen"
-        stored={stored ?? undefined}
-        online
-        savedText={remoteEditHost() ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen shows them from now on.'}
-        save={async (raw) => { writeStored(SCREEN_ATTENTION_KEY, raw); return true; }}
-      />
-    </section>
   );
 }
 
@@ -364,7 +307,6 @@ export function MoreSheet({
           {preview}
         </section>
       )}
-      <NoticesSection />
       <section>
         <h3 className={section}>Share and back up</h3>
         <div className="flex flex-wrap gap-2">

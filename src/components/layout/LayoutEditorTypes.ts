@@ -29,6 +29,10 @@ export interface LayoutEditorProps {
   /** Which tabs hold unsaved changes. */
   dashboardDirty?: boolean;
   idleDirty?: boolean;
+  /** The photo frame's arrangement, or which widgets stay idle, changed: Widgets' dot. */
+  idleLayoutDirty?: boolean;
+  /** The screen's idle looks or night rule changed: Screen's dot (#1349). */
+  screenDayDirty?: boolean;
   /** The screen shape picked on Look differs from the saved one (#1341). */
   lookDirty?: boolean;
   /** Make the default was pressed: Done makes it so (#1341). */
@@ -81,6 +85,8 @@ export interface LayoutEditorProps {
   currentDashboardId?: string;
   onSwitchDashboard?: (slug: string) => void;
   onCreateDashboard?: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => void;
+  /** Make a dashboard to switch to, staying in the editor (#1349): its id, or null. */
+  onNewDashboard?: (name: string) => Promise<string | null>;
   onRenameDashboard?: (newName: string) => void;
   onDeleteDashboard?: () => void;
   /** The edited dashboard's kind: 'today' is the built-in one, edited by its widgets list, not a grid. */

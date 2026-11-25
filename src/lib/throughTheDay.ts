@@ -2,7 +2,7 @@ import { shouldShowScreensaver } from '@/components/screensaver/shouldShowScreen
 import { isNight, type IdleBackground, type IdleSource, type IdleSwitch } from './idleBackground';
 
 /**
- * Through the day (#1152): the three states a screen is in, and the one rule
+ * A screen's day (#1152): the three states a screen is in, and the one rule
  * for night that every part of the app goes by.
  *
  *  - active: someone is using it.
@@ -96,7 +96,7 @@ export function backdropFor(bg: IdleBackground, state: ScreenState): IdleSource 
 }
 
 /**
- * The background as the Through the day sheet edits it: always a resting and
+ * The background as the Screen tab edits it: always a resting and
  * a night backdrop with a rule, so night can be set even when both show the
  * same. A single background reads as the same thing by day and by night.
  */

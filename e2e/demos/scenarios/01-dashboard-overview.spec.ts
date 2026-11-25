@@ -41,7 +41,7 @@ test('Dashboard overview — logged in with layout editor', async ({ page }) => 
   await page.waitForTimeout(1500);
 
   // Each panel in turn.
-  for (const panel of ['dashboard', 'day', 'look', 'widgets'] as const) {
+  for (const panel of ['screen', 'dashboard', 'look', 'widgets'] as const) {
     await openPanel(page, panel);
     await page.waitForTimeout(1500);
   }

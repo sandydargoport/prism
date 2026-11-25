@@ -43,7 +43,7 @@ const frameSize = async (page: Page) => {
 };
 
 /**
- * The editor's six tabs (#1326): each label on one line, and how far the row
+ * The editor's tabs (#1326, #1349): each label on one line, and how far the row
  * runs past its width (it scrolls sideways where they do not all fit).
  */
 async function tabRow(page: Page) {
@@ -85,11 +85,11 @@ test.describe('canvas editor (#1265)', () => {
       expect(panels.left).toBeGreaterThanOrEqual(picture.right);
       expect(panels.right).toBeLessThanOrEqual(1440);
       expect(panels.width).toBeGreaterThan(320);
-      // All six tabs on one line each, and all in view (#1326).
+      // Every tab on one line, and all in view (#1326).
       expect(await tabRow(page)).toEqual({ overflow: 0, wrapped: [] });
 
       // Opening each panel leaves the canvas exactly where it was.
-      for (const id of ['screen', 'dashboard', 'widgets', 'day', 'look', 'more'] as const) {
+      for (const id of ['screen', 'dashboard', 'widgets', 'look', 'more'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         const sheet = page.locator(`[data-editor-sheet="${id}"]`);
         await expect(sheet).toBeVisible();
@@ -98,22 +98,17 @@ test.describe('canvas editor (#1265)', () => {
         expect(s.left, `${id} is beside the canvas`).toBeGreaterThanOrEqual(picture.right);
         expect(s.bottom, `${id} ends inside the window`).toBeLessThanOrEqual(900 + 0.5);
         if (id === 'screen') {
-          // A dashboard edited on its own has no screen (#1326): it says so,
-          // with nothing of a screen's to set.
-          await expect(sheet.locator('[data-no-screen]')).toBeVisible();
-          await expect(sheet.locator('[data-switch-add]')).toHaveCount(0);
-          await expect(sheet.getByLabel('Rest after')).toHaveCount(0);
-        }
-        if (id === 'day') {
-          // Its rows stay inside the panel (#1281), and only the dashboard's
-          // own look shows: a screen's rows are on Screen (#1326).
+          // A device nobody named (#1349): its idle rows work, inside the
+          // panel, and it has no times until it is named; Add a time asks.
           expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
-          await expect(sheet.getByLabel('While resting')).toBeVisible();
-          // Night folds to one line (#1294), and opens to its look.
-          await sheet.locator('[data-night-row] [data-fold-toggle]').click();
-          await expect(sheet.getByLabel('Night look')).toBeVisible();
-          await expect(sheet.getByLabel('Rest after')).toHaveCount(0);
-          await expect(sheet.getByLabel('How dark at night')).toHaveCount(0);
+          await expect(sheet.locator('[data-screen-scope]')).toHaveText('Not named yet · This screen');
+          await expect(sheet.getByLabel('Idle after')).toBeVisible();
+          await expect(sheet.getByLabel('By day it shows')).toBeVisible();
+          await expect(sheet.getByLabel('At night it shows')).toBeVisible();
+          await expect(sheet.locator('[data-switch-row]')).toHaveCount(0);
+          await sheet.locator('[data-switch-add="times"]').click();
+          await expect(sheet.locator('[data-name-first] [data-name-device-form]')).toBeVisible();
+          await expect(sheet.locator('[data-switch-row]')).toHaveCount(0);
           await expect(sheet.locator('[data-timeline-bar]')).toHaveCount(0);
         }
       }
@@ -143,10 +138,10 @@ test.describe('canvas editor (#1265)', () => {
       const panels = await rect(page, '[data-editor-panels]');
       expect(panels.top).toBeGreaterThanOrEqual(picture.bottom);
       expect(panels.right).toBeLessThanOrEqual(390);
-      // No tab label wraps; a row too narrow for all six scrolls instead (#1326).
+      // No tab label wraps; a row too narrow for them all scrolls instead (#1326).
       expect((await tabRow(page)).wrapped).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'the page itself does not scroll sideways').toBeLessThanOrEqual(0);
-      for (const id of ['screen', 'dashboard', 'day', 'look'] as const) {
+      for (const id of ['screen', 'dashboard', 'look'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
         expect(await rect(page, '[data-remote-picture]'), `the canvas with ${id} open`).toEqual(picture);
@@ -319,8 +314,10 @@ test.describe('canvas editor (#1265)', () => {
 
       // One of its own settings, then Done: back on its dashboard, with it.
       const choice = before === 'minimal' ? 'reduced' : 'minimal';
-      await page.locator('[data-editor-open="look"]').click();
-      await page.locator('[data-editor-sheet="look"]').getByLabel('Performance').selectOption(choice);
+      // The screen's own options are under Screen > Advanced (#1349).
+      await page.locator('[data-editor-open="screen"]').click();
+      await page.locator('[data-editor-sheet="screen"]').getByRole('button', { name: /^Advanced: orientation/ }).click();
+      await page.locator('[data-editor-sheet="screen"]').getByLabel('Performance').selectOption(choice);
       await page.locator('[data-editor-done]').click();
       // Back showing dashboards (a switch of its own may move it on from this one).
       await page.waitForURL((u) => u.pathname === '/' || u.pathname.startsWith('/d/'), { timeout: 60_000 });

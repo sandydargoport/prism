@@ -1,44 +1,61 @@
 'use client';
 
 /**
- * The editor's Screen sheet (#1326), first in the bar: the screen being
- * edited, as a device of its own.
+ * The editor's Screen tab (#1326, #1349): the screen's whole day, in plain
+ * rows, with one picture of today above them.
  *
- * First a Screen drop-down of every named screen, set to the one edited:
- * picking another opens its editor, and a pencil beside it renames it in
- * place, saved on Enter or on leaving the field as Settings > Screens saves
- * it. Then the Base dashboard; its Switches to other dashboards for a while (#1282), at bus time or
- * at set times, a bus switch with its routes and minutes (#1291), each one
- * able to keep the screen awake while it is in force (#1347); and, When
- * nobody is using it, how long until it rests and how dark it goes at night.
- * Then Light or dark and the photos behind the dashboard (#1340).
- * They belong to the screen, not the dashboard: two screens can show one
- * dashboard, each on its own schedule. Done sends them with its settings.
+ *  - The scope line and the sentence the screen says about itself
+ *    (`screenSentence`, from the same scene function the wall runs).
+ *  - The strip: today as one bar, night shaded by the screen's own rule, each
+ *    switch a band in its row's swatch colour, a line at now.
+ *  - Shows: Normally, then the switches in priority order (bus time, set
+ *    times), each with its swatch and Edit. Higher rows win an overlap, and a
+ *    row a higher one covers says so.
+ *  - When idle: Idle after, then what it shows By day and At night, and how
+ *    much darker at night. When night is and the photo frame's motion are
+ *    under Advanced.
+ *  - This screen: light or dark, the photos behind the dashboard, and which
+ *    screen is edited. Advanced: orientation, performance, keyboard,
+ *    auto-hide, sign out, notices.
  *
- * On a device nobody named, the drop-down says so and the sheet offers to
- * name it (#1267), or to become a screen named before. A dashboard edited
- * with no screen says so.
+ * Everything here belongs to the screen, not the dashboard: two screens can
+ * show one dashboard, each on its own day. Every control waits for Done
+ * (#1341): the dashboard and switches are held on the editor page, the
+ * screen's settings in its in-memory layer, the idle looks with the editor.
+ *
+ * A device nobody named keeps its idle rows; Normally and Add a time ask for
+ * a name first, in place. A dashboard edited with no screen says so.
  */
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, ChevronDown, Pencil, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, X } from 'lucide-react';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
-import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim';
+import { useIdleDimSetting } from '@/components/screensaver/idleDim';
+import { useSkyLocation } from '@/components/screensaver/useIdleBackground';
 import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
-import type { IdleBackground } from '@/lib/idleBackground';
-import { backgroundOf, DEFAULT_SCREEN_DAY } from '@/lib/screenDay';
-import { asDayAndNight } from '@/lib/throughTheDay';
+import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
+import { backgroundOf, DEFAULT_SCREEN_DAY, NIGHT_LEVELS } from '@/lib/screenDay';
+import { asDayAndNight, DEFAULT_NIGHT } from '@/lib/throughTheDay';
+import { nightSpans, switchSpans } from '@/lib/dayWaypoints';
+import { switchCoverage } from '@/lib/dayStrip';
+import { daysInWords, screenSentence } from '@/lib/screenSentence';
+import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import {
-  BUS_MINUTE_CHOICES, busWindowOf, daysShort, EVERY_DAY, MAX_SWITCHES, routesOf, staysAwake,
+  BUS_MINUTE_CHOICES, busWindowOf, EVERY_DAY, MAX_SWITCHES, routesOf, staysAwake,
   type BusSwitch, type ScreenPlan, type ScreenSwitch,
 } from '@/lib/screenSwitches';
 import { screenEditLink } from '@/lib/displays/editPlace';
 import { NameThisDevice } from './NameThisDevice';
 import type { SwitchChoice } from './SwitchPrompt';
 import { keepPanelFor } from './canvasPanel';
-import { busWindowsInWords, chip, dayChip, field, Fold, hhmm, iconButton, note, useBusRoutes } from './sheetRows';
+import { busWindowsInWords, chip, dayChip, field, hhmm, iconButton, note, Swatch, useBusRoutes, type BusRoute } from './sheetRows';
+import { DayStrip, useMinuteNow } from './DayStrip';
+import { OffsetInput } from './IdleBackgroundBar';
+import { PhotoFrameMotion } from './PhotoFrameMotion';
+import { ScreenOptions } from './ScreenOptions';
+import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -57,37 +74,82 @@ const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 /** The day chips, Monday first as a week is read. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const NAME_MAX = 60;
-/**
- * Every field of this sheet, select or text, one height, one inset and one
- * font, so their words start at one x down the column.
- */
+/** The picker's choice that makes a dashboard to switch to. */
+const NEW_DASHBOARD = '__new';
+const SET_TIMES: IdleSwitch = { by: 'clock', from: '21:00', to: '06:30' };
+
+/** Idle after, short, as the row reads: "Idle after 2 min". */
+const IDLE_AFTER_SHORT: Record<number, string> = { 30: '30 sec', 60: '1 min', 120: '2 min', 600: '10 min', 3600: '1 hour', 0: 'Never' };
+const LOOKS: { value: IdleSource; label: string }[] = [
+  { value: 'dashboard', label: 'The dashboard, quieter' },
+  { value: 'photos', label: 'A photo frame' },
+  { value: 'sky', label: 'The night sky' },
+];
+const NIGHT_ONLY: { value: IdleSource; label: string }[] = [{ value: 'off', label: 'Screen off' }];
+const SAME = 'same';
+
+/** A section's heading, as the editor's other tabs have them. */
+const HEADING = 'm-0 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
+/** Every field of this tab: one height, one inset, one font. */
 const INPUT = 'h-[44px] w-full min-w-0 rounded-lg border border-border bg-background px-3 text-body leading-normal text-foreground pointer-fine:h-9';
+/** A plain-text action beside a row, as a link reads. */
+const LINK = 'flex min-h-[44px] items-center rounded-md px-1.5 text-body font-medium text-primary hover:underline pointer-fine:min-h-8 pointer-fine:text-caption';
 
 /** A select drawn as the text fields are: its own arrow, the browser's inset gone. */
 function Select({ className, children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div className="relative min-w-0 flex-1">
-      <select className={cn(INPUT, 'appearance-none pr-8', className)} {...rest}>{children}</select>
+      <select className={cn(INPUT, 'appearance-none pr-8 disabled:opacity-50', className)} {...rest}>{children}</select>
       <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
     </div>
   );
 }
 
-/** A section's heading, as the editor's other sheets have them. */
-const HEADING = 'm-0 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
+/** A fold under a line: its name, and what it holds once opened. */
+function Disclosure({ label, defaultOpen = false, children, ...rest }: {
+  label: string; defaultOpen?: boolean; children: React.ReactNode;
+} & React.HTMLAttributes<HTMLElement>) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="border-t border-border pt-2" data-open={open} {...rest}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-disclosure-toggle
+        className="flex min-h-[44px] w-full items-center gap-1.5 text-left text-body font-medium pointer-fine:min-h-8 pointer-fine:text-caption">
+        <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')} aria-hidden />
+        {label}
+      </button>
+      {open && <div className="flex flex-col gap-3 pb-1 pt-2" data-disclosure-body>{children}</div>}
+    </section>
+  );
+}
 
 /**
- * A labelled control: the label in one column of one width, top-aligned, the
- * control filling the other; at a phone's width the label sits above it.
+ * One row of Shows: its swatch (its colour on the strip), its name, what it
+ * does in words, and Edit, which opens its choices under it.
  */
-function Field({ label, htmlFor, children, after }: { label: string; htmlFor?: string; children: React.ReactNode; after?: React.ReactNode }) {
+function ShowsRow({ swatch, name, summary, covered, open, onToggle, children, ...rest }: {
+  swatch: number;
+  name: string;
+  summary: string;
+  /** A higher row takes some or all of its time, in words. */
+  covered?: string | null;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+} & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-[9rem_minmax(0,1fr)]" data-field>
-      <label htmlFor={htmlFor} className="pt-0 text-body font-medium sm:pt-2.5 pointer-fine:sm:pt-2" data-field-label>{label}</label>
-      <div className="flex min-w-0 flex-col gap-1">
-        {children}
-        {after}
+    <div className="border-b border-border py-1.5" data-open={open} {...rest}>
+      <div className="grid grid-cols-[0.75rem_5.5rem_minmax(0,1fr)_auto] items-start gap-x-2.5">
+        <Swatch index={swatch} className="mt-[0.9rem] pointer-fine:mt-[0.65rem]" />
+        <span className="pt-2.5 font-medium pointer-fine:pt-1.5" data-row-name>{name}</span>
+        <span className="min-w-0 pt-2.5 text-body pointer-fine:pt-1.5">
+          <span data-row-summary>{summary}</span>
+          {covered && <span className="block text-caption text-muted-foreground" data-row-covered>{covered}</span>}
+        </span>
+        <button type="button" className={LINK} aria-expanded={open} aria-label={`${open ? 'Close' : 'Edit'} ${name}`} onClick={onToggle} data-row-edit>
+          {open ? 'Close' : 'Edit'}
+        </button>
       </div>
+      {open && <div className="flex flex-col gap-2 pb-2 pl-[calc(0.75rem+0.625rem)] pt-1.5" data-row-body>{children}</div>}
     </div>
   );
 }
@@ -95,6 +157,17 @@ function Field({ label, htmlFor, children, after }: { label: string; htmlFor?: s
 /** A switch without the keys an edit cleared, so it is stored as plainly as it reads. */
 function withoutUnset(sw: ScreenSwitch): ScreenSwitch {
   return Object.fromEntries(Object.entries(sw).filter(([, v]) => v !== undefined)) as ScreenSwitch;
+}
+
+/**
+ * Back to the plainest form that means the same: one background when it is
+ * the same by day and night on the default rule, as a screen nobody set a
+ * night for is stored.
+ */
+export function simplest(pair: { day: IdleSource; night: IdleSource; switch: IdleSwitch }): IdleBackground {
+  const single: IdleBackground = { source: pair.day };
+  if (pair.day === pair.night && sameIdleBackground({ ...pair }, { day: pair.day, night: pair.day, switch: DEFAULT_NIGHT })) return single;
+  return pair;
 }
 
 type Named = { id: string; name: string };
@@ -151,36 +224,45 @@ export async function openOtherScreen(id: string, { unsaved, ask, save, go }: {
   return true;
 }
 
+/** The kind of switch a row is, as its name. */
+const kindName = (sw: ScreenSwitch) => (sw.when === 'bus' ? 'Bus time' : 'Set times');
+
 export function ScreenSheet({
-  idleBackground, allDashboards = [], currentDashboardId, onSwitchDashboard,
-  screenPlan = null, onScreenPlanChange, screenId = null, forScreen = true, deviceNamed = true, onDeviceNamed,
-  openSwitch = null, onPickScreen, onRenamed, onSettingChange,
+  idleBackground, onIdleBackgroundChange, idleCheck = {}, onShowIdle, onArrangePhotoFrame, canIdle = true,
+  allDashboards = [], currentDashboardId, onSwitchDashboard, onNewDashboard,
+  screenPlan = null, onScreenPlanChange, screenId = null, deviceNamed = true, onDeviceNamed,
+  onPickScreen, onRenamed,
 }: {
+  /** The screen's idle looks and night rule, as being edited; Done saves them. */
   idleBackground?: IdleBackground;
+  onIdleBackgroundChange?: (bg: IdleBackground) => void;
+  idleCheck?: IdleSwitchCheck;
+  /** Show the screen idle on the canvas, by day or at night (#1348). */
+  onShowIdle?: (night: boolean) => void;
+  /** Open the photo frame's arrangement on the canvas, by day or at night. */
+  onArrangePhotoFrame?: (night: boolean) => void;
+  /** False for a screen too narrow to idle. */
+  canIdle?: boolean;
   allDashboards?: DashboardInfo[];
   currentDashboardId?: string;
   onSwitchDashboard?: (slug: string) => void;
+  /** Make a new dashboard, by name, to switch to; its id, or null when that did not work. */
+  onNewDashboard?: (name: string) => Promise<string | null>;
   /** In a screen's editor, the dashboard it shows and its switches; null hides them. */
   screenPlan?: ScreenPlan | null;
   onScreenPlanChange?: (plan: ScreenPlan) => void;
   /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
-  /** The editor is for a screen, so its own settings show. */
-  forScreen?: boolean;
   /** The device in use has a name; one that has none is offered one here. */
   deviceNamed?: boolean;
   /** The device in use was just named, as this screen. */
   onDeviceNamed?: (displayId: string) => void;
-  /** A switch to open, by its place: a dot tapped on Through the day's line. */
-  openSwitch?: number | null;
   /** Edit another named screen instead. */
   onPickScreen?: (id: string) => void;
   /** The screen was renamed, to this. */
   onRenamed?: (name: string) => void;
-  /** Rest after or How dark changed, so the tab's unsaved dot can show. */
-  onSettingChange?: () => void;
 }) {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, householdTimezone } = useTimeFormat();
   const clock = (t: string) => formatTimeOfDay(t, timeFormat);
   const { timeout, setTimeout } = useScreensaverTimeout();
   const { level: dim, setLevel: setDim } = useIdleDimSetting();
@@ -192,9 +274,13 @@ export function ScreenSheet({
   const photosOn = useStoredString(WALLPAPER_KEY) !== 'false';
   const storedRotate = Number(useStoredString(WALLPAPER_INTERVAL_KEY));
   const rotate = String(WALLPAPER_INTERVALS.some(([s]) => s === storedRotate) ? storedRotate : DEFAULT_WALLPAPER_INTERVAL);
-  // Every switch folded, unless one was asked for.
-  const [openRow, setOpenRow] = useState<number | null>(openSwitch);
-  const toggle = (row: number) => setOpenRow((o) => (o === row ? null : row));
+  // Every row folded when the tab opens.
+  const [openRow, setOpenRow] = useState<number | 'normally' | null>(null);
+  const toggle = (row: number | 'normally') => setOpenRow((o) => (o === row ? null : row));
+  /** On a device with no name: where a name was asked for, before what needs one. */
+  const [askName, setAskName] = useState<'normally' | 'add' | null>(null);
+  /** A switch row making a new dashboard to switch to, and its name so far. */
+  const [making, setMaking] = useState<{ row: number; name: string; busy: boolean } | null>(null);
   const [screens, setScreens] = useScreens();
   /** The name as typed while renaming; null shows the drop-down. */
   const [draft, setDraft] = useState<string | null>(null);
@@ -205,21 +291,26 @@ export function ScreenSheet({
   const [problem, setProblem] = useState<string | null>(null);
 
   const plan = screenId ? screenPlan : null;
-  const switches = plan?.switches ?? [];
-  const night = asDayAndNight(idleBackground ?? backgroundOf(DEFAULT_SCREEN_DAY)).night;
+  const switches = useMemo(() => plan?.switches ?? [], [plan]);
+  const unnamed = !screenId && !deviceNamed;
+  /** The screen's own day is set here: a named screen's, or this device's while it has no name. */
+  const ownsDay = !!screenId || unnamed;
 
   const exists = (id: string) => allDashboards.some((d) => d.id === id);
   const dashboardName = (id: string | undefined) => allDashboards.find((d) => d.id === id)?.name ?? 'this dashboard';
-  const defaultId = allDashboards.find((d) => d.isDefault)?.id ?? currentDashboardId ?? '';
+  const defaultDashboard = allDashboards.find((d) => d.isDefault);
+  const defaultId = defaultDashboard?.id ?? currentDashboardId ?? '';
   const shownId = plan?.dashboardId && exists(plan.dashboardId) ? plan.dashboardId : defaultId;
-  /** Open another dashboard in the editor, when it is not the one open; it opens on this sheet. */
+  const sameAsNew = `Same as new screens (${dashboardName(defaultId)})`;
+  const normallyName = plan?.dashboardId && exists(plan.dashboardId) ? dashboardName(plan.dashboardId) : dashboardName(defaultId);
+  /** Open another dashboard in the editor, when it is not the one open; it opens on this tab. */
   const openButton = (id: string) => {
     const target = allDashboards.find((d) => d.id === id);
     if (!target?.slug || target.id === currentDashboardId) return null;
     return (
       <button type="button" className={chip(false)} data-dashboard-open={target.id}
         onClick={() => { keepPanelFor(target.id, 'screen'); onSwitchDashboard?.(target.slug!); }}>
-        Open
+        Open {target.name}
       </button>
     );
   };
@@ -249,12 +340,16 @@ export function ScreenSheet({
     setOpenRow(switches.length);
   };
   const addTimes = () => {
+    if (unnamed) { setAskName('add'); return; }
     const from = Math.floor((new Date().getHours() * 60 + new Date().getMinutes()) / 15) * 15;
     if (another) add({ when: 'times', days: [...EVERY_DAY], from: hhmm(from), to: hhmm(from + 60), dashboardId: another.id });
   };
-  const addBus = () => { if (another) add({ when: 'bus', dashboardId: another.id }); };
-  // Read for every screen: a bus switch is offered only once a bus route is set up.
-  const busRoutes = useBusRoutes(!!plan);
+  const addBus = () => {
+    if (unnamed) { setAskName('add'); return; }
+    if (another) add({ when: 'bus', dashboardId: another.id });
+  };
+  // Read for every screen: bus time is offered only once a bus route is set up.
+  const busRoutes = useBusRoutes(ownsDay);
   const busSetUp = (busRoutes?.length ?? 0) > 0;
   /** Turns a route on or off for a bus switch; with every route on, it follows every route, ones added later too. */
   const toggleRoute = (i: number, sw: BusSwitch, id: string) => {
@@ -264,20 +359,43 @@ export function ScreenSheet({
     editSwitch(i, { routeIds: next.length === all.length ? undefined : next });
   };
 
-  /** A bus switch's windows today, short, for its folded line. */
-  const busInShort = (sw: BusSwitch) => {
-    if (!busRoutes) return 'Bus routes';
-    if (busRoutes.length === 0) return 'No bus route set up yet';
-    const followed = routesOf(sw, busRoutes);
-    if (followed.length === 0) return 'None of its routes is set up';
-    const window = busWindowOf(sw);
-    const due = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-    return followed.map((r) => `${r.label} ${clock(hhmm(due(r.scheduledTime) - window.before))}–${clock(hhmm(due(r.scheduledTime) + window.after))}`).join(', ');
+  /** A bus switch's routes and days, short: "Morning 7:45 AM and Afternoon 3:30 PM, school days". */
+  const routesInShort = (followed: BusRoute[]) => {
+    const daysOf = (days: number[]) => (days.length === 5 && [1, 2, 3, 4, 5].every((d) => days.includes(d)) ? 'school days' : daysInWords(days));
+    const route = (r: BusRoute) => `${r.label} ${clock(r.scheduledTime.slice(0, 5))}`;
+    const first = daysOf(followed[0]!.activeDays);
+    // Their days once when they share them, else each route with its own.
+    if (followed.every((r) => daysOf(r.activeDays) === first)) return `${followed.map(route).join(' and ')}, ${first}`;
+    return followed.map((r) => `${route(r)} ${daysOf(r.activeDays)}`).join(', ');
   };
-  /** When first, as that is what tells two switches apart, then the dashboard, then whether it stays awake. */
-  const switchInShort = (sw: ScreenSwitch) => `${sw.when === 'bus' ? busInShort(sw)
-    : `${sw.days.length === 7 ? '' : `${daysShort(sw.days)} `}${clock(sw.from)}–${clock(sw.to)}`} · ${dashboardName(sw.dashboardId)}${
-    staysAwake(sw) ? ' · stays awake' : ''}`;
+  /** What a switch does, in one line: its dashboard, when, and whether it stays awake. */
+  const switchInShort = (sw: ScreenSwitch) => {
+    const parts = [dashboardName(sw.dashboardId)];
+    if (sw.when === 'bus') {
+      const window = busWindowOf(sw);
+      const followed = routesOf(sw, busRoutes ?? []);
+      if (!busRoutes) parts.push('at bus time');
+      else if (busRoutes.length === 0) parts.push('no bus route set up yet');
+      else if (followed.length === 0) parts.push('none of its routes is set up');
+      else parts.push(routesInShort(followed));
+      parts.push(`${window.before} min before to ${window.after} after each run`);
+    } else {
+      parts.push(`${sw.days.length === 7 ? 'Every day' : daysInWords(sw.days)}, ${sw.from === sw.to ? 'all day' : `${clock(sw.from)} to ${clock(sw.to)}`}`);
+    }
+    if (staysAwake(sw)) parts.push('stays awake');
+    return parts.join(' · ');
+  };
+  // Which rows a higher one covers, through the week.
+  const coverage = useMemo(() => switchCoverage(switches, busRoutes ?? [], (id) => allDashboards.some((d) => d.id === id)),
+    [switches, busRoutes, allDashboards]);
+  const rowLabel = (j: number) => `${kindName(switches[j]!)} (${dashboardName(switches[j]!.dashboardId)})`;
+  const coveredInWords = (i: number) => {
+    const c = coverage[i];
+    if (!c || c.by.length === 0) return null;
+    if (c.shows === 'never') return `Covered by ${rowLabel(c.by[0]!)} above, so it never shows.`;
+    if (c.shows === 'partly') return `${rowLabel(c.by[0]!)} above wins where they overlap.`;
+    return null;
+  };
 
   /** A bus switch's routes and minutes, and the windows they make. */
   const busDetails = (sw: BusSwitch, i: number) => {
@@ -308,7 +426,6 @@ export function ScreenSheet({
             })}
           </div>
         )}
-        {/* The card's whole width, so before and after stay on one line in a narrow panel. */}
         <span className="flex flex-wrap items-center gap-2 text-body" data-bus-window>
           From {minutes('before', 'Minutes before the bus')} before to {minutes('after', 'Minutes after the bus')} after
         </span>
@@ -322,18 +439,40 @@ export function ScreenSheet({
     );
   };
 
+  /** Makes the dashboard named in a row's New dashboard... and switches the row to it. */
+  const makeDashboard = async () => {
+    if (!making || !making.name.trim() || !onNewDashboard) return;
+    setMaking({ ...making, busy: true });
+    const id = await onNewDashboard(making.name.trim());
+    if (id) editSwitch(making.row, { dashboardId: id });
+    setMaking(id ? null : { ...making, busy: false });
+  };
+
   const switchRow = (sw: ScreenSwitch, i: number) => (
-    <Fold key={i} name={sw.when === 'bus' ? 'At bus time' : 'At set times'} summary={switchInShort(sw)} colorIndex={i}
+    <ShowsRow key={i} swatch={i} name={kindName(sw)} summary={switchInShort(sw)} covered={coveredInWords(i)}
       open={openRow === i} onToggle={() => toggle(i)} data-switch-row={i} data-switch={sw.when}>
       <span className="flex flex-wrap items-center gap-2 text-body">
         Shows
-        <select className={cn(field, 'min-w-0 max-w-full')} value={sw.dashboardId} aria-label="Switches to" onChange={(e) => editSwitch(i, { dashboardId: e.target.value })}>
+        <select className={cn(field, 'min-w-0 max-w-full')} value={making?.row === i ? NEW_DASHBOARD : sw.dashboardId} aria-label="Switches to"
+          onChange={(e) => {
+            if (e.target.value === NEW_DASHBOARD) setMaking({ row: i, name: '', busy: false });
+            else { setMaking(null); editSwitch(i, { dashboardId: e.target.value }); }
+          }}>
           {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {onNewDashboard && <option value={NEW_DASHBOARD}>New dashboard...</option>}
         </select>
       </span>
+      {making?.row === i && (
+        <form className="flex flex-wrap items-center gap-2" data-new-dashboard
+          onSubmit={(e) => { e.preventDefault(); void makeDashboard(); }}>
+          <input className={cn(field, 'min-w-0 flex-1')} aria-label="Name of the new dashboard" placeholder="Bus board" maxLength={NAME_MAX} autoFocus
+            value={making.name} disabled={making.busy} onChange={(e) => setMaking({ ...making, name: e.target.value })} />
+          <button type="submit" className={chip(true)} disabled={making.busy || !making.name.trim()}>Make it</button>
+          <button type="button" className={chip(false)} onClick={() => setMaking(null)}>Cancel</button>
+        </form>
+      )}
       {sw.when === 'bus' ? busDetails(sw, i) : (
         <>
-          {/* The card's whole width, so from and to stay on one line in a narrow panel. */}
           <span className="flex flex-wrap items-center gap-2 text-body">
             From
             <input type="time" className={field} value={sw.from} aria-label="Switch starts"
@@ -346,17 +485,11 @@ export function ScreenSheet({
             {WEEK_ORDER.map((d) => {
               const on = sw.days.includes(d);
               return (
-                <button
-                  key={d}
-                  type="button"
-                  aria-label={DAY_FULL[d]}
-                  aria-pressed={on}
+                <button key={d} type="button" aria-label={DAY_FULL[d]} aria-pressed={on}
                   // A switch keeps at least one day; Remove takes it away.
                   disabled={on && sw.days.length === 1}
                   onClick={() => editSwitch(i, { days: on ? sw.days.filter((x) => x !== d) : [...sw.days, d].sort() })}
-                  className={dayChip(on)}
-                  data-day-chip={d}
-                >
+                  className={dayChip(on)} data-day-chip={d}>
                   {DAY_NAMES[d]}
                 </button>
               );
@@ -380,10 +513,41 @@ export function ScreenSheet({
           <X className="mr-1 h-4 w-4" aria-hidden />Remove
         </button>
       </div>
-    </Fold>
+    </ShowsRow>
   );
 
+  // The screen's day: its looks and night rule as being edited.
+  const pair = asDayAndNight(idleBackground ?? backgroundOf(DEFAULT_SCREEN_DAY));
+  const rule = pair.switch;
+  const change = (patch: Partial<typeof pair>) => onIdleBackgroundChange?.(simplest({ ...pair, ...patch }));
+  const { lat, lon, guessed } = useSkyLocation(rule.by === 'sun');
+  // Today, as it was when the tab opened, so the strip stays put.
+  const [today] = useState(() => new Date());
+  const minuteNow = useMinuteNow();
+  let weekday = today.getDay();
+  try { weekday = weekdayOfKey(todayKey(householdTimezone, today)); } catch { /* the screen's own day */ }
+  const nights = nightSpans(today, rule, lat, lon);
+  const spans = switchSpans(switches, weekday, busRoutes ?? []);
+  const night = tonight(today, rule, lat, lon);
+  const time = (d: Date) => clock(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+  const nightRange = rule.by === 'clock' ? `${clock(rule.from)} to ${clock(rule.to)}` : 'dusk to dawn';
+  const neverIdles = timeout <= 0 || !canIdle;
+  const nightLevel = Math.round(Number(dim) * 100);
+
   const name = screenId ? screens?.find((s) => s.id === screenId)?.name ?? null : null;
+  const sentence = screenSentence({
+    name,
+    normally: normallyName,
+    switches,
+    dashboardName: (id) => (exists(id) ? dashboardName(id) : null),
+    routes: busRoutes,
+    background: simplest(pair),
+    nightLevel,
+    idleAfter: timeout,
+    canIdle,
+    clock,
+  });
+
   const startRename = () => { renameOpen.current = true; setProblem(null); setDraft(name ?? ''); };
   const cancelRename = () => { renameOpen.current = false; setProblem(null); setDraft(null); };
   /** Saves the name typed, on Enter or on leaving the field; an unchanged or empty one goes back. */
@@ -415,17 +579,173 @@ export function ScreenSheet({
     }
   };
   const fieldId = (key: string) => `screen-sheet-${key}`;
+  const nameFirst = onDeviceNamed && (
+    <div className="flex flex-col gap-2 rounded-xl bg-muted/50 p-3" data-name-first>
+      <p className="m-0 text-body">Name this screen first. What it shows and its times are kept with its name.</p>
+      <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} autoOpen />
+    </div>
+  );
+  const scope = screenId ? (name ? `${name} · This screen` : 'This screen') : unnamed ? 'Not named yet · This screen' : 'No screen';
 
   return (
-    <div className="flex flex-col gap-6 pointer-fine:gap-5" data-screen-sheet>
-      <section className="flex flex-col gap-3" aria-label="This screen" data-screen-top>
-        <Field label="Screen" htmlFor={fieldId(draft === null ? 'pick' : 'name')}
-          after={problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}>
+    <div className="flex flex-col gap-5 pointer-fine:gap-4" data-screen-sheet>
+      <p className={HEADING} data-screen-scope>{scope}</p>
+      {ownsDay && (
+        <>
+          <p className="m-0 rounded-xl bg-muted/60 px-3.5 py-3 text-body leading-relaxed" aria-live="polite" data-screen-sentence>{sentence}</p>
+          <DayStrip nights={nights} spans={spans} now={minuteNow} tick={(m) => clock(hhmm(m))}
+            caption={`Today. Shaded: night (${nightRange}). Line: now.`} />
+        </>
+      )}
+      {!ownsDay && (
+        <p className="m-0 text-body text-muted-foreground" data-no-screen>
+          No screen is being edited, so this edits {dashboardName(currentDashboardId)} on its own. A screen&apos;s day is set in that screen&apos;s editor.
+        </p>
+      )}
+
+      {ownsDay && (
+        <section className="flex flex-col" aria-labelledby={fieldId('shows')} data-screen-plan>
+          <h3 id={fieldId('shows')} className={cn(HEADING, 'mb-1')} data-screen-heading>Shows</h3>
+          <ShowsRow swatch={-1} name="Normally" summary={plan?.dashboardId && exists(plan.dashboardId) ? normallyName : sameAsNew}
+            open={openRow === 'normally'} onToggle={() => { toggle('normally'); if (unnamed) setAskName('normally'); }} data-normally-row>
+            {plan ? (
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Select id={fieldId('dashboard')} aria-label="Normally" value={plan.dashboardId && exists(plan.dashboardId) ? plan.dashboardId : ''} data-screen-dashboard
+                  onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value || null })}>
+                  <option value="">{sameAsNew}</option>
+                  {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </Select>
+                {openButton(shownId)}
+              </div>
+            ) : unnamed && askName === 'normally' ? nameFirst : null}
+            {plan && <p className={note}>Same as new screens follows what Settings &gt; Screens sets for new and unnamed screens.</p>}
+          </ShowsRow>
+          {switches.map(switchRow)}
+          <div className="flex flex-wrap items-center gap-2 pt-3">
+            <button type="button" className={cn(chip(false), 'border-dashed')} onClick={addTimes} disabled={!unnamed && full} data-switch-add="times">
+              <Plus className="mr-1 h-4 w-4" aria-hidden />Add a time
+            </button>
+            {/* Only with bus tracking set up; a bus switch made before still shows above. */}
+            {busSetUp && (
+              <button type="button" className={cn(chip(false), 'border-dashed')} onClick={addBus} disabled={!unnamed && full} data-switch-add="bus">
+                <Plus className="mr-1 h-4 w-4" aria-hidden />Add bus time
+              </button>
+            )}
+          </div>
+          {unnamed && askName === 'add' && <div className="pt-2">{nameFirst}</div>}
+          <p className={cn(note, 'pt-2')} data-shows-note>Higher rows win where times overlap. Times are in the household time zone.</p>
+        </section>
+      )}
+
+      {ownsDay && (
+        <section className="flex flex-col gap-3" aria-labelledby={fieldId('idle')} data-screen-own>
+          <h3 id={fieldId('idle')} className={HEADING} data-screen-heading>When idle</h3>
+          <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-2.5">
+            <label htmlFor={fieldId('after')} className="text-body font-medium">Idle after</label>
+            <div className="max-w-[12rem]">
+              <Select id={fieldId('after')} value={timeout} data-idle-after onChange={(e) => setTimeout(Number(e.target.value))}>
+                {SCREENSAVER_TIMEOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{IDLE_AFTER_SHORT[o.value] ?? o.label}</option>)}
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-2.5 gap-y-2" data-idle-grid>
+            <span />
+            <span className="text-caption font-medium text-muted-foreground" data-idle-head="day">By day</span>
+            <span className={cn('text-caption font-medium', neverIdles ? 'text-muted-foreground/50' : 'text-muted-foreground')} data-idle-head="night">
+              At night ({nightRange})
+            </span>
+            <span className="text-body font-medium">It shows</span>
+            <Select aria-label="By day it shows" value={pair.day} disabled={neverIdles} data-idle-day
+              onChange={(e) => {
+                const look = e.target.value as IdleSource;
+                // At night the same as by day follows it.
+                change(pair.night === pair.day ? { day: look, night: look } : { day: look });
+                onShowIdle?.(false);
+              }}>
+              {LOOKS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Select>
+            <Select aria-label="At night it shows" value={pair.night === pair.day ? SAME : pair.night} disabled={neverIdles} data-idle-night
+              onChange={(e) => { change({ night: e.target.value === SAME ? pair.day : e.target.value as IdleSource }); onShowIdle?.(true); }}>
+              <option value={SAME}>Same as by day</option>
+              {[...LOOKS, ...NIGHT_ONLY].filter((o) => o.value !== pair.day).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Select>
+            <span className="text-body font-medium">Darker</span>
+            <span className="pl-3 text-muted-foreground" aria-hidden>·</span>
+            {!neverIdles && pair.night !== 'off' ? (
+              // Only how much darker: the look is the screen's own choice beside it (#1345).
+              <Select aria-label="Darker at night" value={dim} data-idle-darker
+                onChange={(e) => { setDim(e.target.value); onShowIdle?.(true); }}>
+                {NIGHT_LEVELS.map((l) => <option key={l} value={String(l / 100)}>{l === 0 ? 'Not darker' : `${l}%`}</option>)}
+              </Select>
+            ) : <span className="pl-3 text-muted-foreground" aria-hidden>·</span>}
+          </div>
+          {neverIdles && (
+            <p className="m-0 rounded-lg bg-muted/60 px-3 py-2 text-body text-muted-foreground" data-never-idles>
+              {canIdle ? 'This screen never idles, so it has no night look.' : 'This screen is too narrow to idle, so it has no idle or night look.'}
+            </p>
+          )}
+          {!neverIdles && (pair.day === 'photos' || pair.night === 'photos') && onArrangePhotoFrame && (
+            <button type="button" className={cn(chip(false), 'self-start')} data-arrange-photo-frame
+              onClick={() => onArrangePhotoFrame(pair.day !== 'photos')}>
+              Arrange the photo frame
+            </button>
+          )}
+          <p className={note} data-night-note>Night changes how the screen idles. To show a different dashboard in the evening, add a time above.</p>
+          {/* Out of the fold, so why Done is refused shows with it closed. */}
+          {idleCheck.crossed && (
+            <p role="alert" className="m-0 text-body text-destructive" data-idle-crossed>
+              With these offsets night would end before it starts around{' '}
+              {idleCheck.crossed.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}. Make them smaller to keep them.
+            </p>
+          )}
+          {rule.by === 'clock' && rule.from === rule.to && (
+            <p role="alert" className="m-0 text-body text-destructive" data-idle-crossed>Night must start and end at different times.</p>
+          )}
+          <Disclosure label="Advanced: when night is, photo frame motion and timing" data-idle-advanced>
+            <div className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
+              <label htmlFor={fieldId('night-rule')}>Night is</label>
+              <Select id={fieldId('night-rule')} value={rule.by} data-night-when
+                onChange={(e) => change({ switch: e.target.value === 'clock' ? SET_TIMES : DEFAULT_NIGHT })}>
+                <option value="sun">Dusk to dawn</option>
+                <option value="clock">Set times</option>
+              </Select>
+            </div>
+            {rule.by === 'clock' ? (
+              <span className="flex flex-wrap items-center gap-2 text-body" data-night-edges>
+                From
+                <input type="time" className={field} value={rule.from} aria-label="Night starts"
+                  onChange={(e) => e.target.value && change({ switch: { ...rule, from: e.target.value } })} />
+                to
+                <input type="time" className={field} value={rule.to} aria-label="Night ends"
+                  onChange={(e) => e.target.value && change({ switch: { ...rule, to: e.target.value } })} />
+              </span>
+            ) : (
+              <div className="flex flex-col gap-2 pointer-fine:gap-1.5" data-night-edges>
+                {night && (
+                  <p className="m-0 text-body text-muted-foreground" data-night-times>
+                    Tonight <span data-night-start>{time(night.start)}</span> to <span data-night-end>{time(night.end)}</span>
+                    {guessed && ', guessed from the time zone until a location is set in Settings > General'}.
+                  </p>
+                )}
+                <OffsetInput label="Starts" edge="dusk" minutes={rule.duskOffset} order={['after', 'before']}
+                  onChange={(m) => change({ switch: { ...rule, duskOffset: m } })} />
+                <OffsetInput label="Ends" edge="dawn" minutes={rule.dawnOffset} order={['before', 'after']}
+                  onChange={(m) => change({ switch: { ...rule, dawnOffset: m } })} />
+              </div>
+            )}
+            <PhotoFrameMotion />
+          </Disclosure>
+        </section>
+      )}
+
+      <Disclosure label="This screen: light or dark, photos behind the dashboard" defaultOpen data-screen-look>
+        <div className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
+          <label htmlFor={fieldId(draft === null ? 'pick' : 'name')}>Screen</label>
           {draft === null ? (
             <div className="flex min-w-0 items-center gap-2">
               <Select id={fieldId('pick')} value={screenId ?? ''} data-screen-pick
                 onChange={(e) => { if (e.target.value && e.target.value !== screenId) onPickScreen?.(e.target.value); }}>
-                {!screenId && <option value="">{deviceNamed ? 'No screen' : 'This device (not named)'}</option>}
+                {!screenId && <option value="">{deviceNamed ? 'No screen' : 'Not named yet'}</option>}
                 {screenId && !screens?.some((s) => s.id === screenId) && <option value={screenId}>{name ?? '…'}</option>}
                 {(screens ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>
@@ -446,101 +766,44 @@ export function ScreenSheet({
                 onBlur={() => void rename()} />
             </form>
           )}
-        </Field>
-        {!screenId && (
-          <p className="m-0 text-body text-muted-foreground" data-no-screen>
-            No screen is being edited, so this edits {dashboardName(currentDashboardId)} on its own.
-          </p>
-        )}
-        {plan && (
-          <Field label="Base dashboard" htmlFor={fieldId('dashboard')}
-            after={<span className={note}>Shown except while a switch is on.</span>}>
-            <div className="flex min-w-0 items-center gap-2">
-              <Select id={fieldId('dashboard')} value={shownId} data-screen-dashboard
-                onChange={(e) => onScreenPlanChange?.({ ...plan, dashboardId: e.target.value })}>
-                {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </Select>
-              {openButton(shownId)}
+        </div>
+        {problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}
+        {ownsDay && (
+          <>
+            <div className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
+              <span id={fieldId('mode')}>Light or dark</span>
+              <div role="radiogroup" aria-labelledby={fieldId('mode')} className="flex w-fit rounded-lg bg-muted p-0.5" data-screen-mode>
+                {(['light', 'dark'] as const).map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={mode === m} data-mode={m}
+                    onClick={() => writeStored(THEME_KEY, m)}
+                    className={cn('min-h-[40px] rounded-md px-4 text-body pointer-fine:min-h-8 pointer-fine:px-3',
+                      mode === m ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground')}>
+                    {m === 'light' ? 'Light' : 'Dark'}
+                  </button>
+                ))}
+              </div>
             </div>
-          </Field>
-        )}
-      </section>
-
-      {!screenId && !deviceNamed && onDeviceNamed && (
-        <section aria-label="Name this device">
-          <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} />
-        </section>
-      )}
-
-      {plan && (
-        // When the screen switches to another dashboard, as rows.
-        <section className="flex flex-col gap-2 pointer-fine:gap-1.5" aria-labelledby={fieldId('switches')} data-screen-plan>
-          <h3 id={fieldId('switches')} className={HEADING} data-screen-heading>Switches</h3>
-          {switches.map(switchRow)}
-          {switches.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            {/* Only with bus tracking set up; a bus switch made before still shows above. */}
-            {busSetUp && (
-              <button type="button" className={chip(false)} onClick={addBus} disabled={full} data-switch-add="bus">
-                <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at bus time
-              </button>
+            <label className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
+              <span>Photos behind the dashboard</span>
+              <Switch aria-label="Photos behind the dashboard" checked={photosOn} data-screen-photos
+                onCheckedChange={(on) => writeStored(WALLPAPER_KEY, on ? 'true' : 'false')} />
+            </label>
+            {photosOn && (
+              <div className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
+                <label htmlFor={fieldId('rotate')}>New photo every</label>
+                <Select id={fieldId('rotate')} value={rotate} onChange={(e) => writeStored(WALLPAPER_INTERVAL_KEY, e.target.value)}>
+                  {WALLPAPER_INTERVALS.map(([s, label]) => <option key={s} value={String(s)}>{label}</option>)}
+                </Select>
+              </div>
             )}
-            <button type="button" className={chip(false)} onClick={addTimes} disabled={full} data-switch-add="times">
-              <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at set times
-            </button>
-          </div>
-          <p className={note}>Done saves these to this screen. Times are in the household time zone.</p>
-        </section>
-      )}
+          </>
+        )}
+      </Disclosure>
 
-      {forScreen && (
-        // How soon it rests and how dark it goes are the screen's own, kept
-        // with its other settings.
-        <section className="flex flex-col gap-3" aria-labelledby={fieldId('idle')} data-screen-own>
-          <h3 id={fieldId('idle')} className={HEADING} data-screen-heading>When nobody is using it</h3>
-          <Field label="Rest after" htmlFor={fieldId('rest')} after={<span className={note}>of nobody touching it</span>}>
-            <Select id={fieldId('rest')} value={timeout} onChange={(e) => { setTimeout(Number(e.target.value)); onSettingChange?.(); }}>
-              {SCREENSAVER_TIMEOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.value === 0 ? 'Never rests' : o.label}</option>)}
-            </Select>
-          </Field>
-          {night !== 'off' && (
-            <Field label="How dark" htmlFor={fieldId('dark')} after={<span className={note}>at night</span>}>
-              <Select id={fieldId('dark')} value={dim} onChange={(e) => { setDim(e.target.value); onSettingChange?.(); }} aria-label="How dark at night">
-                {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.raw === '0' ? 'Not dimmed' : l.label}</option>)}
-              </Select>
-            </Field>
-          )}
-        </section>
-      )}
-
-      {forScreen && (
-        // Light or dark and the photos behind the dashboard are the screen's
-        // own too (#1340): from a laptop they are the screen's, not the laptop's.
-        <section className="flex flex-col gap-3" aria-labelledby={fieldId('look')} data-screen-look>
-          <h3 id={fieldId('look')} className={HEADING} data-screen-heading>Light and photos</h3>
-          <Field label="Light or dark" htmlFor={fieldId('mode')}>
-            <Select id={fieldId('mode')} value={mode} data-screen-mode
-              onChange={(e) => { writeStored(THEME_KEY, e.target.value); onSettingChange?.(); }}>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </Select>
-          </Field>
-          <Field label="Photos behind the dashboard" htmlFor={fieldId('photos')}>
-            <Select id={fieldId('photos')} value={photosOn ? 'true' : 'false'} data-screen-photos
-              onChange={(e) => { writeStored(WALLPAPER_KEY, e.target.value); onSettingChange?.(); }}>
-              <option value="true">Shown</option>
-              <option value="false">Hidden</option>
-            </Select>
-          </Field>
-          {photosOn && (
-            <Field label="New photo every" htmlFor={fieldId('rotate')}>
-              <Select id={fieldId('rotate')} value={rotate}
-                onChange={(e) => { writeStored(WALLPAPER_INTERVAL_KEY, e.target.value); onSettingChange?.(); }}>
-                {WALLPAPER_INTERVALS.map(([s, label]) => <option key={s} value={String(s)}>{label}</option>)}
-              </Select>
-            </Field>
-          )}
-        </section>
+      {ownsDay && (
+        <Disclosure label="Advanced: orientation, performance, keyboard, auto-hide, sign out, notices" data-screen-advanced>
+          <ScreenOptions />
+        </Disclosure>
       )}
     </div>
   );

@@ -36,7 +36,7 @@ async function openEditor(page: Page, widget?: string): Promise<FrameLocator> {
 }
 
 /** The editor's panels (#1151), by their tabs. */
-async function openSheet(page: Page, id: 'screen' | 'dashboard' | 'widgets' | 'day' | 'look' | 'more') {
+async function openSheet(page: Page, id: 'screen' | 'dashboard' | 'widgets' | 'look' | 'more') {
   await page.locator(`[data-editor-open="${id}"]`).click();
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
 }
@@ -70,7 +70,7 @@ const backOn = (page: Page, slug: string) => page.waitForURL((u) => u.pathname =
 
 /**
  * Names this browser as a screen showing `dashboardId`, for the settings that
- * are a screen's own (Rest after, How dark), and opens that screen's editor
+ * are a screen's own (Idle after, Darker at night), and opens that screen's editor
  * on the dashboard (#1283). Returns the frame and a remover for the screen.
  */
 async function editAsScreen(page: Page, dashboardId: string): Promise<{ frame: FrameLocator; removeScreen: () => Promise<unknown> }> {
@@ -832,10 +832,11 @@ test.describe('calm mode idle screen', () => {
     expect(created.status()).toBe(201);
     const layout = await created.json();
     try {
-      // Chosen the way a person would: in the editor's Look panel (#1159).
+      // Chosen the way a person would: in the editor's Screen > Advanced (#1159, #1349).
       await page.goto(`/d/${layout.slug}`);
       await openEditor(page);
-      await openSheet(page, 'look');
+      await openSheet(page, 'screen');
+      await page.getByRole('button', { name: /^Advanced: orientation/ }).click();
       await page.locator('[data-screen-options]').getByLabel('Performance').selectOption({ label: 'Minimal' });
       // Held until Done, like everything in the editor (#1341); Done keeps it
       // in this browser and goes back to the dashboard.
@@ -920,8 +921,8 @@ test.describe('calm mode idle screen', () => {
       // In use, the dashboard is arranged; what stays when idle is set on the idle canvas.
       await expect(page.locator('[data-canvas-pick="in-use"]')).toHaveAttribute('aria-pressed', 'true');
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
-      await openSheet(page, 'day');
-      // Opening Through the day leaves the canvas in use; Idle shows it idle.
+      await openSheet(page, 'screen');
+      // Opening Screen leaves the canvas in use; Idle shows it idle.
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await see('resting');
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'true');
@@ -935,23 +936,23 @@ test.describe('calm mode idle screen', () => {
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'false');
       // The button changes only this; it does not select the widget to move it.
       await expect(frame.getByText(/^Tap to (resize|deselect)$/)).toHaveCount(0);
-      // Only Through the day is marked as changed.
-      await expect(dot('day')).toBeVisible();
-      await expect(dot('widgets')).toHaveCount(0);
+      // Only Widgets is marked as changed: what stays is the dashboard's (#1349).
+      await expect(dot('widgets')).toBeVisible();
+      await expect(dot('screen')).toHaveCount(0);
 
       // Back to in use and to resting again: the unsaved ticks are still there.
       await see('active');
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await see('resting');
 
-      // Photos behind it: the canvas becomes the screensaver layout. Then back
-      // to this dashboard, which is what gets saved. What shows while resting
-      // is a row of Through the day (#1281).
-      const behind = (label: string) => page.locator('[data-editor-sheet="day"]').getByLabel('While resting').selectOption({ label });
-      await behind('Photos');
+      // A photo frame: the canvas becomes its arrangement. Then back to this
+      // dashboard, which is what gets saved. What shows idle by day is a row
+      // of Screen > When idle (#1349).
+      const behind = (label: string) => page.locator('[data-editor-sheet="screen"]').getByLabel('By day it shows').selectOption({ label });
+      await behind('A photo frame');
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await expect(frame.locator('[data-editor-widget]').first()).toBeVisible();
-      await behind('This dashboard');
+      await behind('The dashboard, quieter');
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
       // Nothing is stored before Save.
       const before = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
@@ -978,11 +979,11 @@ test.describe('calm mode idle screen', () => {
 });
 
 /**
- * Through the day (#1152) as rows (#1281) that fold (#1294): what the
- * dashboard shows while resting, with See it, and At night, a row that opens
- * to its look, tonight's times and the offsets, saved with the dashboard on
- * Done; the day slider shows night; offsets that cross near midsummer far
- * north are refused.
+ * The screen's day on its Screen tab (#1349): what it shows idle by day and
+ * at night, each shown on the canvas as it is picked, when night is under
+ * Advanced with tonight's times and the offsets, saved to the screen on Done;
+ * the strip shades night; offsets that cross near midsummer far north are
+ * refused.
  */
 test.describe('idle background picker', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
@@ -991,9 +992,8 @@ test.describe('idle background picker', () => {
   test.setTimeout(180_000);
 
   /**
-   * A dashboard with the clock and tasks, open in the editor on Through the
-   * day: its own canvas, or with `asScreen` this browser's screen's editor,
-   * which adds the screen's own rows.
+   * A dashboard with the clock and tasks, open in the editor on Screen: its
+   * own canvas, or with `asScreen` this browser's screen's editor.
    */
   async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground: IdleBackground = { source: 'dashboard' }, asScreen = false, nightLevel: 0 | 25 | 50 | 75 = 0) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
@@ -1013,37 +1013,34 @@ test.describe('idle background picker', () => {
       await page.goto(`/d/${layout.slug}`);
       frame = await openEditor(page);
     }
-    await openSheet(page, 'day');
+    await openSheet(page, 'screen');
     return { id: layout.id as string, frame, removeScreen };
   }
 
-  test('resting and night each show on the canvas, an edge moves, and Done saves it to the screen', async ({ page }) => {
+  test('idle by day and at night each show on the canvas, an edge moves, and Done saves it to the screen', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 });
     const { frame } = layout;
     try {
-      const sheet = page.locator('[data-editor-sheet="day"]');
-      const shows = sheet.locator('[data-day-sheet]');
-      // Idle by day is this dashboard: Stays / Fades. A night sky at night has its own layout.
+      const sheet = page.locator('[data-editor-sheet="screen"]');
+      // Idle by day is the dashboard, quieter: Stays / Fades.
       await canvasShows(page, 'idle', 'day');
-      await expect(shows).toHaveAttribute('data-day-shows', 'resting');
       await expect(frame.locator('[data-idle-toggle]').first()).toBeVisible();
-      // Night folds to a line that says what it does, and opens on a tap.
-      await expect(sheet.locator('[data-night-row] [data-fold-summary]')).toContainText(/^Dim this dashboard · dusk to dawn, tonight /);
-      await expect(sheet.getByLabel('Night look')).toHaveCount(0);
-      await sheet.locator('[data-night-row] [data-fold-toggle]').click();
-      await sheet.getByLabel('Night look').selectOption({ label: 'Night sky' });
-      await expect(shows).toHaveAttribute('data-day-shows', 'night');
+      await expect(sheet.locator('[data-idle-head="night"]')).toHaveText('At night (dusk to dawn)');
+      await expect(sheet.getByLabel('At night it shows')).toHaveValue('same');
+      // Picking a night look shows it: idle at night on the canvas's toggles.
+      await sheet.getByLabel('At night it shows').selectOption({ label: 'The night sky' });
+      await expect(page.locator('[data-canvas-above] [data-canvas-pick="night"]')).toHaveAttribute('aria-pressed', 'true');
       await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await canvasShows(page, 'day');
       await expect(frame.locator('[data-idle-toggle]').first()).toBeVisible();
       await canvasShows(page, 'in-use');
-      await expect(shows).toHaveAttribute('data-day-shows', 'active');
-      // The slider's night dot shows night (#1294).
-      await sheet.locator('[data-waypoint="night-start"]').click();
-      await expect(shows).toHaveAttribute('data-day-shows', 'night');
-      await expect(sheet.locator('[data-day-caption]')).toHaveText(/ at night$/);
+      // The strip shades the night by the screen's rule.
+      await expect(sheet.locator('[data-strip-night]').first()).toBeVisible();
+      await expect(sheet.locator('[data-strip-caption]')).toHaveText('Today. Shaded: night (dusk to dawn). Line: now.');
 
-      // Tonight's times, and the end of night an hour before dawn.
+      // Under Advanced: tonight's times, and the end of night an hour before dawn.
+      await expect(sheet.getByLabel('Night is')).toHaveCount(0);
+      await sheet.getByRole('button', { name: /^Advanced: when night is/ }).click();
       await expect(sheet.locator('[data-night-start]')).toContainText(/\d/);
       await expect(sheet.locator('[data-night-end]')).toContainText(/\d/);
       await page.getByLabel('Ends: unit').selectOption('hr');
@@ -1066,52 +1063,48 @@ test.describe('idle background picker', () => {
     }
   });
 
-  // #1281: the lanes, with every setting behind a tap on them, were hard to
-  // find a way around, so each is a row. #1294: the rows fold to a line each,
-  // and a slider above them only shows.
-  test('the slider first, then rows whose names line up, each fold one line, all inside the panel', async ({ page }) => {
-    // As a screen's editor: its own rows are on Screen (#1326), so only the dashboard's are here.
+  // #1349: the Screen tab in its order, the sentence first, the When idle
+  // rows lined up in their columns, all inside the panel.
+  test('the sentence and the strip first, then the rows, the idle columns lined up, all inside the panel', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }, true);
     try {
-      const sheet = page.locator('[data-editor-sheet="day"]');
+      const sheet = page.locator('[data-editor-sheet="screen"]');
       // No See it (#1348): the canvas's toggles above it say what it draws.
-      await expect(sheet.locator('[data-see-it], [data-see="resting"], [data-day-back]')).toHaveCount(0);
+      await expect(sheet.locator('[data-see-it], [data-see="resting"], [data-day-back], [data-day-slider]')).toHaveCount(0);
       await expect(page.locator('[data-canvas-above] [data-canvas-toggles]')).toBeVisible();
-      // Night opens to every one of its choices.
-      await sheet.locator('[data-night-row] [data-fold-toggle]').click();
-      for (const label of ['While resting', 'When night is', 'Night look', 'Night starts', 'Night ends']) {
+      await expect(sheet.locator('[data-screen-sentence]')).toContainText('Idle for 2 minutes, it becomes a photo frame. At night it becomes the night sky.');
+      await expect(sheet.getByLabel('At night it shows').locator('option', { hasText: 'A photo frame' })).toHaveCount(0);
+      await expect(sheet.getByLabel('At night it shows').locator('option', { hasText: 'The dashboard, quieter' })).toHaveCount(1);
+      await expect(sheet.getByRole('button', { name: 'Arrange the photo frame' })).toBeVisible();
+      await sheet.getByRole('button', { name: /^Advanced: when night is/ }).click();
+      for (const label of ['Idle after', 'By day it shows', 'At night it shows', 'Darker at night', 'Night is', 'Night starts', 'Night ends', 'Transition effect']) {
         await expect(sheet.getByLabel(label, { exact: true }), label).toBeVisible();
       }
-      await expect(sheet.getByLabel('Night look').locator('option', { hasText: 'Photos' })).toHaveCount(1);
-      await sheet.locator('[data-night-row] [data-fold-toggle]').click();
-
       const g = await sheet.evaluate((root) => {
-        const box = (el: Element) => el.getBoundingClientRect().toJSON() as DOMRect;
-        const line = root.querySelector('[data-day-line]')!;
+        const box = (sel: string) => root.querySelector(sel)!.getBoundingClientRect().toJSON() as DOMRect;
         return {
           overflow: root.scrollWidth - root.clientWidth,
-          slider: box(root.querySelector('[data-day-slider]')!),
-          line: box(line),
-          dots: [...line.querySelectorAll<HTMLElement>('[data-waypoint]')].map((d) => ({ minute: Number(d.dataset.minute), box: box(line.querySelector(`[data-waypoint-dot="${d.dataset.minute}"]`)!) })),
-          summary: box(root.querySelector('[data-night-row] [data-fold-summary]')!),
-          lineHeight: parseFloat(getComputedStyle(root.querySelector('[data-night-row] [data-fold-summary]')!).lineHeight),
-          names: [...root.querySelectorAll('[data-row-name]')].map((n) => ({ name: n.textContent, box: box(n) })),
+          sentence: box('[data-screen-sentence]'),
+          strip: box('[data-day-strip]'),
+          shows: box('[data-screen-plan]'),
+          idle: box('[data-screen-own]'),
+          day: box('[data-idle-day]'),
+          night: box('[data-idle-night]'),
+          darker: box('[data-idle-darker]'),
+          headDay: box('[data-idle-head="day"]'),
+          headNight: box('[data-idle-head="night"]'),
         };
       });
       expect(g.overflow, 'nothing runs past the panel').toBeLessThanOrEqual(0);
-      // The slider comes first, above every row.
-      expect(g.slider.bottom).toBeLessThanOrEqual(g.names[0]!.box.top);
-      // Each dot sits at its time on the line: night ends at 6:30 and starts at 9 pm.
-      expect(g.dots.map((d) => d.minute)).toEqual(expect.arrayContaining([390, 1260]));
-      for (const d of g.dots) {
-        const x = d.box.left + d.box.width / 2;
-        expect(Math.abs(x - (g.line.left + (d.minute / 1440) * g.line.width)), `the dot at minute ${d.minute}`).toBeLessThanOrEqual(1);
-      }
-      // A folded row is one line.
-      expect(g.summary.height).toBeLessThanOrEqual(g.lineHeight + 1);
-      // One column of names, plain rows and folds alike.
-      expect(g.names.map((n) => n.name)).toEqual(['Resting', 'At night']);
-      for (const n of g.names) expect(Math.abs(n.box.left - g.names[0]!.box.left), `${n.name} in the name column`).toBeLessThanOrEqual(0.5);
+      // The sentence, the strip, Shows, When idle, top to bottom.
+      expect(g.sentence.bottom).toBeLessThanOrEqual(g.strip.top);
+      expect(g.strip.bottom).toBeLessThanOrEqual(g.shows.top);
+      expect(g.shows.bottom).toBeLessThanOrEqual(g.idle.top);
+      // By day and At night are two columns: each heading over its own controls.
+      expect(Math.abs(g.day.left - g.headDay.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(g.night.left - g.headNight.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(g.darker.left - g.night.left)).toBeLessThanOrEqual(1);
+      expect(g.night.left).toBeGreaterThanOrEqual(g.day.right);
     } finally {
       await layout.removeScreen();
       await page.request.delete(`/api/layouts/${layout.id}`);
@@ -1176,16 +1169,15 @@ test.describe('idle background picker', () => {
       await expect(caption).toHaveText(new RegExp(`, idle, at night: a photo frame, 50% darker\\. ${size}\\.$`));
 
       // The night sky at night: the sky drawn, and darker too, as every look is on the wall.
-      const sheet = page.locator('[data-editor-sheet="day"]');
-      await sheet.locator('[data-night-row] [data-fold-toggle]').click();
-      await sheet.getByLabel('Night look').selectOption({ label: 'Night sky' });
+      const sheet = page.locator('[data-editor-sheet="screen"]');
+      await sheet.getByLabel('At night it shows').selectOption({ label: 'The night sky' });
       await expect.poll(drawn).toMatchObject({ dark: { kind: 'dim', opacity: 0.5 }, backdrop: { look: 'sky', sky: true } });
       await expect(caption).toHaveText(/, idle, at night: the night sky, 50% darker\./);
 
       // The dashboard at night, dimmed; and Screen off, black.
-      await sheet.getByLabel('Night look').selectOption({ label: 'Dim this dashboard' });
+      await sheet.getByLabel('At night it shows').selectOption({ label: 'Same as by day' });
       await expect.poll(drawn).toMatchObject({ dark: { kind: 'dim', opacity: 0.5 }, backdrop: null, clock: 1, tasks: 0.12 });
-      await sheet.getByLabel('Night look').selectOption({ label: 'Screen off' });
+      await sheet.getByLabel('At night it shows').selectOption({ label: 'Screen off' });
       await expect.poll(drawn).toMatchObject({ dark: { kind: 'off', opacity: 1 } });
       await expect(caption).toHaveText(/, idle, at night: screen off\./);
 
@@ -1200,7 +1192,7 @@ test.describe('idle background picker', () => {
   test('offsets that cross near midsummer far north are refused', async ({ page }) => {
     const layout = await editIdle(page, { lat: 64, lon: -150 });
     try {
-      await page.locator('[data-editor-sheet="day"] [data-night-row] [data-fold-toggle]').click();
+      await page.locator('[data-editor-sheet="screen"]').getByRole('button', { name: /^Advanced: when night is/ }).click();
       await page.getByLabel('Starts: unit').selectOption('hr');
       await page.getByLabel('Starts: amount').fill('6');
       await page.getByLabel('Ends: unit').selectOption('hr');
@@ -1258,12 +1250,12 @@ test.describe('dim when idle', () => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
     await withNightDashboard(page, async (slug, id) => {
-      // How dark is the screen's own, on its editor's Screen tab (#1159, #1326),
+      // Darker at night is the screen's own, on its editor's Screen tab (#1159, #1326),
       // so this browser is a screen showing the dashboard (#1283).
       const { removeScreen } = await editAsScreen(page, id);
       try {
         await openSheet(page, 'screen');
-        await page.locator('[data-editor-sheet="screen"]').getByLabel('How dark at night').selectOption({ label: '50% darker' });
+        await page.locator('[data-editor-sheet="screen"]').getByLabel('Darker at night').selectOption({ label: '50%' });
         await done(page).click();
         // Done sends the screen its settings and leaves the editor; let it land first.
         await page.waitForURL((u) => !u.pathname.startsWith('/screens/'), { timeout: 60_000 });

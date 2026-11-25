@@ -1,14 +1,13 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
-import { canvasShows } from './helpers/canvasEditor';
 
 /**
  * A screen shows one dashboard and switches to another for a while (#1282):
  * at bus time, from 30 minutes before a bus route's time at the stop to 15
  * after unless the switch has routes and minutes of its own (#1291), or at
- * set times. The editor's Screen tab shows them as rows that fold to a line
- * each (#1294, #1326), kept there until Done; Through the day has a slider that
- * steps through the day and shows the screen then; Settings > Screens picks
+ * set times. The editor's Screen tab shows them as rows with a line each and
+ * Edit (#1294, #1326, #1349), kept there until Done, under a strip of today
+ * that draws each one as a band in its row's colour; Settings > Screens picks
  * the dashboard on the screen's row. The home page opens a named screen on
  * the dashboard it shows now, a switch's included.
  */
@@ -143,7 +142,8 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       let sheet = page.locator('[data-editor-sheet="screen"]');
       // The tab says which screen it is (#1326).
       await expect(sheet.getByLabel('Screen', { exact: true })).toHaveValue(screen.id);
-      await expect(sheet.getByLabel('Base dashboard')).toHaveValue(kitchen.id);
+      await sheet.locator('[data-normally-row] [data-row-edit]').click();
+      await expect(sheet.getByLabel('Normally', { exact: true })).toHaveValue(kitchen.id);
       // The pencil renames it in place: Esc keeps the name, Enter saves at
       // once, and the heading and the drop-down follow.
       await sheet.getByRole('button', { name: `Rename Hall ${tag}` }).click();
@@ -242,38 +242,28 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     await signIn(setup);
     const bus = await addDashboard(setup, `Sizes ${tag}`);
     const screen = await namedScreen(browser, `Sizes ${tag}`, { switches: [{ when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '07:45', dashboardId: bus.id }] });
-    /** Heights (and widths) of the Screen and Through the day controls in the screen's editor. */
+    /** Heights (and widths) of the Screen tab's controls in the screen's editor. */
     const measure = async (touch: boolean) => {
       const { page, close } = await screen.edit({ hasTouch: touch });
       try {
-        // The screen's switch, on Screen (#1326).
-        const screenSheet = page.locator('[data-editor-sheet="screen"]');
+        const sheet = page.locator('[data-editor-sheet="screen"]');
         await expect(rows(page)).toHaveCount(1);
-        const boxIn = (sheet: typeof screenSheet) => async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
-        let box = boxIn(screenSheet);
-        // Folded, a row is one button; opening the switch shows its days (#1294).
-        const fold = await box('[data-switch-row="0"] [data-fold-toggle]');
-        await rows(page).first().locator('[data-fold-toggle]').click();
-        // The words on each kind of control: a day, + Switch, then More.
-        const fontOf = (sheet: typeof screenSheet, selectors: string[]) => sheet.evaluate((el, list) => list
+        const box = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
+        // Folded, a row is its line and Edit; opening the switch shows its days (#1294).
+        const edit = await box('[data-switch-row="0"] [data-row-edit]');
+        await rows(page).first().locator('[data-row-edit]').click();
+        // The words on each kind of control: a day, + Add a time, Edit.
+        const fontOf = (selectors: string[]) => sheet.evaluate((el, list) => list
           .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`), selectors);
-        const switchFonts = await fontOf(screenSheet, ['[data-day-chip="1"]', '[data-switch-add="times"]']);
+        const fonts = await fontOf(['[data-day-chip="1"]', '[data-switch-add="times"]', '[data-row-edit]']);
         // Each day bubble.
-        const days = await screenSheet.locator('[data-day-chip]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect));
-        const switchBoxes = {
-          day: await box('[data-day-chip="1"]'),
-          add: await box('[data-switch-add="bus"]'),
-          shows: await box('[data-screen-dashboard]'),
-          fold,
-        };
-        // The dashboard's own rows, on Through the day.
-        await page.locator('[data-editor-open="day"]').click();
-        const sheet = page.locator('[data-editor-sheet="day"]');
-        box = boxIn(sheet);
-        const nightFold = await box('[data-night-row] [data-fold-toggle]');
-        const fonts = [...switchFonts, ...await fontOf(sheet, ['[data-day-more]'])];
-        // The tab bar: the Through the day tab's words, and the ground the tabs are drawn on.
-        const tabWords = (await page.locator('[data-editor-open="day"] span').last().boundingBox())!;
+        const days = await sheet.locator('[data-day-chip]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect));
+        const switchBoxes = { day: await box('[data-day-chip="1"]'), add: await box('[data-switch-add="bus"]'), edit };
+        // Normally's dashboard, once its row is open.
+        await sheet.locator('[data-normally-row] [data-row-edit]').click();
+        const shows = await box('[data-screen-dashboard]');
+        // The tab bar: the Screen tab's words, and the ground the tabs are drawn on.
+        const tabWords = (await page.locator('[data-editor-open="screen"] span').last().boundingBox())!;
         const tabGround = await page.locator('[data-editor-panels] nav').evaluate((nav) => {
           const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
           for (let e: Element | null = nav; e; e = e.parentElement) {
@@ -282,20 +272,18 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
           }
           return 1;
         });
-        const measured = {
+        return { fonts, days, tabWords, tabGround, box: {
           ...switchBoxes,
-          resting: await box('[data-resting-look]'),
-          step: await box('[data-day-step="next"]'),
+          shows,
+          // When idle (#1349): the wait, what it shows by day and at night, how much darker, and Advanced.
+          idleAfter: await box('[data-idle-after]'),
+          idleDay: await box('[data-idle-day]'),
+          idleNight: await box('[data-idle-night]'),
+          darker: await box('[data-idle-darker]'),
+          advanced: await box('[data-idle-advanced] [data-disclosure-toggle]'),
           // The canvas's toggles (#1348), above the picture.
           toggle: (await page.locator('[data-canvas-above] [data-canvas-pick="idle"]').boundingBox())!,
-          nightFold,
-        };
-        // Night opens on its own row.
-        await sheet.locator('[data-night-row] [data-fold-toggle]').click();
-        return { fonts, days, tabWords, tabGround, box: {
-          ...measured,
-          night: await box('[data-night-look]'),
-          tab: (await page.locator('[data-editor-open="day"]').boundingBox())!,
+          tab: (await page.locator('[data-editor-open="screen"]').boundingBox())!,
           done: (await page.locator('[data-editor-done]').boundingBox())!,
         } };
       } finally {
@@ -323,7 +311,7 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       expect(mouse.tab.height).toBeLessThanOrEqual(48);
       expect(mouse.done.y + mouse.done.height).toBeLessThanOrEqual(mouse.tab.y);
       expect(tabGround, 'the tabs\' ground is light').toBeGreaterThan(0.5);
-      expect(tabWords.height, 'Through the day on one line').toBeLessThanOrEqual(20);
+      expect(tabWords.height, 'Screen on one line').toBeLessThanOrEqual(20);
 
       // A finger: every one of them a 44px target.
       const { box: finger } = await measure(true);
@@ -338,144 +326,93 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     }
   });
 
-  // #1294: Through the day's slider steps through the moments the screen
-  // changes, and the canvas shows the screen then; the rows fold. A switch's
-  // dot opens that switch on the Screen tab (#1326).
-  test('the day slider: each dot at its time, a switch\'s dashboard and the night look on the canvas, and three folded switches fit a laptop', async ({ browser }) => {
+  // #1349: one strip of today on the Screen tab. Night is shading, each switch
+  // a band in its row's swatch colour, never narrower than 12px, and a line at
+  // now, all drawn from the screen's own day.
+  test('the strip: each switch a band at its time in its row\'s swatch colour, none under 12px, night shaded', async ({ browser }) => {
     const tag = Date.now().toString(36);
     const setup = await browser.newPage();
     await signIn(setup);
-    // The screen goes dark from 9 pm to 6:30 am (its own day, #1345); School
-    // run has tasks where Kitchen has a clock.
-    const kitchenRes = await setup.request.post('/api/layouts', { data: {
-      name: `Kitchen ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }],
-    } });
-    expect(kitchenRes.ok()).toBe(true);
-    const kitchen: { id: string; slug: string } = await kitchenRes.json();
-    const schoolRes = await setup.request.post('/api/layouts', { data: { name: `School run ${tag}`, widgets: [{ i: 'tasks', x: 0, y: 0, w: 16, h: 12 }] } });
-    expect(schoolRes.ok()).toBe(true);
-    const school: { id: string; slug: string } = await schoolRes.json();
+    const kitchen = await addDashboard(setup, `Kitchen ${tag}`);
+    const school = await addDashboard(setup, `School run ${tag}`);
     const every = [0, 1, 2, 3, 4, 5, 6];
+    // The screen's night runs 9 pm to 6:30 am (its own day, #1345); 12:00 to
+    // 12:10 is a few pixels of the bar, drawn 12px wide.
     const screen = await namedScreen(browser, `Hall ${tag}`, { dashboardId: kitchen.id, switches: [
       { when: 'times', days: every, from: '07:00', to: '08:00', dashboardId: school.id },
       { when: 'times', days: every, from: '15:00', to: '15:45', dashboardId: school.id },
       { when: 'times', days: every, from: '01:45', to: '02:45', dashboardId: school.id },
+      { when: 'times', days: every, from: '12:00', to: '12:10', dashboardId: kitchen.id },
     ], settings: {
       'prism-screen-day': JSON.stringify({ day: 'dashboard', night: 'off', switch: { by: 'clock', from: '21:00', to: '06:30' }, nightLevel: 0 }),
     } });
     const laptop = await screen.edit();
     try {
       const { page } = laptop;
-      const screenSheet = page.locator('[data-editor-sheet="screen"]');
-      const sheet = page.locator('[data-editor-sheet="day"]');
-      const frame = page.frameLocator('[data-remote-frame]');
-      await expect(rows(page)).toHaveCount(3);
+      const sheet = page.locator('[data-editor-sheet="screen"]');
+      await expect(rows(page)).toHaveCount(4);
+      // All folded on open, each row its line and Edit.
+      await expect(sheet.locator('[data-switch-row][data-open="true"]')).toHaveCount(0);
+      await expect(sheet.locator('[data-strip-band]')).toHaveCount(4);
 
-      // All folded on open, and each panel fits the laptop's height without scrolling.
-      await expect(screenSheet.locator('[data-open="true"]')).toHaveCount(0);
-      const fits = (s: typeof sheet) => s.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight, bottom: el.getBoundingClientRect().bottom }));
-      let fit = await fits(screenSheet);
-      expect(fit.scroll, 'the folded Screen panel needs no scrolling').toBeLessThanOrEqual(fit.client + 1);
-      expect(fit.bottom).toBeLessThanOrEqual(900 + 0.5);
-      // The switches' colours on their folded rows, for the line's below.
-      const rowColours = await screenSheet.evaluate((root) => [0, 1, 2]
-        .map((i) => { const el = root.querySelector(`[data-switch-row="${i}"] [data-swatch]`); return el ? getComputedStyle(el).backgroundColor : null; }));
-      await page.locator('[data-editor-open="day"]').click();
-      await expect(sheet.locator('[data-open="true"]')).toHaveCount(0);
-      fit = await fits(sheet);
-      expect(fit.scroll, 'the folded panel needs no scrolling').toBeLessThanOrEqual(fit.client + 1);
-      expect(fit.bottom).toBeLessThanOrEqual(900 + 0.5);
-
-      // A dot for each switch's start and end, and night's, each at its time on
-      // the line, and a tap on each reaches only its own (3 pm and 3:45 pm are
-      // a few pixels apart).
       const g = await sheet.evaluate((root) => {
-        const line = root.querySelector('[data-day-line]')!.getBoundingClientRect();
-        return {
-          line: line.toJSON() as DOMRect,
-          dots: [...root.querySelectorAll<HTMLElement>('[data-waypoint]')].map((d) => {
-            const b = root.querySelector(`[data-waypoint-dot="${d.dataset.minute}"]`)!.getBoundingClientRect();
-            const hit = d.getBoundingClientRect();
-            return { minute: Number(d.dataset.minute), x: b.left + b.width / 2, hitLeft: hit.left, hitRight: hit.right };
-          }),
-        };
-      });
-      expect(g.dots.map((d) => d.minute)).toEqual(expect.arrayContaining([105, 165, 390, 420, 480, 900, 945, 1260]));
-      g.dots.forEach((d, i) => {
-        expect(Math.abs(d.x - (g.line.left + (d.minute / 1440) * g.line.width)), `the dot at minute ${d.minute}`).toBeLessThanOrEqual(1);
-        expect(d.hitLeft, `a tap at minute ${d.minute}'s dot is its own`).toBeLessThanOrEqual(d.x);
-        expect(d.hitRight).toBeGreaterThanOrEqual(d.x);
-        if (i > 0) expect(d.hitLeft, `minute ${d.minute}'s tap area is clear of the one before`).toBeGreaterThanOrEqual(g.dots[i - 1]!.hitRight - 0.5);
-      });
-
-      // Each switch's colour is the same on its folded row (on Screen) as on its
-      // stretch of the line, differs from the next, and the first takes the theme's own hue.
-      const colours = await sheet.evaluate((root) => {
-        const bg = (el: Element | null) => (el ? getComputedStyle(el).backgroundColor : null);
+        const bar = root.querySelector<HTMLElement>('[data-strip-bar]')!;
+        const r = bar.getBoundingClientRect();
+        const inner = { left: r.left + bar.clientLeft, width: bar.clientWidth, right: r.left + bar.clientLeft + bar.clientWidth };
+        const bg = (el: Element) => getComputedStyle(el).backgroundColor;
         const hue = (rgb: string) => {
-          const [r, g, b] = (rgb.match(/[\d.]+/g) ?? []).map((n) => Number(n) / 255);
-          const max = Math.max(r!, g!, b!); const min = Math.min(r!, g!, b!); const d = max - min;
+          const [red, green, blue] = (rgb.match(/[\d.]+/g) ?? []).map((n) => Number(n) / 255);
+          const max = Math.max(red!, green!, blue!); const min = Math.min(red!, green!, blue!); const d = max - min;
           if (d === 0) return 0;
-          const h = max === r ? ((g! - b!) / d) % 6 : max === g ? (b! - r!) / d + 2 : (r! - g!) / d + 4;
+          const h = max === red ? ((green! - blue!) / d) % 6 : max === green ? (blue! - red!) / d + 2 : (red! - green!) / d + 4;
           return (h * 60 + 360) % 360;
         };
-        const span = (i: number) => bg(root.querySelector(`[data-day-span="${i}"]`));
         return {
-          spans: [0, 1, 2].map(span),
-          firstHue: hue(span(0)!),
+          inner,
+          bands: [...root.querySelectorAll<HTMLElement>('[data-strip-band]')].map((b) => ({ index: Number(b.dataset.stripBand), box: b.getBoundingClientRect().toJSON() as DOMRect, colour: bg(b) })),
+          swatches: [0, 1, 2, 3].map((i) => bg(root.querySelector(`[data-switch-row="${i}"] [data-swatch]`)!)),
+          nights: [...root.querySelectorAll('[data-strip-night]')].map((n) => n.getBoundingClientRect().toJSON() as DOMRect),
+          now: root.querySelector('[data-strip-now]')!.getBoundingClientRect().toJSON() as DOMRect,
+          firstHue: hue(bg(root.querySelector('[data-strip-band="0"]')!)),
           primaryHue: Number(getComputedStyle(document.documentElement).getPropertyValue('--primary').trim().split(/\s+/)[0]),
         };
       });
-      expect(rowColours).toEqual(colours.spans);
-      expect(new Set(rowColours).size, rowColours.join(' ')).toBe(3);
-      for (const c of rowColours) expect(c).not.toBe('rgba(0, 0, 0, 0)');
-      expect(Math.abs(colours.firstHue - colours.primaryHue), `${colours.firstHue} vs the theme's ${colours.primaryHue}`).toBeLessThanOrEqual(3);
-
-      // ▶ steps to the next dot, and the canvas shows the screen then: from
-      // now, whichever it is, then on to night.
-      await sheet.locator('[data-day-step="next"]').click();
-      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-at', /\d+/);
-
-      // Tapping 7 am: School run on the canvas, as it is saved, and its row
-      // open on the Screen tab (#1326).
-      await sheet.locator('[data-waypoint][data-minute="420"]').click();
-      await expect(page.locator('[data-editor-sheet="screen"]')).toBeVisible();
-      await expect(rows(page).first()).toHaveAttribute('data-open', 'true');
-      await expect(rows(page).nth(1)).toHaveAttribute('data-open', 'false');
-      await expect(frame.locator(`[data-canvas-preview="${school.id}"]`)).toBeVisible({ timeout: 30_000 });
-      await expect(frame.locator('.widget-cell[data-widget="tasks"]')).toBeVisible();
-      await expect(frame.locator('[data-editor-widget]')).toHaveCount(0);
-      await expect(page.locator('[data-editor-resting="preview"]')).toContainText(`Showing School run ${tag} as it is saved`);
-      // Back on Through the day.
-      await page.locator('[data-editor-open="day"]').click();
-      // 9 pm: Kitchen's night look, the screen off.
-      await sheet.locator('[data-waypoint][data-minute="1260"]').click();
-      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'night');
-      await expect(frame.locator('[data-preview-night="off"]')).toHaveCount(1);
-      await expect(sheet.locator('[data-night-row]')).toHaveAttribute('data-open', 'true');
-      // ◀ steps back to the dot before: 3:45 pm, Kitchen again, being edited
-      // (unless now falls between).
-      const before = Math.max(...g.dots.map((d) => d.minute).filter((m) => m < 1260));
-      await sheet.locator('[data-day-step="prev"]').click();
-      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-at', String(before));
-      if (before === 945) {
-        await expect(frame.locator('[data-canvas-preview]')).toHaveCount(0);
-        await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible();
+      const x = (minute: number) => g.inner.left + (minute / 1440) * g.inner.width;
+      const starts: Record<number, number> = { 0: 420, 1: 900, 2: 105, 3: 720 };
+      const ends: Record<number, number> = { 0: 480, 1: 945, 2: 165, 3: 730 };
+      for (const b of g.bands) {
+        // Never narrower than 12px, and inside the bar.
+        expect(b.box.width, `band ${b.index} is at least 12px`).toBeGreaterThanOrEqual(12 - 0.5);
+        expect(b.box.left).toBeGreaterThanOrEqual(g.inner.left - 0.5);
+        expect(b.box.right).toBeLessThanOrEqual(g.inner.right + 0.5);
+        // At its time.
+        expect(Math.abs(b.box.left - x(starts[b.index]!)), `band ${b.index} starts at its time`).toBeLessThanOrEqual(1);
+        const natural = x(ends[b.index]!) - x(starts[b.index]!);
+        if (natural >= 12) expect(Math.abs(b.box.width - natural), `band ${b.index} is as long as its time`).toBeLessThanOrEqual(1);
+        // The colour of its row's swatch.
+        expect(b.colour, `band ${b.index} matches its row`).toBe(g.swatches[b.index]);
       }
-      await sheet.locator('[data-waypoint][data-minute="1260"]').click();
-      // In use by day, on the canvas's toggles (#1348).
-      await canvasShows(page, 'in-use', 'day');
-      await expect(frame.locator('[data-preview-night]')).toHaveCount(0);
-      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'active');
-
-      // Another panel edits Kitchen: the canvas leaves School run. (The 3 pm
-      // dot opens its switch on Screen, which keeps it on the canvas.)
-      await sheet.locator('[data-waypoint][data-minute="900"]').click();
-      await expect(page.locator('[data-editor-sheet="screen"]')).toBeVisible();
-      await expect(frame.locator(`[data-canvas-preview="${school.id}"]`)).toBeVisible();
-      await page.locator('[data-editor-open="widgets"]').click();
-      await expect(frame.locator('[data-canvas-preview]')).toHaveCount(0);
-      await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible();
+      // The 10-minute switch is drawn wider than its time, at 12px.
+      expect(x(730) - x(720)).toBeLessThan(12);
+      expect(Math.abs(g.bands.find((b) => b.index === 3)!.box.width - 12)).toBeLessThanOrEqual(0.5);
+      // Each row its own colour, the first the theme's own hue.
+      expect(new Set(g.swatches).size, g.swatches.join(' ')).toBe(4);
+      for (const c of g.swatches) expect(c).not.toBe('rgba(0, 0, 0, 0)');
+      expect(Math.abs(g.firstHue - g.primaryHue), `${g.firstHue} vs the theme's ${g.primaryHue}`).toBeLessThanOrEqual(3);
+      // Night: midnight to 6:30 and 9 pm to midnight, shaded.
+      const nights = [...g.nights].sort((a, b) => a.left - b.left);
+      expect(nights).toHaveLength(2);
+      expect(Math.abs(nights[0]!.left - x(0))).toBeLessThanOrEqual(1);
+      expect(Math.abs(nights[0]!.right - x(390))).toBeLessThanOrEqual(1);
+      expect(Math.abs(nights[1]!.left - x(1260))).toBeLessThanOrEqual(1);
+      expect(Math.abs(nights[1]!.right - x(1440))).toBeLessThanOrEqual(1);
+      // And now, as a line on the bar.
+      expect(g.now.left).toBeGreaterThanOrEqual(g.inner.left - 2);
+      expect(g.now.right).toBeLessThanOrEqual(g.inner.right + 2);
+      // The sentence says the same day in words.
+      await expect(sheet.locator('[data-screen-sentence]')).toContainText(`Hall ${tag} shows Kitchen ${tag}.`);
+      await expect(sheet.locator('[data-screen-sentence]')).toContainText('At night the screen turns off.');
+      expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
     } finally {
       await laptop.close();
       await screen.remove();

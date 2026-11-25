@@ -5,8 +5,8 @@ import { MAX_OFFSET_MINUTES, type IdleBackground } from '@/lib/idleBackground';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 
 /**
- * Pieces of the night rule's editor (#782), used by the Through the day
- * sheet (#1152): an edge's offset, and why Done is refused.
+ * Pieces of the night rule's editor (#782), used by the Screen tab's When
+ * idle (#1349): an edge's offset, and why Done is refused.
  */
 
 const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';

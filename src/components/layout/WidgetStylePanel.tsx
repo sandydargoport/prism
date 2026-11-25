@@ -59,7 +59,7 @@ export function fillName(c: string | undefined): string {
   return 'Solid: a card in this colour';
 }
 
-// The panel's own sizes, as on Through the day: a 44px target or more for a
+// The panel's own sizes, as on the Screen tab: a 44px target or more for a
 // finger, and 32px with a mouse, where editing is done, with the words 12px.
 const section = 'm-0 mb-2 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
 const chip = (on: boolean) => cn(

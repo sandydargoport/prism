@@ -2,19 +2,17 @@ import { nightsTouching, type IdleSwitch } from './idleBackground';
 import { busWindowOf, routesOf, type BusTime, type ScreenSwitch } from './screenSwitches';
 
 /**
- * The Through the day slider (#1294): one day as a line, with a stop wherever
- * what the screen shows changes, and what it shows at each.
+ * One day of a screen, in minutes, for the Screen tab's strip (#1349):
  *
- *  - Night starts and ends, by the dashboard's own rule (dusk and dawn moved
- *    by their offsets, or set times).
- *  - Each switch starts and ends, on today's weekday: a bus switch around each
- *    of its routes that runs today, a set-times one on its days, the morning
- *    part of one that ran past midnight included.
- *  - Now, so the slider can come back to it.
+ *  - Night, by the screen's own rule (dusk and dawn moved by their offsets,
+ *    or set times).
+ *  - Each switch, on a weekday: a bus switch around each of its routes that
+ *    runs that day, a set-times one on its days, the morning part of one that
+ *    ran past midnight included.
+ *  - Which switch the screen shows at a minute, the first in force.
  *
  * Minutes run 0 to 1440 by the wall clock, so 6:30 sits where the clock says
- * 6:30 even on a day the clocks change. The slider only shows: nothing is set
- * on it (#1281 took away the line that hid settings behind taps).
+ * 6:30 even on a day the clocks change.
  */
 
 export const DAY_MINUTES = 24 * 60;
@@ -25,11 +23,6 @@ export type Span = { from: number; to: number };
 export type SwitchSpan = Span & { index: number; starts: boolean; ends: boolean };
 /** A night's stretch: whether it starts and ends on this day. */
 export type NightSpan = Span & { starts: boolean; ends: boolean };
-
-export type WaypointKind = 'now' | 'night-start' | 'night-end' | 'switch-start' | 'switch-end';
-export type Waypoint = { kind: WaypointKind; minute: number; switchIndex?: number };
-/** A stop on the slider: one minute, and every change that happens then. */
-export type Stop = { minute: number; marks: Waypoint[] };
 
 /**
  * What the screen shows at a minute: a dashboard, in use or idle at night,
@@ -104,27 +97,6 @@ export function switchSpans(switches: readonly ScreenSwitch[], weekday: number, 
   return spans;
 }
 
-/** The stops on the slider, in time order, one per minute that has any. */
-export function dayStops({ now, nights, switches }: { now: number; nights: readonly NightSpan[]; switches: readonly SwitchSpan[] }): Stop[] {
-  const marks: Waypoint[] = [{ kind: 'now', minute: now }];
-  for (const n of nights) {
-    if (n.starts) marks.push({ kind: 'night-start', minute: n.from });
-    if (n.ends) marks.push({ kind: 'night-end', minute: n.to });
-  }
-  for (const s of switches) {
-    if (s.starts) marks.push({ kind: 'switch-start', minute: s.from, switchIndex: s.index });
-    if (s.ends) marks.push({ kind: 'switch-end', minute: s.to, switchIndex: s.index });
-  }
-  const byMinute = new Map<number, Waypoint[]>();
-  for (const m of marks) {
-    const at = byMinute.get(m.minute) ?? [];
-    // One switch's two routes can end at the same minute: say it once.
-    if (!at.some((x) => x.kind === m.kind && x.switchIndex === m.switchIndex)) at.push(m);
-    byMinute.set(m.minute, at);
-  }
-  return [...byMinute.entries()].sort(([a], [b]) => a - b).map(([minute, at]) => ({ minute, marks: at }));
-}
-
 /**
  * What the screen shows at `minute`: the first switch in force, in order,
  * whose dashboard still exists; otherwise its own dashboard. At a switch's
@@ -147,11 +119,4 @@ export function sceneAt(minute: number, { spans, switches, nights, shownId, exis
   const dashboardId = inForce ? switches[inForce.index]!.dashboardId : shownId;
   const night = nights.some((n) => n.from <= minute && minute < n.to);
   return { dashboardId, state: night && !inForce ? 'night' : 'active', night, switchIndex: inForce?.index ?? -1 };
-}
-
-/** The stop nearest `minute`, as a drag lets go of the line. */
-export function nearestStop(stops: readonly Stop[], minute: number): number {
-  let best = 0;
-  stops.forEach((s, i) => { if (Math.abs(s.minute - minute) < Math.abs(stops[best]!.minute - minute)) best = i; });
-  return best;
 }

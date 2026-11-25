@@ -258,9 +258,9 @@ test.describe('Editing a screen from a phone', () => {
       const sheet = await phone.locator('[data-editor-sheet]').evaluate((el) => el.getBoundingClientRect().toJSON());
       const shown = await picture.evaluate((el) => el.getBoundingClientRect().toJSON());
       expect(sheet.top).toBeGreaterThanOrEqual(shown.bottom);
-      // Rest after is the screen's own, on its Screen tab (#1326).
-      await phone.getByLabel('Rest after').selectOption({ label: '1 hour' });
-      await phone.locator('[data-editor-open="look"]').click();
+      // Idle after and the keyboard are the screen's own, on its Screen tab (#1326, #1349).
+      await phone.getByLabel('Idle after').selectOption({ label: '1 hour' });
+      await phone.getByRole('button', { name: /^Advanced: orientation/ }).click();
       await phone.locator('[data-screen-options]').getByLabel('On-screen keyboard').selectOption({ label: 'Never' });
       // Nothing changed on the phone itself.
       expect(await readStorage(phone, 'prism-screensaver-timeout')).toBeNull();
@@ -336,7 +336,7 @@ test.describe('Time-of-day layouts', () => {
       while (!steady(start)) start += 3600_000;
       await nameThisScreen(wall, PORCH);
       // Switches are set in the screen's own editor, as rows of its Screen
-      // tab (#1326): + Switch at set times adds one on every day, and Done sends it.
+      // tab (#1326): + Add a time adds one on every day, and Done sends it.
       await wall.goto('/?edit=1');
       await wall.locator('[data-editor-open="screen"]').click({ timeout: 60_000 });
       const sheet = wall.locator('[data-editor-sheet="screen"]');
@@ -451,7 +451,7 @@ test.describe('Time-of-day layouts', () => {
 });
 
 test.describe('Attention notices', () => {
-  test('turned on in the editing bar More sheet, new messages show as cards at the top right, newest first, and keep coming while idle', async ({ browser }) => {
+  test('turned on in the editor, Screen > Advanced, new messages show as cards at the top right, newest first, and keep coming while idle', async ({ browser }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     test.setTimeout(120_000);
     const tag = Date.now().toString(36);
@@ -469,9 +469,10 @@ test.describe('Attention notices', () => {
       // Signed in, the family list carries ids.
       const author = await getFirstParent(wall);
       await nameThisScreen(wall, HALL);
-      // Notices are on the screen's editing bar, under More.
+      // Notices are on the screen's editor, under Screen > Advanced (#1349).
       await wall.goto('/?edit=1');
-      await wall.locator('[data-editor-open="more"]').click({ timeout: 60_000 });
+      await wall.locator('[data-editor-open="screen"]').click({ timeout: 60_000 });
+      await wall.getByRole('button', { name: /^Advanced: orientation/ }).click();
       const panel = wall.getByTestId('screen-attention');
       await panel.getByLabel('A message was posted in the last', { exact: true }).check();
       await panel.getByRole('button', { name: 'Save notices' }).click();

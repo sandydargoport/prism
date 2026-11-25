@@ -11,7 +11,7 @@
  * that screen's name and settings.
  */
 import * as React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 import { releaseHeldSettings } from '@/lib/displays/remoteEdit';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,27 @@ async function problemFrom(res: Response): Promise<string> {
   return data?.error ?? 'That did not work. Try again.';
 }
 
-export function NameThisDevice({ shows, onNamed, chip, field }: {
+/** The screens named before, and whether sign-in is asked for, so naming can also trust the device. */
+async function namingInfo(): Promise<{ named: Named[] | null; trust: boolean }> {
+  const [list, settings] = await Promise.all([
+    fetch('/api/displays').catch(() => null),
+    fetch('/api/settings').catch(() => null),
+  ]);
+  let named: Named[] | null = null;
+  if (list?.ok) {
+    const data = await list.json().catch(() => null);
+    named = (data?.displays ?? []).map((d: Named) => ({ id: d.id, name: d.name }));
+  }
+  let trust = false;
+  if (settings?.ok) {
+    const data = await settings.json().catch(() => null);
+    const security = data?.security ?? data?.settings?.security;
+    trust = security?.authWall?.enabled === true && !document.cookie.split('; ').includes(TRUSTED_MARK);
+  }
+  return { named, trust };
+}
+
+export function NameThisDevice({ shows, onNamed, chip, field, autoOpen = false }: {
   /** The dashboard this device shows while it has no name: the default. */
   shows: string;
   /** Named, or now a screen named before: its id. */
@@ -35,8 +55,10 @@ export function NameThisDevice({ shows, onNamed, chip, field }: {
   /** The sheet's own control styles, so this reads as part of it. */
   chip: (on: boolean) => string;
   field: string;
+  /** Open on the form at once: what needs a name was just asked for (#1349). */
+  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [name, setName] = useState('');
   const [screens, setScreens] = useState<Named[]>([]);
   const [existing, setExisting] = useState('');
@@ -45,23 +67,20 @@ export function NameThisDevice({ shows, onNamed, chip, field }: {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  /** Opens the form, with the screens named before and whether sign-in is asked for. */
-  const start = async () => {
-    setOpen(true);
-    const [list, settings] = await Promise.all([
-      fetch('/api/displays').catch(() => null),
-      fetch('/api/settings').catch(() => null),
-    ]);
-    if (list?.ok) {
-      const data = await list.json().catch(() => null);
-      setScreens((data?.displays ?? []).map((d: Named) => ({ id: d.id, name: d.name })));
-    }
-    if (settings?.ok) {
-      const data = await settings.json().catch(() => null);
-      const security = data?.security ?? data?.settings?.security;
-      setTrustOffered(security?.authWall?.enabled === true && !document.cookie.split('; ').includes(TRUSTED_MARK));
-    }
+  const load = () => {
+    void namingInfo().then(({ named, trust }) => {
+      if (named) setScreens(named);
+      setTrustOffered(trust);
+    });
   };
+  /** Opens the form. */
+  const start = () => {
+    setOpen(true);
+    load();
+  };
+  // Open from the start: what it needs, once, as it appears.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (autoOpen) load(); }, []);
 
   /** Names this device (`{ name }`) or makes it a screen named before (`{ id }`). */
   const become = async (body: { name: string } | { id: string }) => {
@@ -101,7 +120,7 @@ export function NameThisDevice({ shows, onNamed, chip, field }: {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2" data-name-device>
         <span className="text-caption text-muted-foreground">This device has no name, so it shows {shows}. Named, it can show another and switch at bus time.</span>
-        <button type="button" className={chip(false)} onClick={() => void start()} data-name-device-open>
+        <button type="button" className={chip(false)} onClick={start} data-name-device-open>
           Name this device
         </button>
       </div>
