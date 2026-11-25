@@ -71,7 +71,7 @@ Task sources from Apple Reminders (CalDAV) work the same way.
 - When the dashboard opens, it syncs if the last sync was more than 5 minutes ago.
 - It syncs again in the background every 5 minutes.
 - Syncing pauses while the browser tab is hidden and starts again when you come back to it.
-- The screensaver keeps syncing too when it shows the Tasks widget.
+- The photo frame keeps syncing too when it shows the Tasks widget.
 
 The manual sync button is always there, which helps right after you add a task on the other service.
 

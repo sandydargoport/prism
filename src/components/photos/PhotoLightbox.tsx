@@ -22,7 +22,7 @@ const qualityColors = { green: 'bg-success', yellow: 'bg-warning', red: 'bg-dest
 const usageTags: { value: PhotoUsageTag; label: string }[] = [
   { value: 'wallpaper', label: 'Wallpaper' },
   { value: 'gallery', label: 'Gallery' },
-  { value: 'screensaver', label: 'Screensaver' },
+  { value: 'screensaver', label: 'Photo frame' },
 ];
 
 export function PhotoLightbox({

@@ -364,7 +364,7 @@ export function ScreenSheet({
         </span>
         <p className={note} data-bus-windows>
           {!busRoutes ? `From ${window.before} minutes before each bus route's time at the stop to ${window.after} minutes after, on its days.`
-            : busRoutes.length === 0 ? 'No bus route is set up yet, so this never switches. Add one in Settings > Bus.'
+            : busRoutes.length === 0 ? 'No bus route is set up yet, so this never switches. Add one in Settings > Bus Tracking.'
               : followed.length === 0 ? 'None of its routes is set up any more, so this never switches. Pick one above.'
                 : busWindowsInWords(followed, clock, window)}
         </p>

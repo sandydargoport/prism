@@ -115,7 +115,7 @@ export function InputSection() {
             </div>
             <p className="text-2xs text-muted-foreground">
               All screens. To choose Always or Never for one screen, such as a tablet with its own
-              keyboard, edit that screen and open Look.
+              keyboard, use On-screen keyboard in its editor: More &gt; Edit layout &gt; Screen &gt; Advanced.
             </p>
           </div>
         </CardContent>

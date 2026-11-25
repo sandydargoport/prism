@@ -327,8 +327,8 @@ export function DisplaySection() {
 
       {/* One screen's own settings live in that screen's editor (#1159), opened from More (#1313). */}
       <p className="text-sm text-muted-foreground" data-screen-settings-moved>
-        One screen&apos;s own settings, like when it rests, the screensaver, orientation, performance
-        and the on-screen keyboard, are in that screen&apos;s editor: choose More &gt; Edit layout on
+        One screen&apos;s own settings, like when it goes idle, what it shows idle and at night,
+        orientation, performance and the on-screen keyboard, are in that screen&apos;s editor: choose More &gt; Edit layout on
         the screen, or choose it in{' '}
         <a href="/settings?section=displays" className="underline">Settings &gt; Screens</a> from a phone.
       </p>
@@ -565,7 +565,7 @@ function NightSkyCard() {
     <Card>
       <CardHeader>
         <CardTitle>Night sky</CardTitle>
-        <CardDescription>All screens. Whether the night sky shows, and when, is chosen for each dashboard in its editor.</CardDescription>
+        <CardDescription>All screens. Whether the night sky shows, and when, is chosen for each screen in its editor: Screen &gt; When idle.</CardDescription>
       </CardHeader>
       <CardContent>
         <AuroraToggle />

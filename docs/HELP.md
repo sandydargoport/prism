@@ -47,13 +47,17 @@ There is also a third role, guest, for shared displays and kiosks. A guest can l
 
 ## Features
 
+### [Screens and dashboards](features/DASHBOARD.md)
+
+A screen is a device with a name, such as Hallway. A dashboard is a page of widgets, such as Main. The screen owns time and the dashboard owns content: the screen decides which dashboard it shows when, how it idles by day and at night, how much darker it goes at night, light or dark, and whether photos sit behind the dashboard. The dashboard holds its widgets, their arrangement, its text size and its photo frame arrangement. Both are edited in one editor, **More > Edit layout**, with three tabs: **Screen**, **Widgets** and **Look**. Its header says which screen you are editing and, after **Editing**, which dashboard the canvas has open, and its **...** menu holds the dashboard's jobs. *Settings > Screens* lists every named screen with the sentence that says what it does, and **New and unnamed screens show** sets what a device nobody named shows.
+
 ### [Glance](features/DASHBOARD.md)
 
 Glance is the built-in dashboard and the front page on a new install. It draws the day as one scene over the photo: the date and clock, the weather as one line, **Next** and **Later today**, the coming days as short sentences, and quiet lines for chores left, the shopping list and a birthday coming up. It can be edited like any dashboard: its **Widgets** sheet in the editor chooses which parts show, and **Show the day as an arc** draws the day as the sun's path instead of a list. Glance can be reset to its default but not deleted.
 
 ### The dock
 
-The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Screensaver), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). On a phone it holds **Pages**, **This phone** (Cards, Reorder, Reload), **Screens** (Edit a screen, Away mode, Babysitter mode) and **Prism**, and the round button above the dock is only the page's Add. Which pages sit on the dock is chosen in **Settings > Features**.
+The dock is the row of pages along the bottom of every page, with **More** and **Sign in** at its end. On a wall dashboard it hides behind a small **Menu** tab on the bottom edge, and a tap anywhere brings it back. **More** holds three groups: **This screen** (Edit layout, Reload, Babysitter mode, Away mode, Idle now), **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). On a phone it holds **Pages**, **This phone** (Cards, Reorder, Reload), **Screens** (Edit a screen, Away mode, Babysitter mode) and **Prism**, and the round button above the dock is only the page's Add. Which pages sit on the dock is chosen in **Settings > Features**.
 
 ### [Calendar](features/CALENDAR.md)
 
@@ -63,7 +67,7 @@ A parent can hide an event in Prism and leave it in its calendar, using **Hide i
 
 ### [Shopping](features/SHOPPING.md)
 
-Keep several lists, each laid out by category. Tap an item to cross it off; it moves to **Checked off**, and the pencil at the end of its row edits or deletes it. You can scan barcodes with the camera or a USB scanner, sync lists both ways with Microsoft To Do, and send a list to your online Kroger cart at any Kroger banner with one click. The dashboard and screensaver widget hide checked items, and an item ticked by mistake stays for five seconds so you can untick it.
+Keep several lists, each laid out by category. Tap an item to cross it off; it moves to **Checked off**, and the pencil at the end of its row edits or deletes it. You can scan barcodes with the camera or a USB scanner, sync lists both ways with Microsoft To Do, and send a list to your online Kroger cart at any Kroger banner with one click. The Shopping widget hides checked items, on a dashboard and on the photo frame, and an item ticked by mistake stays for five seconds so you can untick it.
 
 ### [Recipes](features/RECIPES.md)
 
@@ -91,7 +95,7 @@ Each member has a wish list, and others can claim an item in secret. Gift-givers
 
 ### [Photos](features/PHOTOS.md)
 
-Upload photos directly or sync them from OneDrive, choosing folders with a folder picker. The location stored in each photo feeds the Travel Map photo strip. The screensaver, the dashboard wallpaper and the slideshow widget all use these photos. On the wallpaper and the screensaver, each photo crossfades into the next with a slow Ken Burns zoom, and a small line can say when and where it was taken.
+Upload photos directly or sync them from OneDrive, choosing folders with a folder picker. The location stored in each photo feeds the Travel Map photo strip. The photos behind the dashboard, the photo frame and the slideshow widget all use these photos. Behind the dashboard and on the photo frame, each photo crossfades into the next with a slow Ken Burns zoom, and a small line can say when and where it was taken.
 
 ### [Travel Map](features/TRAVEL.md)
 
@@ -105,9 +109,9 @@ Weekend Ideas is a family board of local places to visit. Keep a list of ideas, 
 
 Bus Tracking predicts when the school bus will arrive by reading FirstView emails in Gmail. It adjusts how often it checks, finds routes on its own and keeps separate morning and afternoon trips for each student. With a walk time set on a route, the Now & Next widget says when to leave for the stop.
 
-### [Display Modes](features/DISPLAY-MODES.md)
+### [Idle, Away and Sitter](features/DISPLAY-MODES.md)
 
-There are three modes that cover the dashboard. Screensaver runs when the screen is idle, Away Mode hides the family's information for privacy, and Babysitter Mode shows what a sitter needs. While Babysitter Mode is on, the sitter can leave a note for the family on the Messages board.
+A screen is **In use** while someone is using it, **Idle** once nobody has touched it for a while, and idle at **Night** after dark. Idle, it shows the dashboard, quieter, a photo frame or the night sky, and at night it can look different and go darker. All of this is the screen's own, set in **More > Edit layout > Screen > When idle**. Two modes cover the screen: Away mode hides the family's information for privacy, and Babysitter mode shows what a sitter needs. While Babysitter mode is on, the sitter can leave a note for the family on the Messages board.
 
 ### [Themes](features/THEMES.md)
 
@@ -157,8 +161,8 @@ This is a short tour of **Settings**. Where a section belongs to a feature, that
 - **Integrations** has one card for each provider: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV and Kroger (shopping cart push), plus **Photo Sources**. You choose which task, shopping and wish lists sync inside the Microsoft or Google card.
 - **Appearance** is in three groups. **Look** has **Color Scheme** (this screen's Light or Dark, with System on a browser that is not named, and **New screens start as**) with the **Palette**, and **Seasonal Theme**. **Background and away** has **Background Wallpaper**, **Away mode** (how long the house sits idle before it turns on) and **Night sky**. **All screens** has **Units** and **Language**.
 - **One screen's own settings** are in that screen's editor (**More > Edit layout**), not in Settings. **Screen** has it all, with its name in the editor's header: what it shows (**Shows**: **Normally** and its times), how it idles by day and at night (**When idle**: **Idle after**, what it shows, **Darker** at night, and under **Advanced** when night is and the photo frame's motion), light or dark, the photos behind the dashboard, and under **Advanced** its **Orientation**, **Performance**, **On-screen keyboard**, **Auto-hide navigation**, **Sign out after** and **Notices**.
-- **Screens** lists every named screen, whether it is on, and its sentence, the one its **Screen** tab starts with (for example "Hallway shows Main. Idle for 2 minutes, it becomes a photo frame. At night the photo frame is 50% darker."), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor; from a phone, **More > Edit a screen** gets there too. A screen is named from its own editor: on the screen, open the editor, then **Screen** > **Shows** > **Normally** > **Edit**, which asks for a name first (for example "Kitchen"). A named screen keeps its idle, performance, keyboard and screen-shape settings under its name, so after a browser is reset it can take them back there with **Or it is**. Below the list, **New and unnamed screens show** picks the dashboard a browser nobody has named shows, and its idle look by day, at night, and how much darker at night. A screen named later starts with that idle and night look, then keeps its own. Like the rest of Settings, these save at once.
-- **Photos** manages sources (Local, OneDrive, Immich), with a folder picker, **Captions and On this day** (**Show when photos were taken**, **Show where photos were taken** and **On this day**, for every screen), a target resolution for the low-resolution warning, GPS backfill (adding locations to older photos) and the pinned wallpaper and screensaver photos.
+- **Screens** lists every named screen, whether it is on, and its sentence, the one its **Screen** tab starts with (for example "Hallway shows Main. Idle for 2 minutes, it becomes a photo frame. At night the photo frame is 50% darker."), with **Edit**, **Rename** and **Remove**. **Edit** opens that screen's editor; from a phone, **More > Edit a screen** gets there too. A screen is named from its own editor: on the screen, open the editor, then **Screen** > **Shows** > **Normally** > **Edit**, which asks for a name first (for example "Kitchen"). A named screen keeps its idle, performance, keyboard and orientation settings under its name, so after a browser is reset it can take them back there with **Or it is**. Below the list, **New and unnamed screens show** picks the dashboard a browser nobody has named shows, and its idle look by day, at night, and how much darker at night. A screen named later starts with that idle and night look, then keeps its own. Like the rest of Settings, these save at once.
+- **Photos** manages sources (Local, OneDrive, Immich), with a folder picker, **Captions and On this day** (**Show when photos were taken**, **Show where photos were taken** and **On this day**, for every screen), a target resolution for the low-resolution warning, GPS backfill (adding locations to older photos) and **Pinned Photos**: one photo to show behind the dashboard and one for the photo frame, in place of the slideshow.
 - **Bus Tracking** covers the Gmail connection, route setup, finding routes automatically and the Gmail label filter.
 - **Input** has switches for the on-screen keyboard and the barcode scanner. The keyboard switch here is for all screens. To choose **Always** or **Never** for one screen, such as a tablet with its own keyboard, use **On-screen keyboard** in that screen's editor under **Screen > Advanced**.
 - **Babysitter Info** holds emergency contacts, house info (the WiFi password is stored encrypted with AES-256-GCM), child info and house rules.

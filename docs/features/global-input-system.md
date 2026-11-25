@@ -737,7 +737,7 @@ New section: `{ id: 'input', label: 'Input', icon: Keyboard }`. Add to sections 
 
 **Card 2: Virtual Keyboard**
 - Enable on-screen keyboard (Switch, household)
-- On-screen keyboard on this device (Select: Use household setting / Always / Never, stored in the browser)
+- One screen's own choice (Use household setting / Always / Never) is not here: it is **On-screen keyboard** in that screen's editor, More > Edit layout > Screen > Advanced
 - Description: "Shows a touch keyboard when tapping text fields. Disable if using a physical keyboard."
 
 ---

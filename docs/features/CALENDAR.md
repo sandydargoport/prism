@@ -229,7 +229,7 @@ While you are typing in a note:
 - **Ctrl+Shift+S** Strikethrough
 - **Ctrl+Shift+L** Bullet list (typing `- ` at the start of a line does the same)
 
-When nobody is logged in, notes are read-only, so the screensaver and babysitter view can show them without letting anyone edit them.
+When nobody is logged in, notes are read-only, so a screen that is idle and the babysitter view can show them without letting anyone edit them.
 
 ### Hiding an event
 
@@ -282,7 +282,7 @@ A connection can expire or be revoked. A password change can do it, so can withd
 
 Prism tells you when this happens. A **Sync paused** badge appears on the Calendar page next to **Review N**, and a matching line appears on the Calendar dashboard widget. Either one opens **Manage calendars**, where the **Reconnect** button restores the connection for every calendar on that account at once.
 
-The badge says as little as possible: how many calendars are affected, and which service if they are all on the same one. It never names a calendar or an account, because anyone walking past can read a wall display. It also stays off the screensaver.
+The badge says as little as possible: how many calendars are affected, and which service if they are all on the same one. It never names a calendar or an account, because anyone walking past can read a wall display. It also stays off the photo frame.
 
 Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` if you only want syncs you start yourself, for example on a low-power device where you don't want background work. You can always sync by hand with **Sync Now** in **Manage calendars**.
 

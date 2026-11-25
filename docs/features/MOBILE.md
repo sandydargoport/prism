@@ -109,15 +109,15 @@ The usual gestures:
 - **Long-press** gives the other actions (edit, delete, drag). Some lists start a drag on long-press so that swiping up and down still scrolls.
 - **Swipe left or right** moves between calendar periods. A swipe has to travel 50px, so a stray sideways movement while scrolling doesn't count.
 
-### Screensaver + Away mode behavior on PWA
+### Idle and Away mode on an installed app
 
-A phone never shows the screensaver; it dims and locks itself. An installed PWA on a larger screen does not start the screensaver or Away mode by itself either, unless it is a screen named in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name). Without a name it skips both, for these reasons:
+A phone never idles; it dims and locks itself. An installed PWA on a larger screen does not go idle or turn on Away mode by itself either, unless it is a screen named in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name). Without a name it skips both, for these reasons:
 
 - A phone has no idle time the way a kiosk does. It is either in your pocket or in your hand.
 - If Away mode turned on by itself on a phone, it would lock the family member out of their own device.
 - A photo slideshow on a phone screen only uses up the battery.
 
-A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name) and its screensaver and Away mode start on their timers as they do in a browser.
+A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name) and it goes idle and turns on Away mode on their timers as it does in a browser.
 
 ### Common workflows
 

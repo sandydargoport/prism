@@ -165,7 +165,7 @@ Add national park entries to your pins. The "Has NP" filter shows how many parks
 
 #### Personal globe wallpaper
 
-The globe works well as a screensaver. Add the Travel Map widget to your screensaver layout for a slowly turning Earth that shows where your family has been.
+The globe works well on the photo frame. Add the Travel Map widget to a dashboard's photo frame arrangement (More > Edit layout > Screen > When idle > **Arrange the photo frame**) for a slowly turning Earth that shows where your family has been.
 
 ## Details
 

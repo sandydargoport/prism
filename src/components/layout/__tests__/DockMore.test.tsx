@@ -105,7 +105,7 @@ describe('the More panel (#1257)', () => {
     expect(job(panel, 'reload')).not.toBeNull();
   });
 
-  it('Screensaver starts it where you are', () => {
+  it('Idle now starts idle where you are', () => {
     const panel = openMore();
     const started = jest.fn();
     window.addEventListener('prism:screensaver', started);

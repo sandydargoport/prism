@@ -708,10 +708,10 @@ function PinnedPhotosCard() {
           )}
         </div>
 
-        {/* Screensaver Pin */}
+        {/* Photo frame pin */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Screensaver Background</span>
+            <span className="text-sm font-medium">Photo frame</span>
             {pinnedScreensaver ? (
               <Button variant="ghost" size="sm" onClick={() => setPinnedScreensaver(null)} className="h-7 gap-1 text-xs">
                 <X className="h-3 w-3" /> Clear

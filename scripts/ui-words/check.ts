@@ -3,10 +3,15 @@
  * string literals in `src/**\/*.tsx`, the English messages, Help and the
  * feature docs. The words and their replacements are in `src/lib/uiWords.ts`.
  *
- * While the screens redesign is in flight this is a ratchet: the committed
- * baseline holds the count of each word in each file, and the check fails
- * when a count changes. A rise means new text used a retired word; a drop
- * means the baseline should be lowered so the word cannot come back.
+ * Zero tolerance (#1352): one retired word anywhere it reads fails the check.
+ * There is no baseline and no way to accept a hit. A word that is still right
+ * somewhere a user sees it belongs out of RETIRED_UI_WORDS, not in an
+ * exception here.
+ *
+ * What it does not read, and why: comments, keys, class names and other code
+ * strings (see isCodeString), test and story files, docs/MODEL.md (it lists
+ * the retired words on purpose), and docs/CHANGELOG.md (a record of past
+ * releases, which names old controls by their old names).
  */
 import fs from 'fs';
 import path from 'path';
@@ -14,15 +19,11 @@ import ts from 'typescript';
 import { RETIRED_UI_WORDS, type RetiredUiWord } from '../../src/lib/uiWords';
 
 export const ROOT = path.resolve(__dirname, '../..');
-export const BASELINE_PATH = path.join(ROOT, 'scripts/ui-words-baseline.json');
 
 /** A piece of user-visible text and the line it starts on. */
 export type Segment = { line: number; text: string };
 
 export type Hit = { file: string; word: string; line: number; text: string };
-
-/** file -> word -> count. Files and words with no hits are left out. */
-export type Counts = Record<string, Record<string, number>>;
 
 // Attributes whose values are never read by a user.
 const CODE_ATTRS = new Set([
@@ -177,68 +178,14 @@ export function scan(root = ROOT): Hit[] {
     findRetired(file, segmentsFor(file, fs.readFileSync(path.join(root, file), 'utf8'))));
 }
 
-export function countHits(hits: Hit[]): Counts {
-  const counts: Counts = {};
+/** The report for a scan: every hit with its file, line and what to write instead. Empty when there are none. */
+export function report(hits: Hit[]): string {
+  if (!hits.length) return '';
+  const lines = [`${hits.length} retired UI word${hits.length === 1 ? '' : 's'} (see src/lib/uiWords.ts):`];
   for (const h of hits) {
-    const byWord = (counts[h.file] ??= {});
-    byWord[h.word] = (byWord[h.word] ?? 0) + 1;
-  }
-  return sortCounts(counts);
-}
-
-export function sortCounts(counts: Counts): Counts {
-  const out: Counts = {};
-  for (const file of Object.keys(counts).sort()) {
-    const words = Object.entries(counts[file] ?? {}).filter(([, n]) => n > 0).sort(([a], [b]) => a.localeCompare(b));
-    if (words.length) out[file] = Object.fromEntries(words);
-  }
-  return out;
-}
-
-export type Change = { file: string; word: string; baseline: number; now: number };
-
-/** Every file and word whose count differs from the baseline. */
-export function compare(baseline: Counts, now: Counts): { increases: Change[]; decreases: Change[] } {
-  const increases: Change[] = [];
-  const decreases: Change[] = [];
-  const files = new Set([...Object.keys(baseline), ...Object.keys(now)]);
-  for (const file of [...files].sort()) {
-    const words = new Set([...Object.keys(baseline[file] ?? {}), ...Object.keys(now[file] ?? {})]);
-    for (const word of [...words].sort()) {
-      const b = baseline[file]?.[word] ?? 0;
-      const n = now[file]?.[word] ?? 0;
-      if (n > b) increases.push({ file, word, baseline: b, now: n });
-      else if (n < b) decreases.push({ file, word, baseline: b, now: n });
-    }
-  }
-  return { increases, decreases };
-}
-
-export function readBaseline(file = BASELINE_PATH): Counts {
-  return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, 'utf8')) as Counts) : {};
-}
-
-export function formatBaseline(counts: Counts): string {
-  return JSON.stringify(sortCounts(counts), null, 2) + '\n';
-}
-
-/** The report for a set of changes, with the line of each new hit. Empty when nothing changed. */
-export function report(changes: { increases: Change[]; decreases: Change[] }, hits: Hit[]): string {
-  const lines: string[] = [];
-  if (changes.increases.length) {
-    lines.push('Retired UI words went up (see src/lib/uiWords.ts for what to write instead):');
-    for (const c of changes.increases) {
-      const use = RETIRED_UI_WORDS.find((w) => w.word === c.word)?.use;
-      lines.push(`  ${c.file}: "${c.word}" ${c.baseline} -> ${c.now}${use ? ` (use: ${use})` : ''}`);
-      for (const h of hits.filter((x) => x.file === c.file && x.word === c.word)) {
-        lines.push(`    ${h.file}:${h.line}: ${h.text.slice(0, 120)}`);
-      }
-    }
-  }
-  if (changes.decreases.length) {
-    lines.push('Retired UI words went down. Lower the baseline so they stay gone:');
-    for (const c of changes.decreases) lines.push(`  ${c.file}: "${c.word}" ${c.baseline} -> ${c.now}`);
-    lines.push('  Run: npm run check:ui-words -- --update');
+    const use = RETIRED_UI_WORDS.find((w) => w.word === h.word)?.use;
+    lines.push(`  ${h.file}:${h.line}: "${h.word}"${use ? ` (use: ${use})` : ''}`);
+    lines.push(`    ${h.text.slice(0, 120)}`);
   }
   return lines.join('\n');
 }

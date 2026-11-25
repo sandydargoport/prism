@@ -32,7 +32,11 @@ describe("What's new note (#1308)", () => {
     expect(items[0]!.textContent).toContain('More > Settings > Screens > New and unnamed screens show > Glance');
     expect(note.textContent).not.toContain('Show on new and unnamed screens');
     expect(note.textContent).toContain('when and where they were taken: More > Settings > Photos');
-    expect(note.textContent).toContain('More > Settings > Screens > Edit');
+    // The screen owns its day; the phone's way in is Edit a screen (#1352).
+    expect(note.textContent).toContain('Each screen owns its day.');
+    expect(note.textContent).toContain('More > Edit layout > Screen');
+    expect(note.textContent).toContain('From your phone: More > Edit a screen');
+    expect(note.textContent).not.toMatch(/screensaver|resting/i);
     expect(note.textContent).toContain('alphanumeric PINs');
     // Two bold runs in one item, and no stray markers left in the text.
     expect([...items[5]!.querySelectorAll('.font-semibold')].map((b) => b.textContent)).toEqual(['Chores for pets', 'subtasks']);
