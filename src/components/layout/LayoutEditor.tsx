@@ -22,6 +22,25 @@ import { idleSaveProblem } from './IdleBackgroundBar';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
 import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
+import { SCREEN_SETTING_FIELDS } from '@/lib/displays/screenSettingFields';
+import { SCREEN_ATTENTION_KEY } from '@/lib/displays/screenAttention';
+import { useStoredRevision } from '@/lib/hooks/useStoredValue';
+import { SwitchPrompt, useSwitchPrompt } from './SwitchPrompt';
+
+/** The screen settings each tab sets (#1341); the Screen tab has the rest. */
+const LOOK_KEYS = new Set<string>(SCREEN_SETTING_FIELDS.map((f) => f.key));
+const MORE_KEYS = new Set<string>([SCREEN_ATTENTION_KEY]);
+
+/**
+ * Which tabs hold changes Done has not saved (#1341), from what the editor
+ * page holds for the screen (or for this device, with no screen).
+ */
+export function pendingTabs(pending: { keys: string[]; plan: boolean }): { screen: boolean; look: boolean; more: boolean } {
+  const look = pending.keys.some((k) => LOOK_KEYS.has(k));
+  const more = pending.keys.some((k) => MORE_KEYS.has(k));
+  const screen = pending.plan || pending.keys.some((k) => !LOOK_KEYS.has(k) && !MORE_KEYS.has(k));
+  return { screen, look, more };
+}
 
 /**
  * The panels and dialogs are drawn on the canvas editor's page (#1153,
@@ -47,6 +66,10 @@ export function LayoutEditor({
   onEditTabChange,
   dashboardDirty,
   idleDirty,
+  lookDirty = false,
+  defaultPending = false,
+  onMakeDefault,
+  onSaveDashboard,
   editingScreensaver = false,
   screensaverWidgets,
   onScreensaverSaveAs,
@@ -125,10 +148,19 @@ export function LayoutEditor({
     setSheet('screen');
     setOpenSwitch(index);
   }, [setSheet]);
-  // Screen's dot: its dashboard, switches or own settings differ from when the
-  // editor page opened (#1326). A setting changed on the sheet redraws this.
+  // Every tab's dot (#1326, #1341): Screen's when the screen's dashboard,
+  // switches or own settings differ from when the editor page opened, Look's
+  // and More's for the settings they hold. A setting written anywhere redraws them.
   const [, screenSettingChanged] = useReducer((n: number) => n + 1, 0);
-  const screenDirty = !!remoteEditHost()?.unsaved?.();
+  useStoredRevision();
+  const host = remoteEditHost();
+  const held = pendingTabs(host?.pending?.() ?? { keys: [], plan: !!host?.unsaved?.() });
+  const screenDirty = held.screen;
+  // What a switch to another dashboard would lose; the screen's own settings
+  // stay held on the editor page through it.
+  const dashboardChanged = !!dashboardDirty || !!idleDirty || lookDirty || defaultPending;
+  const anyChanged = dashboardChanged || held.screen || held.look || held.more;
+  const { ask: askSwitch, promptProps } = useSwitchPrompt();
   const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
@@ -213,12 +245,21 @@ export function LayoutEditor({
     );
   }
 
-  const setDefault = async () => {
-    if (!currentDashboardId) return;
-    try {
-      const res = await fetch(`/api/layouts/${currentDashboardId}/default`, { method: 'POST' });
-      if (res.ok) window.location.reload();
-    } catch { /* the sheet stays put on failure */ }
+  // Changing the dashboard being edited with changes not saved asks first
+  // (#1341). Save and switch saves this one, as Done does, and stays in the editor.
+  const beforeDashboardSwitch = async (): Promise<boolean> => {
+    if (!dashboardChanged) return true;
+    const choice = await askSwitch(`${layoutName ? `${layoutName} has` : 'This dashboard has'} changes not saved yet.`);
+    if (choice === 'stay') return false;
+    if (choice === 'save') {
+      if (saveBlocked) {
+        onEditTabChange?.('idle');
+        toast({ title: saveBlocked, variant: 'destructive' });
+        return false;
+      }
+      await onSaveDashboard?.();
+    }
+    return true;
   };
 
   // A dialog opens over the screen, so the sheet closes first: left open, it
@@ -242,9 +283,21 @@ export function LayoutEditor({
             onSettingChange={screenSettingChanged}
             onRenamed={(name) => remoteEditHost()?.onRenamed?.(name)}
             onPickScreen={(id) => {
-              // Changes not yet saved with Done are asked about first, as they would be lost.
-              const unsaved = !!dashboardDirty || !!idleDirty || !!remoteEditHost()?.unsaved?.();
-              void openOtherScreen(id, { unsaved, confirm: confirmDelete });
+              // Changes not yet saved with Done are asked about first (#1341).
+              void openOtherScreen(id, {
+                unsaved: anyChanged,
+                ask: () => askSwitch('The changes made here are not saved yet.'),
+                // Done, which then opens the other screen's editor.
+                save: async (href) => {
+                  if (saveBlocked) {
+                    onEditTabChange?.('idle');
+                    toast({ title: saveBlocked, variant: 'destructive' });
+                    return;
+                  }
+                  if (host) host.next = href;
+                  await state.handleSave();
+                },
+              });
             }}
           />
         );
@@ -259,7 +312,9 @@ export function LayoutEditor({
             onCreateOpen={() => state.setShowCreateDialog(true)}
             onRenameOpen={() => state.handleRenameOpen()}
             onSaveAsOpen={() => state.setShowSaveAsDialog(true)}
-            onSetDefault={setDefault}
+            defaultPending={defaultPending}
+            beforeSwitch={beforeDashboardSwitch}
+            onSetDefault={() => onMakeDefault?.()}
             onDelete={() => state.handleDelete()}
             onResetBuiltIn={onResetBuiltIn}
           />
@@ -348,7 +403,7 @@ export function LayoutEditor({
         open={sheet}
         onOpenChange={setSheet}
         sheet={sheetContent}
-        dirty={{ screen: screenDirty, widgets: dashboardDirty, day: idleDirty }}
+        dirty={{ screen: screenDirty, dashboard: defaultPending, widgets: dashboardDirty, day: idleDirty, look: lookDirty || held.look, more: held.more }}
         doneLabel={state.saveFeedback || 'Done'}
         doneBlocked={saveBlocked}
         onDone={state.handleSave}
@@ -401,6 +456,7 @@ export function LayoutEditor({
       />
 
       <ConfirmDialog {...confirmDialogProps} />
+      <SwitchPrompt {...promptProps} />
     </>
   );
 }

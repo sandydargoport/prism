@@ -115,6 +115,12 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // rejects a null start here; editing always begins by resetting it.)
   const [editedBackground, setEditedBackground] = useState<IdleBackground | null>(savedBackground);
   const editingBackground = editedBackground === null ? savedBackground : editedBackground;
+  // The screen shape the guides are drawn for, and Make the default, wait for
+  // Done like everything else in the editor (#1341). Null follows the saved one.
+  const savedOrientation: 'landscape' | 'portrait' = activeLayout?.orientation === 'portrait' ? 'portrait' : 'landscape';
+  const [editedOrientation, setEditedOrientation] = useState<'landscape' | 'portrait' | null>(null);
+  const editingOrientation = editedOrientation ?? savedOrientation;
+  const [defaultPending, setDefaultPending] = useState(false);
 
   // Bridge: write active dashboard's screensaver to localStorage on layout change
   // so the global Screensaver component (which reads from localStorage) uses the right one
@@ -161,6 +167,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setEditingWidgets(current);
     setPreEditSs(ssLayout);
     setEditedBackground(null);
+    setEditedOrientation(null);
+    setDefaultPending(false);
     setEditTab('dashboard');
     setIdleHalf('day');
     setIsEditing(true);
@@ -217,12 +225,17 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     || !sameIdleBackground(editingBackground, savedBackground)
     || idleTicks(editingWidgets) !== idleTicks(preEditWidgets)
   );
+  // Look's dot: the screen shape changed. Dashboard's: Make the default pressed.
+  const lookDirty = isEditing && editingOrientation !== savedOrientation;
+  const defaultDirty = isEditing && defaultPending && !activeLayout?.isDefault;
 
   // The running screensaver reads its layout from the browser; it gets the
   // edited one only once saved.
   const finishEditing = useCallback(() => {
     saveScreensaverLayout(ssLayout);
     setEditTab('dashboard');
+    setEditedOrientation(null);
+    setDefaultPending(false);
     setIsEditing(false);
   }, [ssLayout]);
 
@@ -232,8 +245,10 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         ...(activeLayout ? { id: activeLayout.id } : {}),
         name: name || activeLayout?.name || 'My Layout',
         widgets: editingWidgets,
-        isDefault: activeLayout?.isDefault ?? true,
-        orientation: activeLayout?.orientation || 'landscape',
+        // Make the default is kept here until Done (#1341); saving it as the
+        // default unsets the one before.
+        isDefault: defaultPending || (activeLayout?.isDefault ?? true),
+        orientation: editingOrientation,
       };
       // Done saves only what changed (#1162). A dashboard with no screensaver
       // layout or background of its own keeps none until someone sets one;
@@ -252,7 +267,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, screenDay, setScreenDay, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, screenDay, setScreenDay, defaultPending, editingOrientation, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
@@ -287,7 +302,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         widgets: editingWidgets,
         isDefault: false,
         screensaverWidgets: ssLayout,
-        orientation: activeLayout?.orientation || 'landscape',
+        orientation: editingOrientation,
       });
     }
     // The idle and night looks are the screen's, whichever dashboard it saves to.
@@ -295,7 +310,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
       setScreenDay(withBackground(screenDay, editingBackground));
     }
     finishEditing();
-  }, [editingWidgets, ssLayout, editingBackground, savedBackground, screenDay, setScreenDay, activeLayout, layouts, finishEditing]);
+  }, [editingWidgets, ssLayout, editingBackground, savedBackground, screenDay, setScreenDay, editingOrientation, layouts, finishEditing]);
 
   const handleReset = useCallback(() => {
     setEditingWidgets(DEFAULT_TEMPLATE.widgets);
@@ -306,6 +321,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setEditingWidgets(preEditWidgets);
     setSsLayout(preEditSs);
     setEditedBackground(null);
+    setEditedOrientation(null);
+    setDefaultPending(false);
     setEditTab('dashboard');
     setIsEditing(false);
   }, [preEditWidgets, preEditSs]);
@@ -344,6 +361,9 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setSsLayout(presetWidgets);
   }, []);
 
+  // Make the default, done on Done (#1341).
+  const makeDefault = useCallback(() => setDefaultPending(true), []);
+
   return {
     isEditing, setIsEditing,
     editingWidgets, setEditingWidgets,
@@ -353,7 +373,9 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     // the dashboard's own Stays / Fades.
     editingScreensaver: isEditing && editTab === 'idle' && !['dashboard', 'off'].includes(shownIdleSource(editingBackground, idleHalf)),
     editingBackground, setEditingBackground: setEditedBackground,
-    dashboardDirty, idleDirty,
+    dashboardDirty, idleDirty, lookDirty, defaultDirty,
+    editingOrientation, setEditingOrientation: setEditedOrientation,
+    makeDefault,
     ssLayout,
     activeWidgets,
     activeLayout,

@@ -279,23 +279,40 @@ describe('the Screen tab (#1326)', () => {
   });
 });
 
-describe('opening another screen\'s editor (#1326)', () => {
+describe('opening another screen\'s editor (#1326, #1341)', () => {
   it('goes to that screen\'s editor, as Settings > Screens > Edit does', async () => {
     const go = jest.fn();
-    const confirm = jest.fn(async () => true);
-    expect(await openOtherScreen('hall', { unsaved: false, confirm, go })).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
+    const ask = jest.fn(async () => 'stay' as const);
+    const save = jest.fn(async () => {});
+    expect(await openOtherScreen('hall', { unsaved: false, ask, save, go })).toBe(true);
+    expect(ask).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
     expect(go).toHaveBeenCalledWith('/screens/hall');
   });
 
-  it('with changes not saved, asks first, and stays when told to', async () => {
+  it('with changes not saved, Stay stays', async () => {
     const go = jest.fn();
-    const stay = jest.fn(async () => false);
-    expect(await openOtherScreen('hall', { unsaved: true, confirm: stay, go })).toBe(false);
-    expect(stay).toHaveBeenCalledWith('Leave without saving?', expect.stringMatching(/Done/), expect.objectContaining({ confirmLabel: 'Leave' }));
+    const save = jest.fn(async () => {});
+    expect(await openOtherScreen('hall', { unsaved: true, ask: async () => 'stay', save, go })).toBe(false);
     expect(go).not.toHaveBeenCalled();
-    await openOtherScreen('hall', { unsaved: true, confirm: async () => true, go });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('with changes not saved, Discard goes without saving', async () => {
+    const go = jest.fn();
+    const save = jest.fn(async () => {});
+    expect(await openOtherScreen('hall', { unsaved: true, ask: async () => 'discard', save, go })).toBe(true);
+    expect(save).not.toHaveBeenCalled();
     expect(go).toHaveBeenCalledWith('/screens/hall');
+  });
+
+  it('with changes not saved, Save and switch saves, and the save goes on to that screen', async () => {
+    const go = jest.fn();
+    const save = jest.fn(async () => {});
+    expect(await openOtherScreen('hall', { unsaved: true, ask: async () => 'save', save, go })).toBe(true);
+    expect(save).toHaveBeenCalledWith('/screens/hall');
+    // Done does the going, once the save is in.
+    expect(go).not.toHaveBeenCalled();
   });
 });
 

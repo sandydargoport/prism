@@ -820,6 +820,11 @@ test.describe('calm mode idle screen', () => {
       await openEditor(page);
       await openSheet(page, 'look');
       await page.locator('[data-screen-options]').getByLabel('Performance').selectOption({ label: 'Minimal' });
+      // Held until Done, like everything in the editor (#1341); Done keeps it
+      // in this browser and goes back to the dashboard.
+      await expect(page.locator('html')).not.toHaveClass(/perf-minimal/);
+      await done(page).click();
+      await backOn(page, layout.slug);
       await expect(page.locator('html')).toHaveClass(/perf-minimal/);
 
       await page.goto(`/d/${layout.slug}`);
