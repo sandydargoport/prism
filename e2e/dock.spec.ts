@@ -375,6 +375,27 @@ test.describe('the dock on the wall', () => {
     });
   }
 
+  // On a phone the dock is see-through glass, so the page reads through it as
+  // it scrolls under; on the wall it stays solid.
+  test('on a phone the dock is see-through glass; on the wall it is solid', async ({ page }) => {
+    const look = async () => page.locator('[data-dock]').evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const alpha = /rgba?\(([^)]+)\)/.exec(cs.backgroundColor)?.[1]?.split(/[ ,/]+/).filter(Boolean)[3];
+      return { alpha: alpha === undefined ? 1 : Number(alpha), blur: cs.backdropFilter || (cs as unknown as { webkitBackdropFilter?: string }).webkitBackdropFilter || '' };
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/chores');
+    await expect(page.locator('[data-dock]')).toBeVisible({ timeout: 60_000 });
+    const phone = await look();
+    expect(phone.alpha, 'the phone dock lets the page through').toBeLessThan(0.8);
+    expect(phone.blur, 'and blurs it').toContain('blur');
+
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto('/chores');
+    await expect(page.locator('[data-dock]')).toBeVisible({ timeout: 60_000 });
+    expect((await look()).alpha, 'the wall dock is solid').toBe(1);
+  });
+
   // #1353: from a phone you edit a screen, never the phone. More has Edit a
   // screen under Screens, and the editor says which screen it is.
   test('on a phone, More > Edit a screen opens a screen\'s editor, which says it is not this phone', async ({ page }) => {

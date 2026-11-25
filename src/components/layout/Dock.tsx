@@ -173,6 +173,9 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
   const { filterNavItems, dockPages } = useHiddenPages();
   // A phone has room for five pages and More; Sign in moves into More (#924).
   const narrow = useIsMobile();
+  // The wall's dock is dark with light ink; a phone's follows the theme (glass).
+  const ink = narrow ? 'text-foreground/75 hover:bg-foreground/[0.08]' : 'text-white/85 hover:bg-white/10';
+  const inkActive = narrow ? 'bg-foreground/[0.08] text-primary' : 'bg-white/15 text-white';
   // A signed-in child has no way into the editor, so no Edit a screen (#1353).
   const { activeUser } = useAuth();
   const canEdit = !activeUser || activeUser.role === 'parent';
@@ -275,7 +278,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
           // word ("Shopping") became an oval crowding its label (#1068).
           inMore
             ? cn(MORE_TILE, 'transition-colors', active && 'bg-muted')
-            : cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium text-white/85 transition-colors hover:bg-white/10', narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3', active && 'bg-white/15 text-white')
+            : cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium transition-colors', ink, narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3', active && inkActive)
         }
         data-dock-item={item.href}
       >
@@ -318,9 +321,14 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
       <nav
         aria-label={t('nav.label', { defaultValue: 'Pages' })}
         className={cn(
-          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-[20px] bg-[rgb(22_17_13)] shadow-2xl transition-[opacity,transform] duration-200',
-          // A phone: the full width less a margin, each item an equal share.
-          narrow ? 'inset-x-2 justify-between p-1' : 'left-1/2 -translate-x-1/2 gap-1 p-1.5',
+          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-[20px] shadow-2xl transition-[opacity,transform] duration-200',
+          // A phone: the full width less a margin, each item an equal share. The
+          // bar is frosted glass in the theme's own light or dark, so the page
+          // reads through it as it scrolls under; Reduced performance drops the
+          // blur, so there the bar goes near solid.
+          narrow
+            ? 'inset-x-2 justify-between p-1 border border-border/60 bg-background/70 backdrop-blur-xl backdrop-saturate-150 [html.performance-mode_&]:bg-background/95'
+            : 'left-1/2 -translate-x-1/2 gap-1 p-1.5 bg-[rgb(22_17_13)]',
           visible ? 'opacity-100' : 'pointer-events-none translate-y-4 opacity-0',
         )}
         aria-hidden={!visible || undefined}
@@ -331,7 +339,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className={cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium text-white/85 hover:bg-white/10', narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3')}
+          className={cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium', ink, narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3')}
           data-dock-more
         >
           <MoreHorizontal className="h-5 w-5" />
