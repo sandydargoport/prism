@@ -89,7 +89,7 @@ test.describe('canvas editor (#1265)', () => {
       expect(await tabRow(page)).toEqual({ overflow: 0, wrapped: [] });
 
       // Opening each panel leaves the canvas exactly where it was.
-      for (const id of ['screen', 'dashboard', 'widgets', 'look', 'more'] as const) {
+      for (const id of ['screen', 'widgets', 'look'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         const sheet = page.locator(`[data-editor-sheet="${id}"]`);
         await expect(sheet).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('canvas editor (#1265)', () => {
       // No tab label wraps; a row too narrow for them all scrolls instead (#1326).
       expect((await tabRow(page)).wrapped).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'the page itself does not scroll sideways').toBeLessThanOrEqual(0);
-      for (const id of ['screen', 'dashboard', 'look'] as const) {
+      for (const id of ['screen', 'look'] as const) {
         await page.locator(`[data-editor-open="${id}"]`).click();
         await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
         expect(await rect(page, '[data-remote-picture]'), `the canvas with ${id} open`).toEqual(picture);
@@ -255,26 +255,26 @@ test.describe('canvas editor (#1265)', () => {
     } finally { await cleanup(); }
   });
 
-  test('another dashboard picked on Dashboard opens there, still on Dashboard (#1278)', async ({ page }) => {
+  test('another dashboard picked under Editing opens there, on the same tab (#1278, #1350)', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const first = await dashboard(page);
     const second = await dashboard(page, [{ i: 'weather', x: 0, y: 0, w: 16, h: 12 }]);
     try {
       await openCanvas(page, first.layout.slug, first.layout.id);
-      await page.locator('[data-editor-open="dashboard"]').click();
-      await page.locator(`[data-dashboard-row="${second.layout.id}"]`).click();
+      await page.locator('[data-editor-open="look"]').click();
+      await page.locator('[data-editor-editing]').selectOption(second.layout.id);
 
-      // The second is in the frame, being edited, with Dashboard open on it.
+      // The second is in the frame, being edited, with Look still open on it.
       const frame = page.frameLocator('[data-remote-frame]');
       await expect(frame.locator('[data-editor-widget="weather"]')).toBeVisible({ timeout: 90_000 });
       const panel = page.locator('[data-editor-sheet]');
-      const row = page.locator(`[data-dashboard-row="${second.layout.id}"]`);
-      await expect(row).toHaveAttribute('aria-current', 'true', { timeout: 15_000 });
-      await expect(panel).toHaveAttribute('data-editor-sheet', 'dashboard');
+      const editing = page.locator('[data-editor-editing]');
+      await expect(editing).toHaveValue(second.layout.id, { timeout: 15_000 });
+      await expect(panel).toHaveAttribute('data-editor-sheet', 'look');
       // And it stays there once the dashboard has loaded.
       await page.waitForTimeout(2_000);
-      await expect(panel).toHaveAttribute('data-editor-sheet', 'dashboard');
-      await expect(row).toHaveAttribute('aria-current', 'true');
+      await expect(panel).toHaveAttribute('data-editor-sheet', 'look');
+      await expect(editing).toHaveValue(second.layout.id);
 
       // Opened afresh, an editor starts on Widgets as ever.
       await openCanvas(page, second.layout.slug, second.layout.id, 'weather');
@@ -332,6 +332,110 @@ test.describe('canvas editor (#1265)', () => {
       const row = page.getByTestId('display-row').filter({ hasText: display.name });
       await row.getByRole('link', { name: 'Edit' }).click();
       await page.waitForURL((u) => u.pathname === `/screens/${display.id}`, { timeout: 60_000 });
+    } finally {
+      await page.request.delete(`/api/displays/${display.id}`);
+      await cleanup();
+    }
+  });
+
+  /** The editor's tabs, in order. */
+  const tabSet = (page: Page) => page.locator('[data-editor-open]').evaluateAll((tabs) => tabs.map((t) => t.getAttribute('data-editor-open')));
+
+  test('the header holds the screen, Editing and the dashboard menu; three tabs, Screen | Widgets | Look (#1350)', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const { layout, cleanup } = await dashboard(page);
+    try {
+      await openCanvas(page, layout.slug, layout.id);
+
+      // The header is drawn in the page's header, above the canvas, and the
+      // plain title gives way to it.
+      const header = page.locator('[data-canvas-header] [data-editor-header]');
+      await expect(header).toBeVisible();
+      const headerBox = await rect(page, '[data-canvas-header] [data-editor-header]');
+      const picture = await rect(page, '[data-remote-picture]');
+      expect(headerBox.bottom, 'the header is above the canvas').toBeLessThanOrEqual(picture.top);
+      expect((await rect(page, '[data-canvas-title]')).width, 'the title is for screen readers only').toBeLessThanOrEqual(1);
+      await expect(header.getByLabel('Editing')).toHaveValue(layout.id);
+      // A device nobody named: the screen drop-down says so, and its Screen tab stays.
+      // (A fresh install has no named screen to pick, so it is said in words.)
+      await expect(header.locator('[data-screen-pick] option:checked, [data-screen-unnamed]')).toHaveText('Not named yet');
+      expect(await tabSet(page)).toEqual(['screen', 'widgets', 'look']);
+
+      // The menu: the dashboard's jobs, in order, in the window; Esc closes it.
+      await header.getByRole('button', { name: 'Dashboard jobs' }).click();
+      const menu = page.locator('[data-dashboard-menu]');
+      await expect(menu).toBeVisible();
+      // Add Glance is there only on an install with no Glance yet.
+      const jobs = (await menu.getByRole('menuitem').allTextContents()).filter((t) => t !== 'Add Glance');
+      expect(jobs.map((t) => t.replace(/^Shown? on new and unnamed screens.*$/, 'Show on new and unnamed screens'))).toEqual([
+        'New dashboard', 'Make a copy', 'Rename', 'Export', 'Import', 'Share to the gallery',
+        'Show on new and unnamed screens', 'Reset', 'Delete',
+      ]);
+      const m = await rect(page, '[data-dashboard-menu]');
+      expect(m.right).toBeLessThanOrEqual(1440);
+      expect(m.bottom).toBeLessThanOrEqual(900);
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+      // A job opens its own dialog: Rename, with the name.
+      await header.getByRole('button', { name: 'Dashboard jobs' }).click();
+      await menu.getByRole('menuitem', { name: 'Rename' }).click();
+      await expect(menu).toHaveCount(0);
+      await expect(page.getByText('Rename Dashboard')).toBeVisible();
+      await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLInputElement | null)?.value)).toMatch(/^Canvas /);
+      await page.getByText('Rename Dashboard').locator('..').getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(page.getByText('Rename Dashboard')).toHaveCount(0);
+
+      // Look: the text size, shown on the canvas at once, before Done.
+      await page.locator('[data-editor-open="look"]').click();
+      const look = page.locator('[data-editor-sheet="look"]');
+      await expect(look.locator('[data-editor-scope]')).toHaveText(/ · Every screen that shows it$/);
+      const frame = page.frameLocator('[data-remote-frame]');
+      const clockHeight = () => frame.locator('[data-editor-widget="clock"]').evaluate((el) => el.getBoundingClientRect().height);
+      const zoomOf = () => frame.locator('[data-editor-widget="clock"]').evaluate((el) => {
+        let z = 1;
+        for (let n: Element | null = el; n; n = n.parentElement) z *= Number(getComputedStyle(n).zoom || 1);
+        return z;
+      });
+      expect(await zoomOf()).toBe(1);
+      await look.getByLabel('Text size').selectOption('150');
+      await expect.poll(zoomOf).toBe(1.5);
+      expect(await clockHeight()).toBeGreaterThan(0);
+      await expect(page.locator('[data-editor-open="look"] [aria-label="unsaved changes"]')).toBeVisible();
+      // Nothing is saved before Done.
+      expect((await (await page.request.get(`/api/layouts/${layout.id}`)).json()).fontScale ?? null).toBeNull();
+      await page.locator('[data-editor-cancel]').click();
+      await page.waitForURL((u) => u.pathname === `/d/${layout.slug}`, { timeout: 60_000 });
+    } finally { await cleanup(); }
+  });
+
+  test('a named device editing a dashboard with no screen has no Screen tab; its own screen\'s editor has (#1350)', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const { layout, cleanup } = await dashboard(page);
+    const named = await page.request.post('/api/displays', { data: { name: `Den ${Date.now()}` } });
+    expect(named.ok()).toBe(true);
+    const { display } = await named.json() as { display: { id: string; name: string } };
+    try {
+      await page.goto(`/d/${layout.slug}`);
+      await expect.poll(
+        () => page.evaluate(() => JSON.parse(localStorage.getItem('prism:display-sync-base') ?? 'null')?.displayId ?? null),
+        { timeout: 60_000 },
+      ).toBe(display.id);
+
+      // The dashboard on its own: no screen, so no Screen tab.
+      await page.goto(`/edit/${layout.id}`);
+      const frame = page.frameLocator('[data-remote-frame]');
+      await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible({ timeout: 90_000 });
+      await expect(page.locator('[data-editor-header] [data-screen-pick] option:checked')).toHaveText('No screen');
+      expect(await tabSet(page)).toEqual(['widgets', 'look']);
+
+      // Its own screen's editor names it in the header, with all three tabs.
+      await page.goto(`/screens/${display.id}?dashboard=${layout.id}`);
+      await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible({ timeout: 90_000 });
+      await expect(page.locator('[data-editor-header] [data-screen-pick] option:checked')).toHaveText(`${display.name} screen`);
+      await expect(page.locator('[data-editor-header] [data-screen-rename]')).toBeVisible();
+      expect(await tabSet(page)).toEqual(['screen', 'widgets', 'look']);
+      await page.locator('[data-editor-open="screen"]').click();
+      await expect(page.locator('[data-editor-sheet="screen"] [data-screen-scope]')).toHaveText(`${display.name} · This screen`);
     } finally {
       await page.request.delete(`/api/displays/${display.id}`);
       await cleanup();

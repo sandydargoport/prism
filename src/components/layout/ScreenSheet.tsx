@@ -14,9 +14,9 @@
  *  - When idle: Idle after, then what it shows By day and At night, and how
  *    much darker at night. When night is and the photo frame's motion are
  *    under Advanced.
- *  - This screen: light or dark, the photos behind the dashboard, and which
- *    screen is edited. Advanced: orientation, performance, keyboard,
- *    auto-hide, sign out, notices.
+ *  - This screen: light or dark, and the photos behind the dashboard.
+ *    Advanced: orientation, performance, keyboard, auto-hide, sign out,
+ *    notices. Which screen is edited, and its name, are in the header (#1350).
  *
  * Everything here belongs to the screen, not the dashboard: two screens can
  * show one dashboard, each on its own day. Every control waits for Done
@@ -24,11 +24,11 @@
  * screen's settings in its in-memory layer, the idle looks with the editor.
  *
  * A device nobody named keeps its idle rows; Normally and Add a time ask for
- * a name first, in place. A dashboard edited with no screen says so.
+ * a name first, in place. A dashboard edited with no screen has no Screen tab.
  */
 import * as React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowUp, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { useIdleDimSetting } from '@/components/screensaver/idleDim';
@@ -46,9 +46,7 @@ import {
   BUS_MINUTE_CHOICES, busWindowOf, EVERY_DAY, MAX_SWITCHES, routesOf, staysAwake,
   type BusSwitch, type ScreenPlan, type ScreenSwitch,
 } from '@/lib/screenSwitches';
-import { screenEditLink } from '@/lib/displays/editPlace';
 import { NameThisDevice } from './NameThisDevice';
-import type { SwitchChoice } from './SwitchPrompt';
 import { keepPanelFor } from './canvasPanel';
 import { busWindowsInWords, chip, dayChip, field, hhmm, iconButton, note, Swatch, useBusRoutes, type BusRoute } from './sheetRows';
 import { DayStrip, useMinuteNow } from './DayStrip';
@@ -170,68 +168,13 @@ export function simplest(pair: { day: IdleSource; night: IdleSource; switch: Idl
   return pair;
 }
 
-type Named = { id: string; name: string };
-
-/** The named screens, once read; null before. */
-function useScreens(): [Named[] | null, React.Dispatch<React.SetStateAction<Named[] | null>>] {
-  const [screens, setScreens] = useState<Named[] | null>(null);
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      let data: { displays?: unknown } | null = null;
-      try {
-        const res = await fetch('/api/displays');
-        data = res.ok ? await res.json() : null;
-      } catch { /* no list: no picker */ }
-      if (!live) return;
-      setScreens(((data?.displays ?? []) as Array<Partial<Named>>)
-        .flatMap((d) => (typeof d.id === 'string' && typeof d.name === 'string' ? [{ id: d.id, name: d.name }] : [])));
-    })();
-    return () => { live = false; };
-  }, []);
-  return [screens, setScreens];
-}
-
-async function problemFrom(res: Response): Promise<string> {
-  const data = await res.json().catch(() => null);
-  if (res.status === 401 || res.status === 403) return 'Only a parent can rename a screen.';
-  return data?.error ?? 'That did not work. Try again.';
-}
-
-/**
- * Opens another screen's editor, as Settings > Screens > Edit does. With
- * changes not saved, it asks first (#1341): Save and switch saves them as
- * Done does and then opens it, Discard opens it without them, Stay stays.
- */
-export async function openOtherScreen(id: string, { unsaved, ask, save, go }: {
-  unsaved: boolean;
-  ask: () => Promise<SwitchChoice>;
-  /** Done, then on to `href`. */
-  save: (href: string) => Promise<void>;
-  go?: (href: string) => void;
-}): Promise<boolean> {
-  const href = screenEditLink(id);
-  if (unsaved) {
-    const choice = await ask();
-    if (choice === 'stay') return false;
-    if (choice === 'save') {
-      await save(href);
-      return true;
-    }
-  }
-  // The editor's page, not the canvas's frame this panel is drawn from.
-  (go ?? ((to: string) => (window.top ?? window).location.assign(to)))(href);
-  return true;
-}
-
 /** The kind of switch a row is, as its name. */
 const kindName = (sw: ScreenSwitch) => (sw.when === 'bus' ? 'Bus time' : 'Set times');
 
 export function ScreenSheet({
   idleBackground, onIdleBackgroundChange, idleCheck = {}, onShowIdle, onArrangePhotoFrame, canIdle = true,
   allDashboards = [], currentDashboardId, onSwitchDashboard, onNewDashboard,
-  screenPlan = null, onScreenPlanChange, screenId = null, deviceNamed = true, onDeviceNamed,
-  onPickScreen, onRenamed,
+  screenPlan = null, onScreenPlanChange, screenId = null, screenName = null, deviceNamed = true, onDeviceNamed,
 }: {
   /** The screen's idle looks and night rule, as being edited; Done saves them. */
   idleBackground?: IdleBackground;
@@ -253,14 +196,12 @@ export function ScreenSheet({
   onScreenPlanChange?: (plan: ScreenPlan) => void;
   /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
+  /** Its name, once known: the header reads and renames it (#1350). */
+  screenName?: string | null;
   /** The device in use has a name; one that has none is offered one here. */
   deviceNamed?: boolean;
   /** The device in use was just named, as this screen. */
   onDeviceNamed?: (displayId: string) => void;
-  /** Edit another named screen instead. */
-  onPickScreen?: (id: string) => void;
-  /** The screen was renamed, to this. */
-  onRenamed?: (name: string) => void;
 }) {
   const { timeFormat, householdTimezone } = useTimeFormat();
   const clock = (t: string) => formatTimeOfDay(t, timeFormat);
@@ -281,14 +222,6 @@ export function ScreenSheet({
   const [askName, setAskName] = useState<'normally' | 'add' | null>(null);
   /** A switch row making a new dashboard to switch to, and its name so far. */
   const [making, setMaking] = useState<{ row: number; name: string; busy: boolean } | null>(null);
-  const [screens, setScreens] = useScreens();
-  /** The name as typed while renaming; null shows the drop-down. */
-  const [draft, setDraft] = useState<string | null>(null);
-  // Whether a rename is still open to save: Esc, or a save under way, closes
-  // it, so the blur as the field goes does not save again.
-  const renameOpen = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
 
   const plan = screenId ? screenPlan : null;
   const switches = useMemo(() => plan?.switches ?? [], [plan]);
@@ -534,7 +467,7 @@ export function ScreenSheet({
   const neverIdles = timeout <= 0 || !canIdle;
   const nightLevel = Math.round(Number(dim) * 100);
 
-  const name = screenId ? screens?.find((s) => s.id === screenId)?.name ?? null : null;
+  const name = screenId ? screenName : null;
   const sentence = screenSentence({
     name,
     normally: normallyName,
@@ -548,36 +481,6 @@ export function ScreenSheet({
     clock,
   });
 
-  const startRename = () => { renameOpen.current = true; setProblem(null); setDraft(name ?? ''); };
-  const cancelRename = () => { renameOpen.current = false; setProblem(null); setDraft(null); };
-  /** Saves the name typed, on Enter or on leaving the field; an unchanged or empty one goes back. */
-  const rename = async () => {
-    if (!screenId || draft === null || !renameOpen.current) return;
-    renameOpen.current = false;
-    const next = draft.trim();
-    if (!next || next === name) { setDraft(null); return; }
-    setBusy(true);
-    setProblem(null);
-    try {
-      // At once, as Settings > Screens renames one: a name is not part of Done.
-      const res = await fetch(`/api/displays/${encodeURIComponent(screenId)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: next }),
-      }).catch(() => null);
-      if (!res?.ok) {
-        // The field stays, with why, to try again or Esc.
-        renameOpen.current = true;
-        setProblem(res ? await problemFrom(res) : 'That did not work. Try again.');
-        return;
-      }
-      setScreens((list) => list?.map((s) => (s.id === screenId ? { ...s, name: next } : s)) ?? list);
-      setDraft(null);
-      onRenamed?.(next);
-    } finally {
-      setBusy(false);
-    }
-  };
   const fieldId = (key: string) => `screen-sheet-${key}`;
   const nameFirst = onDeviceNamed && (
     <div className="flex flex-col gap-2 rounded-xl bg-muted/50 p-3" data-name-first>
@@ -585,7 +488,7 @@ export function ScreenSheet({
       <NameThisDevice shows={dashboardName(defaultId)} onNamed={onDeviceNamed} chip={chip} field={field} autoOpen />
     </div>
   );
-  const scope = screenId ? (name ? `${name} · This screen` : 'This screen') : unnamed ? 'Not named yet · This screen' : 'No screen';
+  const scope = screenId ? (name ? `${name} · This screen` : 'This screen') : 'Not named yet · This screen';
 
   return (
     <div className="flex flex-col gap-5 pointer-fine:gap-4" data-screen-sheet>
@@ -596,11 +499,6 @@ export function ScreenSheet({
           <DayStrip nights={nights} spans={spans} now={minuteNow} tick={(m) => clock(hhmm(m))}
             caption={`Today. Shaded: night (${nightRange}). Line: now.`} />
         </>
-      )}
-      {!ownsDay && (
-        <p className="m-0 text-body text-muted-foreground" data-no-screen>
-          No screen is being edited, so this edits {dashboardName(currentDashboardId)} on its own. A screen&apos;s day is set in that screen&apos;s editor.
-        </p>
       )}
 
       {ownsDay && (
@@ -738,38 +636,8 @@ export function ScreenSheet({
         </section>
       )}
 
-      <Disclosure label="This screen: light or dark, photos behind the dashboard" defaultOpen data-screen-look>
-        <div className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
-          <label htmlFor={fieldId(draft === null ? 'pick' : 'name')}>Screen</label>
-          {draft === null ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <Select id={fieldId('pick')} value={screenId ?? ''} data-screen-pick
-                onChange={(e) => { if (e.target.value && e.target.value !== screenId) onPickScreen?.(e.target.value); }}>
-                {!screenId && <option value="">{deviceNamed ? 'No screen' : 'Not named yet'}</option>}
-                {screenId && !screens?.some((s) => s.id === screenId) && <option value={screenId}>{name ?? '…'}</option>}
-                {(screens ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </Select>
-              {screenId && name !== null && (
-                <button type="button" aria-label={`Rename ${name}`} onClick={startRename} data-screen-rename
-                  className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-fine:h-9 pointer-fine:w-9">
-                  <Pencil className="h-4 w-4" aria-hidden />
-                </button>
-              )}
-            </div>
-          ) : (
-            <form onSubmit={(e) => { e.preventDefault(); void rename(); }}>
-              <input id={fieldId('name')} className={INPUT} maxLength={NAME_MAX} disabled={busy} autoFocus
-                aria-label="Name of this screen" value={draft} data-screen-name
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelRename(); } }}
-                onBlur={() => void rename()} />
-            </form>
-          )}
-        </div>
-        {problem && <p role="alert" className="m-0 text-body text-destructive">{problem}</p>}
-        {ownsDay && (
-          <>
+      {ownsDay && (
+        <Disclosure label="This screen: light or dark, photos behind the dashboard" defaultOpen data-screen-look>
             <div className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-body sm:grid-cols-[10rem_minmax(0,1fr)]">
               <span id={fieldId('mode')}>Light or dark</span>
               <div role="radiogroup" aria-labelledby={fieldId('mode')} className="flex w-fit rounded-lg bg-muted p-0.5" data-screen-mode>
@@ -796,9 +664,8 @@ export function ScreenSheet({
                 </Select>
               </div>
             )}
-          </>
-        )}
-      </Disclosure>
+        </Disclosure>
+      )}
 
       {ownsDay && (
         <Disclosure label="Advanced: orientation, performance, keyboard, auto-hide, sign out, notices" data-screen-advanced>

@@ -763,13 +763,12 @@ test.describe('the Today view', () => {
       await page.locator('[data-part-show="weather"]').click();
       await expect(frame.locator('[data-today-corner="right"]')).toHaveCount(0);
 
-      // Dashboard: Today is marked built in, and Delete is off, in the bar and on the server.
-      await page.locator('[data-editor-open="dashboard"]').click();
-      const row = page.locator(`[data-dashboard-row="${layout.id}"]`);
-      await expect(row.locator('[data-built-in-mark]')).toBeVisible();
-      await expect(page.locator('[data-dashboard-delete]')).toBeDisabled();
-      await expect(page.locator('[data-built-in-note]')).toBeVisible();
-      await expect(page.locator('[data-built-in-note]')).toContainText('Glance is built in');
+      // The header menu (#1350): Glance is built in, and Delete is off, in the menu and on the server.
+      await page.locator('[data-dashboard-jobs]').click();
+      await expect(page.locator('[data-dashboard-job="delete"]')).toBeDisabled();
+      await expect(page.locator('[data-dashboard-job="rename"]')).toHaveCount(0);
+      await expect(page.locator('[data-dashboard-menu-note]')).toContainText('Glance is built in');
+      await page.keyboard.press('Escape');
       expect((await page.request.delete(`/api/layouts/${layout.id}`)).status(), "the server refuses too").toBe(409);
 
       // Done saves: the weather stays hidden after a reload.
@@ -782,8 +781,8 @@ test.describe('the Today view', () => {
     }
   });
 
-  // #1151: a fresh install has only Today; the Dashboard sheet makes one of its own.
-  test('the Dashboard sheet makes a new dashboard of your own', async ({ page }) => {
+  // #1151: a fresh install has only Today; the header menu makes one of its own (#1350).
+  test('the header menu makes a new dashboard of your own', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);
     const layout = await (await page.request.post('/api/layouts', { data: { name: `From Today e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
@@ -796,8 +795,8 @@ test.describe('the Today view', () => {
       await page.locator('[data-dock-more]').click();
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
       await onCanvas(page);
-      await page.locator('[data-editor-open="dashboard"]').click({ timeout: 60_000 });
-      await page.locator('[data-dashboard-new]').click();
+      await page.locator('[data-dashboard-jobs]').click({ timeout: 60_000 });
+      await page.locator('[data-dashboard-job="new"]').click();
       await page.getByPlaceholder('e.g. Kitchen Display').fill(name);
       await page.getByRole('button', { name: 'Create' }).click();
       await expect.poll(async () => {

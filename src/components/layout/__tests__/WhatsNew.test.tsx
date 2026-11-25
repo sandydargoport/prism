@@ -29,7 +29,7 @@ describe("What's new note (#1308)", () => {
     const items = [...note.querySelectorAll('[data-whats-new-list] li')];
     expect(items).toHaveLength(7);
     expect(items[0]!.querySelector('.font-semibold')!.textContent).toBe('Glance, a new front page layout.');
-    expect(items[0]!.textContent).toContain('More > Edit layout > Dashboard > Glance');
+    expect(items[0]!.textContent).toContain('More > Edit layout, pick Glance under Editing');
     expect(note.textContent).toContain('More > Settings > Screens > Edit');
     expect(note.textContent).toContain('alphanumeric PINs');
     // Two bold runs in one item, and no stray markers left in the text.

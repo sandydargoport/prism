@@ -57,6 +57,8 @@ export type RemoteEditHost = {
   /** Above and below the picture, where the frame draws the canvas's toggles and its caption (#1348). */
   canvasAbove?: HTMLElement | null;
   canvasBelow?: HTMLElement | null;
+  /** In the page's header, where the frame draws the screen, Editing and the dashboard menu (#1350). */
+  canvasHeader?: HTMLElement | null;
   /** The dashboard the frame is showing. */
   onDashboard: (layoutId: string, isDefault: boolean) => void;
   /** Editing ended: saved with Done, or not. */
@@ -211,8 +213,8 @@ export function remotePortalRoot(): HTMLElement | undefined {
   return remoteEditHost()?.root ?? undefined;
 }
 
-/** On the editor page, above or below the picture (#1348); undefined when there is no such place. */
-export function remoteCanvasSlot(where: 'above' | 'below'): HTMLElement | undefined {
+/** On the editor page, in its header (#1350) or above or below the picture (#1348); undefined when there is no such place. */
+export function remoteCanvasSlot(where: 'header' | 'above' | 'below'): HTMLElement | undefined {
   const host = remoteEditHost();
-  return (where === 'above' ? host?.canvasAbove : host?.canvasBelow) ?? undefined;
+  return (where === 'header' ? host?.canvasHeader : where === 'above' ? host?.canvasAbove : host?.canvasBelow) ?? undefined;
 }

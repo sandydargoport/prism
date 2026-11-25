@@ -6,6 +6,11 @@
  * opened, as the Widgets tab shows its own. Every tab has one (#1341). And
  * every control on the Screen tab waits for Done (#1349): nothing reaches the
  * browser's storage or the server before it.
+ *
+ * The editor's shell (#1350): a header with the screen, Editing and the
+ * dashboard's jobs in a menu, and three tabs, Screen | Widgets | Look, with
+ * no Screen tab on a dashboard edited with no screen. Each control of the
+ * Dashboard, More and old Look tabs, and Settings > Text Size, has one home.
  */
 import React, { useState } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
@@ -26,6 +31,11 @@ jest.mock('@/lib/displays/remoteEdit', () => ({
   }),
   remotePortalRoot: () => undefined,
 }));
+// A widget's own settings read the theme.
+jest.mock('@/components/providers', () => ({
+  ...jest.requireActual('@/components/providers'),
+  useTheme: () => ({ resolvedTheme: 'light' }),
+}));
 jest.mock('@/components/screensaver/useIdleBackground', () => ({
   useSkyLocation: () => ({ lat: 45, lon: -100 }),
 }));
@@ -35,7 +45,8 @@ jest.mock('@/components/providers/TimeFormatProvider', () => ({
 
 const dotOn = (tab: string) => document.querySelector(`[data-editor-open="${tab}"] [aria-label="unsaved changes"]`);
 const dot = () => dotOn('screen');
-const dotted = () => ['screen', 'dashboard', 'widgets', 'look', 'more'].filter((t) => dotOn(t));
+const tabSet = () => Array.from(document.querySelectorAll('[data-editor-open]')).map((t) => t.getAttribute('data-editor-open'));
+const dotted = () => tabSet().filter((t) => dotOn(t!));
 
 beforeEach(() => {
   unsaved = false;
@@ -85,13 +96,17 @@ describe('every tab shows its own dot (#1341)', () => {
     expect(dotted()).toEqual([]);
   });
 
-  it('Dashboard, once Make the default is pressed', async () => {
-    render(<LayoutEditor {...props} defaultPending />);
+  it('none for Show on new and unnamed screens, which is in the header menu: Unsaved changes says it beside Done (#1350)', async () => {
+    pending = { keys: [], plan: false };
+    const { rerender } = render(<LayoutEditor {...props} />);
     await act(async () => {});
-    expect(dotted()).toEqual(['dashboard']);
+    expect(document.querySelector('[data-editor-unsaved]')).toBeNull();
+    rerender(<LayoutEditor {...props} defaultPending />);
+    expect(dotted()).toEqual([]);
+    expect(document.querySelector('[data-editor-unsaved]')!.textContent).toBe('Unsaved changes');
   });
 
-  it('Look, for the screen shape only: the screen\'s options are on Screen now (#1349)', async () => {
+  it('Look, for the text size: the screen\'s options are on Screen (#1349, #1350)', async () => {
     const { rerender } = render(<LayoutEditor {...props} lookDirty />);
     await act(async () => {});
     expect(dotted()).toEqual(['look']);
@@ -201,5 +216,178 @@ describe('every control on the Screen tab waits for Done (#1341, #1349)', () => 
 
     await act(async () => { fireEvent.click(document.querySelector<HTMLElement>('[data-editor-done]')!); });
     expect(onSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the editor shell (#1350)', () => {
+  const MAIN = { id: 'a', name: 'Main', slug: 'main', isDefault: true };
+  const BUS = { id: 'b', name: 'Bus board', slug: 'bus-board', isDefault: false };
+  const GLANCE = { id: 'g', name: 'Glance', slug: 'glance', isDefault: false, view: 'today' };
+  const WIDGETS = [
+    { i: 'clock', x: 0, y: 0, w: 8, h: 8, outlineColor: 'transparent' },
+    { i: 'tasks', x: 8, y: 0, w: 8, h: 8 },
+    { i: 'weather', x: 16, y: 0, w: 8, h: 8 },
+  ];
+  const base = {
+    widgets: WIDGETS, onWidgetsChange: () => {}, onSave: async () => {}, onSaveAs: () => {}, onReset: () => {}, onCancel: () => {},
+    allDashboards: [MAIN, BUS], currentDashboardId: 'a', layoutName: 'Main',
+  };
+  const onScreen = { ...base, screenId: 'kitchen', screenPlan: { dashboardId: null, switches: [] } };
+  const open = async (tab: string) => {
+    fireEvent.click(document.querySelector<HTMLElement>(`[data-editor-open="${tab}"]`)!);
+    await act(async () => {});
+  };
+  const menu = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard jobs' }));
+    return Array.from(screen.getByRole('menu').querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+  };
+
+  it('has three tabs, Screen | Widgets | Look, and no Dashboard, More or Through the day', async () => {
+    render(<LayoutEditor {...onScreen} />);
+    await act(async () => {});
+    expect(tabSet()).toEqual(['screen', 'widgets', 'look']);
+    expect(Array.from(document.querySelectorAll('[data-editor-open]')).map((t) => t.textContent)).toEqual(['Screen', 'Widgets', 'Look']);
+  });
+
+  it('opened on a dashboard with no screen, has no Screen tab', async () => {
+    render(<LayoutEditor {...base} deviceNamed />);
+    await act(async () => {});
+    expect(tabSet()).toEqual(['widgets', 'look']);
+    expect(document.querySelector('[data-screen-sheet]')).toBeNull();
+  });
+
+  it('a device nobody named keeps its Screen tab, to set its idle rows and be named', async () => {
+    render(<LayoutEditor {...base} deviceNamed={false} />);
+    await act(async () => {});
+    expect(tabSet()).toEqual(['screen', 'widgets', 'look']);
+  });
+
+  it('the header names the screen, says which dashboard is Editing, and Editing opens another', async () => {
+    const onSwitchDashboard = jest.fn();
+    render(<LayoutEditor {...onScreen} onSwitchDashboard={onSwitchDashboard} />);
+    await act(async () => {});
+    const header = document.querySelector<HTMLElement>('[data-editor-header]')!;
+    const pick = within(header).getByLabelText('Screen') as HTMLSelectElement;
+    expect(pick.options[pick.selectedIndex]!.textContent).toBe('Kitchen screen');
+    expect(within(header).getByRole('button', { name: 'Rename Kitchen' })).toBeTruthy();
+    const editing = within(header).getByLabelText('Editing') as HTMLSelectElement;
+    expect(Array.from(editing.options).map((o) => o.textContent)).toEqual(['Main dashboard', 'Bus board dashboard']);
+    expect(editing.value).toBe('a');
+    fireEvent.change(editing, { target: { value: 'b' } });
+    await act(async () => {});
+    expect(onSwitchDashboard).toHaveBeenCalledWith('bus-board');
+  });
+
+  it('the header menu holds the dashboard\'s jobs, in order', async () => {
+    render(<LayoutEditor {...onScreen} onMakeDefault={() => {}} />);
+    await act(async () => {});
+    expect(menu().map((m) => m.textContent)).toEqual([
+      'New dashboard', 'Make a copy', 'Rename', 'Export', 'Import', 'Share to the gallery', 'Shown on new and unnamed screens', 'Reset', 'Delete',
+    ]);
+  });
+
+  it('on Glance: no Rename, Import or Share; Delete is off and says why; Reset puts Glance back', async () => {
+    const onResetBuiltIn = jest.fn();
+    render(<LayoutEditor {...onScreen} allDashboards={[GLANCE, MAIN]} currentDashboardId="g" layoutName="Glance" view="today" onResetBuiltIn={onResetBuiltIn} />);
+    await act(async () => {});
+    const items = menu();
+    expect(items.map((m) => m.textContent)).toEqual(['New dashboard', 'Make a copy', 'Export', 'Reset', 'Delete']);
+    const del = items.find((m) => m.textContent === 'Delete')!;
+    expect(del.disabled).toBe(true);
+    expect(del.title).toBe('Glance is built in and cannot be deleted');
+    expect(document.querySelector('[data-dashboard-menu-note]')!.textContent).toMatch(/^Glance is built in\./);
+    fireEvent.click(items.find((m) => m.textContent === 'Reset')!);
+    expect(onResetBuiltIn).toHaveBeenCalledTimes(1);
+  });
+
+  it('a menu job does its own job and closes the menu: Show on new screens waits for Done, Rename opens its dialog', async () => {
+    const onMakeDefault = jest.fn();
+    render(<LayoutEditor {...onScreen} allDashboards={[{ ...MAIN, isDefault: false }, { ...BUS, isDefault: true }]} onMakeDefault={onMakeDefault} />);
+    await act(async () => {});
+    (global.fetch as jest.Mock).mockClear();
+    fireEvent.click(menu().find((m) => m.textContent === 'Show on new and unnamed screens')!);
+    expect(onMakeDefault).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+    fireEvent.click(menu().find((m) => m.textContent === 'Rename')!);
+    expect(screen.getByDisplayValue('Main')).toBeTruthy();
+  });
+
+  it('each tab opens with its scope line', async () => {
+    render(<LayoutEditor {...onScreen} />);
+    await act(async () => {});
+    await open('screen');
+    expect(document.querySelector('[data-screen-scope]')!.textContent).toBe('Kitchen · This screen');
+    await open('widgets');
+    expect(document.querySelector('[data-editor-sheet="widgets"] [data-editor-scope]')!.textContent).toBe('Main · Every screen that shows it');
+    await open('look');
+    expect(document.querySelector('[data-editor-sheet="look"] [data-editor-scope]')!.textContent).toBe('Main · Every screen that shows it');
+  });
+
+  it('Look holds the text size in its 13 steps, held for Done, and one fill, outline and text for all widgets', async () => {
+    const onFontScaleChange = jest.fn();
+    const onWidgetsChange = jest.fn();
+    render(<LayoutEditor {...onScreen} fontScale={110} onFontScaleChange={onFontScaleChange} onWidgetsChange={onWidgetsChange} />);
+    await act(async () => {});
+    await open('look');
+    const size = screen.getByLabelText('Text size') as HTMLSelectElement;
+    expect(Array.from(size.options).map((o) => o.textContent)).toEqual(
+      ['75%', '80%', '85%', '90%', '95%', '100%', '105%', '110%', '115%', '120%', '130%', '140%', '150%']);
+    expect(size.value).toBe('110');
+    (global.fetch as jest.Mock).mockClear();
+    fireEvent.change(size, { target: { value: '130' } });
+    expect(onFontScaleChange).toHaveBeenCalledWith(130);
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    // Outline: two of three have the theme's, so that is what it offers; one differs.
+    const outline = screen.getByLabelText('Outline for all widgets') as HTMLSelectElement;
+    expect(outline.value).toBe('');
+    expect(document.querySelector('[data-all-widgets-note="outline"]')!.textContent).toBe('1 widget has a different outline.');
+    fireEvent.change(outline, { target: { value: 'transparent' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply this outline to all widgets' }));
+    expect(onWidgetsChange).toHaveBeenCalledWith(WIDGETS.map((w) => expect.objectContaining({ i: w.i, outlineColor: 'transparent' })));
+    expect(screen.getByLabelText('Fill for all widgets')).toBeTruthy();
+    expect(screen.getByLabelText('Text for all widgets')).toBeTruthy();
+  });
+
+  it('on Glance, Look has the text size only', async () => {
+    render(<LayoutEditor {...onScreen} allDashboards={[GLANCE]} currentDashboardId="g" layoutName="Glance" view="today" />);
+    await act(async () => {});
+    await open('look');
+    expect(screen.getByLabelText('Text size')).toBeTruthy();
+    expect(screen.queryByLabelText(/for all widgets$/)).toBeNull();
+    expect(document.querySelector('[data-look-glance]')!.textContent).toBe('Glance has no cards.');
+  });
+
+  it('the selected widget has a Stays when idle switch on Widgets', async () => {
+    const onWidgetsChange = jest.fn();
+    render(<LayoutEditor {...onScreen} selectedWidgetId="tasks" onWidgetsChange={onWidgetsChange} />);
+    await act(async () => {});
+    const stays = within(document.querySelector<HTMLElement>('[data-editor-sheet="widgets"]')!).getByRole('switch', { name: 'Stays when idle' });
+    expect(stays.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(stays);
+    expect(onWidgetsChange).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ i: 'tasks', showWhenIdle: true })]));
+  });
+
+  it('what the old tabs held is gone: Screen shape, See it at a screen size, Overview, Use while resting', async () => {
+    render(<LayoutEditor {...onScreen} idleBackground={{ source: 'photos' }} onMakeDefault={() => {}} />);
+    await act(async () => {});
+    for (const tab of ['screen', 'widgets', 'look']) {
+      await open(tab);
+      expect(screen.queryByText(/Screen shape|See it at a screen size|Overview|Use while resting|Use as the dashboard|Make the default/)).toBeNull();
+    }
+    menu();
+    expect(screen.queryByText(/Reset this layout|Make the default/)).toBeNull();
+  });
+
+  it('arranging the photo frame, Widgets says so, with Copy from the dashboard and Back to the dashboard', async () => {
+    const onEditTabChange = jest.fn();
+    render(<LayoutEditor {...onScreen} editTab="idle" editingScreensaver screensaverWidgets={[]} idleBackground={{ source: 'photos' }}
+      onSelectScreensaverTemplate={() => {}} onEditTabChange={onEditTabChange} />);
+    await act(async () => {});
+    const banner = document.querySelector<HTMLElement>('[data-photo-frame-banner]')!;
+    expect(within(banner).getByRole('button', { name: 'Copy from the dashboard' })).toBeTruthy();
+    fireEvent.click(within(banner).getByRole('button', { name: 'Back to the dashboard' }));
+    expect(onEditTabChange).toHaveBeenCalledWith('dashboard');
   });
 });

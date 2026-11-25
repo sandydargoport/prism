@@ -25,7 +25,6 @@ import {
   Bus,
   KeyboardIcon,
   Monitor,
-  Type,
   Wand2,
   ChevronLeft,
 } from 'lucide-react';
@@ -55,7 +54,6 @@ import { TelemetryCard } from './sections/TelemetryCard';
 import { ActivityLogSection } from './sections/ActivityLogSection';
 
 import { DisplaysSection } from './sections/DisplaysSection';
-import { TextSizeSection } from './sections/TextSizeSection';
 import { IntegrationsSection } from './sections/integrations/IntegrationsSection';
 import { InsecurePageNotice } from './components/InsecurePageNotice';
 import { useLayouts } from '@/lib/hooks/useLayouts';
@@ -214,7 +212,6 @@ export function SettingsView() {
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'backups', label: 'Backups & Data', icon: Database },
     { id: 'activity', label: 'Activity Log', icon: ClipboardList },
-    { id: 'text-size', label: 'Text Size', icon: Type },
     { id: 'about', label: 'About', icon: Info },
   ];
 
@@ -310,7 +307,6 @@ export function SettingsView() {
               {activeSection === 'family' && <FamilySection />}
               {activeSection === 'integrations' && <IntegrationsSection />}
               {activeSection === 'displays' && <DisplaysSection />}
-              {activeSection === 'text-size' && <TextSizeSection />}
               {activeSection === 'photos' && <PhotosSettingsSection />}
               {activeSection === 'bus' && <BusTrackingSection />}
               {activeSection === 'babysitter' && <BabysitterInfoSection />}

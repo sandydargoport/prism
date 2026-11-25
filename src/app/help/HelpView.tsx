@@ -45,7 +45,7 @@ function useSections(isMobile: boolean): HelpSection[] {
       { id: 'babysitter', title: 'Babysitter Mode', desktopOnly: true, content: <BabysitterHelp /> },
       { id: 'screensaver', title: 'Screensaver', desktopOnly: true, content: <ScreensaverHelp /> },
       { id: 'input', title: 'Keyboard, Voice & Scanning', content: <InputHelp /> },
-      { id: 'settings', title: 'Settings', content: <SettingsHelp isMobile={isMobile} /> },
+      { id: 'settings', title: 'Settings', content: <SettingsHelp /> },
       { id: 'integrations', title: 'Integrations', content: <IntegrationsHelp /> },
       { id: 'caldav', title: 'Apple iCloud (CalDAV)', content: <CalDAVHelp /> },
       { id: 'kroger', title: 'Kroger / Mariano’s Cart', content: <KrogerHelp /> },
@@ -208,11 +208,11 @@ function GlanceHelp() {
       <P>Glance places each part where it belongs, so you choose what shows and it finds the spot. Open More &gt; Edit layout &gt; Widgets:</P>
       <Ul>
         <Li><strong>Show</strong> turns a part on or off: Clock and date, Weather, The day and the coming days, Birthday nudge, Chores left, and Shopping list</Li>
-        <Li><strong>Stays when resting</strong> keeps a part on screen when nobody is using it</Li>
+        <Li><strong>Stays when idle</strong> keeps a part on screen when the screen is idle</Li>
         <Li><strong>Show the day as an arc</strong> draws the sun&apos;s path across the day, with the moon on it at night</Li>
         <Li><strong>Days ahead</strong> (1 to 7) and <strong>Text size</strong> (Normal, Large, Larger)</Li>
       </Ul>
-      <P>In More &gt; Edit layout &gt; Dashboard, Glance is marked <strong>Built in</strong>. It cannot be deleted. <strong>Reset to default</strong> puts it back as it came, and <strong>Make a copy</strong> starts a dashboard of your own from it. If Glance is not there yet, the list shows it with <strong>Add</strong>.</P>
+      <P>Glance is built in. It cannot be deleted. In More &gt; Edit layout, the header menu&apos;s <strong>Reset</strong> puts it back as it came, and <strong>Make a copy</strong> starts a dashboard of your own from it. If Glance is not there yet, the header menu offers <strong>Add Glance</strong>. Look holds its text size only, since Glance has no cards.</P>
       <H2>Idle and night</H2>
       <P>When the screen is idle, Glance shows the dashboard, quieter: the parts not set to stay fade away. At night the words turn a warm ink over a darker photo.</P>
     </>
@@ -327,59 +327,58 @@ function DashboardHelp() {
       <P>Clock, Weather, Calendar, Tasks, Chores, Shopping, Meals, Messages, Photos, Points/Goals, Birthdays, Wishes, and Bus Tracker.</P>
 
       <H2>Opening the Editor</H2>
-      <P>Open More &gt; Edit layout (parents only). The editor shows the dashboard on a canvas, with a panel beside it and five tabs:</P>
+      <P>Open More &gt; Edit layout (parents only). The editor shows the dashboard on a canvas, with a header above it and a panel beside it.</P>
+      <P>The header says which screen you are editing and, after <strong>Editing</strong>, which dashboard the canvas has open, for example &quot;Hallway screen · Editing Main dashboard&quot;. Pick another screen to edit it, or the pencil beside its name to rename it (that saves at once). Pick another dashboard under Editing to open it on the canvas; that never changes what the screen shows, which is Screen &gt; Shows &gt; Normally. The <strong>...</strong> menu holds the dashboard&apos;s jobs: <strong>New dashboard</strong>, <strong>Make a copy</strong>, <strong>Rename</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong>, <strong>Show on new and unnamed screens</strong>, <strong>Reset</strong> and <strong>Delete</strong>.</P>
+      <P>The panel has three tabs, each opening with a line that says whose settings it holds:</P>
       <Ul>
-        <Li><strong>Screen</strong>: the screen&apos;s whole day: what it shows when, how it idles by day and at night, light or dark, and its own settings (see the Screens help section)</Li>
-        <Li><strong>Dashboard</strong>: every dashboard, to open another; <strong>New dashboard</strong>, <strong>Make a copy</strong>, <strong>Rename</strong>, <strong>Make the default</strong> and <strong>Delete</strong></Li>
-        <Li><strong>Widgets</strong>: show or hide each widget and set its place; <strong>Start from a template</strong>; <strong>Browse the community gallery</strong></Li>
-        <Li><strong>Look</strong>: the <strong>Screen shape</strong> and <strong>See it at a screen size</strong></Li>
-        <Li><strong>More</strong>: the <strong>Overview</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong> and <strong>Reset this layout</strong></Li>
+        <Li><strong>Screen</strong> (&quot;Hallway · This screen&quot;): the screen&apos;s whole day: what it shows when, how it idles by day and at night, light or dark, and its own settings (see the Screens help section). Editing a dashboard with no screen, from a laptop say, there is no Screen tab</Li>
+        <Li><strong>Widgets</strong> (&quot;Main · Every screen that shows it&quot;): show or hide each widget and set its place, the selected widget&apos;s own settings, <strong>Start from a template</strong> and <strong>Browse the community gallery</strong></Li>
+        <Li><strong>Look</strong> (the same): the dashboard&apos;s <strong>Text size</strong>, and one <strong>Fill</strong>, <strong>Outline</strong> and <strong>Text</strong> colour for all its widgets</Li>
       </Ul>
+      <P>A section ends with at most one fold named <strong>Advanced</strong>, which holds the rest.</P>
       <P>Over the canvas, two toggles pick which of the screen&apos;s four states it draws: <strong>In use</strong> or <strong>Idle</strong>, and <strong>Day</strong> or <strong>Night</strong>. Each is drawn as the screen draws it: idle, the photo frame over its photo, the night sky, or the dashboard with the widgets that do not stay faded; at night, as much darker as the screen is set to go, over every look; Glance in use at night under its night veil. The line under the canvas names what is drawn and the screen&apos;s size, for example &quot;Main, idle, at night: a photo frame, 50% darker. 1280 x 800.&quot; Day or Night starts at the time it is now.</P>
-      <P>Everything in the editor waits for <strong>Done</strong>, which saves it all; <strong>Cancel</strong> leaves without saving any of it. A dot on a tab means it has changes not saved yet.</P>
-      <P>Opening another dashboard (More &gt; Edit layout &gt; Dashboard) or another screen (More &gt; Edit layout &gt; Screen) with changes not saved asks first: <strong>Save and switch</strong>, <strong>Discard</strong> or <strong>Stay</strong>.</P>
+      <P>Everything in the editor waits for <strong>Done</strong>, which saves it all; <strong>Cancel</strong> leaves without saving any of it. A dot on a tab means it has changes not saved yet, and <strong>Unsaved changes</strong> beside Done says so for the editor as a whole. The header menu&apos;s jobs that make, copy, delete or import a dashboard are their own actions, and Rename saves at once.</P>
+      <P>Opening another dashboard (Editing, in the header) or another screen (the screen&apos;s drop-down, in the header) with changes not saved asks first: <strong>Save and switch</strong>, <strong>Discard</strong> or <strong>Stay</strong>.</P>
 
       <H2>Arranging Widgets</H2>
       <Ul>
         <Li><strong>Drag</strong> a widget to move it. Tap it again for resize mode, then drag its corner handles</Li>
-        <Li>Pick a widget on the screen or in the list in the <strong>Widgets</strong> panel (More &gt; Edit layout &gt; Widgets); its settings are below the list, and Widgets comes forward if another panel is open. The &times; beside a name in the list hides that widget. The settings are <strong>Fill</strong> and <strong>Outline</strong> colour and opacity, <strong>Text</strong> colour, size and, for the clock and weather, <strong>Align</strong>, the calendar&apos;s <strong>Grid</strong>, <strong>Hide when empty</strong> (hidden while it has nothing to show) and <strong>Hide first on a small screen</strong>. The canvas shows only the screen</Li>
-        <Li><strong>Apply to all widgets</strong>, under Fill, Outline and Text (Edit layout &gt; Widgets, with a widget picked), puts that widget&apos;s fill, outline, or text colour and size on every widget, and says how many differ. To turn outlines off everywhere, pick <strong>None</strong> under Outline, then <strong>Apply to all widgets</strong>. A widget added new takes the look the others all share</Li>
+        <Li>Pick a widget on the screen or in the list in the <strong>Widgets</strong> panel (More &gt; Edit layout &gt; Widgets); its settings are below the list, and Widgets comes forward if another panel is open. The &times; beside a name in the list hides that widget. The settings are <strong>Fill</strong> and <strong>Outline</strong> colour and opacity, <strong>Text</strong> colour, size and, for the clock and weather, <strong>Align</strong>, the calendar&apos;s <strong>Grid</strong>, <strong>Stays when idle</strong> (on, it stays when the screen is idle as the dashboard, quieter; off, it fades), <strong>Hide when empty</strong> (hidden while it has nothing to show) and <strong>Hide first on a small screen</strong>. The canvas shows only the screen</Li>
+        <Li><strong>Apply to all widgets</strong>, under Fill, Outline and Text (Edit layout &gt; Widgets, with a widget picked), puts that widget&apos;s fill, outline, or text colour and size on every widget, and says how many differ. A widget added new takes the look the others all share</Li>
+        <Li>More &gt; Edit layout &gt; Look &gt; <strong>All widgets</strong> sets one fill, outline or text colour for every widget at once: pick it, then <strong>Apply to all</strong>. Each row says how many widgets differ. To turn outlines off everywhere, pick <strong>None</strong> under Outline, then <strong>Apply to all</strong></Li>
         <Li>With a widget selected, <strong>Delete</strong> or <strong>Backspace</strong> removes it (the toast has Undo), and the arrow keys move it, or resize it in resize mode</Li>
       </Ul>
 
       <H2>Starter Templates</H2>
       <P>Widgets &gt; <strong>Start from a template</strong> offers six built-in dashboards: <strong>Family Central</strong>, <strong>Calendar Focus</strong>, <strong>Command Center</strong>, <strong>Meal Planner</strong>, <strong>School Mornings</strong>, and a photo-forward <strong>Ambient</strong>. Each is built around a single hero widget (usually the calendar) with the other widgets sized to their natural shape and grouped into a couple of balanced zones, a starting point you then rearrange. A template asks first, since it replaces every widget with its place, fill, outline and text. Every template ships in both landscape and portrait versions, and the photo frame has its own matching set.</P>
 
-      <H2>Overview</H2>
-      <P>More &gt; <strong>Overview</strong> shows a small map of your layout. It highlights widget positions and flags issues like overlapping or undersized widgets. Click the map to scroll the canvas to that spot. To see the layout at another screen&apos;s size, use <strong>Shown at</strong> above the canvas.</P>
+      <H2>Text Size</H2>
+      <P>More &gt; Edit layout &gt; Look &gt; <strong>Text size</strong> sets how large everything reads on this dashboard, from 75% to 150%, on every screen that shows it. It scales the whole board at once, separately from each widget&apos;s own text size, and does not change other pages. The canvas shows it at once; Done saves it.</P>
 
       <H2>Seeing It at a Screen Size</H2>
-      <P>Look &gt; <strong>See it at a screen size</strong> (or Ctrl+Shift+M) hides the editor and shows the layout as it will appear. <strong>Show Nav</strong> or <strong>Hide Nav</strong> shows it with or without the bar along the bottom; <strong>Exit Preview</strong> goes back to the editor.</P>
+      <P>To see the layout at another screen&apos;s size, use <strong>Shown at</strong> above the canvas. Ctrl+Shift+M hides the editor and shows the layout as it will appear. <strong>Show Nav</strong> or <strong>Hide Nav</strong> shows it with or without the bar along the bottom; <strong>Exit Preview</strong> goes back to the editor.</P>
       <P>Each screen chooses how the bar behaves on a dashboard with <strong>Auto-hide navigation</strong>, in Screen under <strong>Advanced</strong>. On, the bar hides behind a small <strong>Menu</strong> tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.</P>
 
       <H2>Photo Frame Arrangement</H2>
-      <P>Each dashboard has its own arrangement for when the screen is idle over photos or the night sky. In More &gt; Edit layout &gt; Screen &gt; When idle, choose <strong>A photo frame</strong> or <strong>The night sky</strong>, then <strong>Arrange the photo frame</strong>: the canvas shows it idle and Widgets opens to arrange what shows over it. <strong>Idle after</strong>, in the same place, sets how long the screen waits. The photo frame templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
+      <P>Each dashboard has its own arrangement for when the screen is idle over photos or the night sky. In More &gt; Edit layout &gt; Screen &gt; When idle, choose <strong>A photo frame</strong> or <strong>The night sky</strong>, then <strong>Arrange the photo frame</strong>: the canvas shows it idle and Widgets opens to arrange what shows over it, with <strong>Copy from the dashboard</strong> to start from the dashboard&apos;s widgets and <strong>Back to the dashboard</strong>. <strong>Idle after</strong>, in the same place, sets how long the screen waits. The photo frame templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
 
       <H2>Import, Export &amp; Community Layouts</H2>
       <Ul>
         <Li><strong>Community gallery</strong>: Widgets &gt; <strong>Browse the community gallery</strong> shows layouts shared by other Prism users. Search by name and filter by <strong>orientation</strong> (Landscape/Portrait, pre-set to the dashboard you&apos;re editing), preview each as a thumbnail, then <strong>Apply layout</strong>, which asks first, since it replaces every widget and its look.</Li>
-        <Li><strong>Share</strong>: Submit your own layout (More &gt; Share to the gallery). Fill in the details and submit; Prism opens a pre-filled submission, and once it&apos;s approved your layout appears in the gallery.</Li>
-        <Li><strong>Export</strong>: Copy your current layout as JSON to share it directly (More &gt; Export)</Li>
-        <Li><strong>Import</strong>: Paste a layout JSON to load someone else&apos;s design (More &gt; Import)</Li>
-        <Li><strong>Reset</strong>: Start again from the default arrangement (More &gt; Reset this layout). Cancel still leaves without saving</Li>
+        <Li><strong>Share</strong>: Submit your own layout (the header menu &gt; Share to the gallery). Fill in the details and submit; Prism opens a pre-filled submission, and once it&apos;s approved your layout appears in the gallery.</Li>
+        <Li><strong>Export</strong>: Copy your current layout as JSON to share it directly (the header menu &gt; Export)</Li>
+        <Li><strong>Import</strong>: Paste a layout JSON to load someone else&apos;s design (the header menu &gt; Import)</Li>
+        <Li><strong>Reset</strong>: Start again from the default arrangement (the header menu &gt; Reset). Cancel still leaves without saving</Li>
       </Ul>
 
       <H2>Multiple Dashboards</H2>
-      <P>Create separate dashboards for different rooms or displays. The <strong>Dashboard</strong> tab lists them all; tap one to edit it, or <strong>New dashboard</strong> to create one.</P>
+      <P>Create separate dashboards for different rooms or screens. <strong>Editing</strong>, in the editor&apos;s header, lists them all; pick one to edit it, or the header menu &gt; <strong>New dashboard</strong> to create one.</P>
       <Ul>
-        <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default with <strong>Dashboard &gt; Make the default</strong>, then <strong>Done</strong></Li>
+        <Li>The dashboard new and unnamed screens show lives at <strong>/</strong>: pick it with the header menu &gt; <strong>Show on new and unnamed screens</strong>, then <strong>Done</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
-        <Li>Each has independent widget layout, photo frame arrangement, and orientation (landscape/portrait)</Li>
+        <Li>Each has its own widget layout, photo frame arrangement and text size</Li>
         <Li>Each named screen picks the dashboard it shows (Screen &gt; Shows &gt; Normally, or Settings &gt; Screens)</Li>
       </Ul>
-
-      <H2>Orientation</H2>
-      <P>Look &gt; <strong>Screen shape</strong> switches between <strong>Landscape</strong> and <strong>Portrait</strong>. This flips the design canvas between the landscape and portrait frame so you can lay out each orientation for your display.</P>
     </>
   );
 }
@@ -725,7 +724,7 @@ function ScreensaverHelp() {
   );
 }
 
-function SettingsHelp({ isMobile }: { isMobile: boolean }) {
+function SettingsHelp() {
   return (
     <>
       <P>Configure Prism to fit your family&apos;s needs. Open Settings from More to find these sections:</P>
@@ -748,12 +747,6 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
         <Li><strong>All screens</strong>: Units and Language</Li>
       </Ul>
       <P>A screen&apos;s own settings, like how long it waits before going idle, its orientation, performance and on-screen keyboard, are in its editor: More &gt; Edit layout on the screen, or More &gt; Edit a screen from a phone.</P>
-      {!isMobile && (
-        <>
-          <H3>Text Size</H3>
-          <P>How large everything reads on each dashboard. It scales the whole board at once, separately from the per-widget text size in the layout editor, and does not change other pages.</P>
-        </>
-      )}
       <H3>Screens</H3>
       <P>Every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor with a live picture of it; from a phone, More &gt; Edit a screen gets there too. To name a device, open the editor on it and go to Screen. A named screen keeps its settings with its name, so a reset browser can take them back. A browser nobody named works as before.</P>
       <H3>This Screen</H3>
@@ -841,7 +834,7 @@ function ShortcutsHelp() {
           ['Ctrl+U', 'Calendar notes', 'Underline'],
           ['Ctrl+Shift+S', 'Calendar notes', 'Strikethrough'],
           ['Ctrl+Shift+L', 'Calendar notes', 'Bullet list'],
-          ['Ctrl+Shift+M', 'Layout editor', 'See it at a screen size'],
+          ['Ctrl+Shift+M', 'Layout editor', 'Hide the editor and see the layout as it will appear'],
           ['Delete', 'Layout editor', 'Remove the selected widget'],
           ['Backspace', 'Layout editor', 'Remove the selected widget'],
           ['Arrow keys', 'Layout editor', 'Move the selected widget, or resize it in resize mode'],

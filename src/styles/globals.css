@@ -482,6 +482,18 @@ html.editor-moving {
   }
 }
 
+/* The canvas editor's header (#1350): once the frame draws the screen,
+   Editing and the dashboard menu there, the plain title is kept for screen
+   readers only. */
+[data-canvas-header]:not(:empty) ~ [data-canvas-title] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* The calm idle screen (docs/DESIGN.md "Idle screen"): a glass card that stays
    goes fully clear, so the clock and weather sit straight on the photo. The
    text turns light in either mode and carries a soft dark shadow, which is

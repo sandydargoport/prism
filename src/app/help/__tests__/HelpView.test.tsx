@@ -78,6 +78,14 @@ describe('Help after the new look (#1308)', () => {
       'Someone using the screen sees the dashboard for that time.',
       'More > Edit layout > Widgets',
       'More > This screen > Away mode',
+      // The editor's shell (#1350): the header, its menu, and Look.
+      'Hallway screen · Editing Main dashboard',
+      'the header menu > Export',
+      'the header menu > Show on new and unnamed screens',
+      'More > Edit layout > Look > Text size',
+      'More > Edit layout > Look > All widgets',
+      'Stays when idle',
+      'there is no Screen tab',
       'Settings > Security > Require the PIN for every change',
       // A phone's own cards (#1354).
       'More > This phone > Cards',
@@ -116,6 +124,19 @@ describe('Help after the new look (#1308)', () => {
       'Screensaver motion',
       // The round button is only a page's Add (#1354).
       'Dashboard options',
+      // The Dashboard and More tabs, and Settings > Text Size, are gone (#1350).
+      'Edit layout > Dashboard',
+      'Dashboard > Make the default',
+      'The Dashboard tab',
+      'More > Export',
+      'More > Import',
+      'More > Share to the gallery',
+      'Reset this layout',
+      'More > Overview',
+      'Screen shape',
+      'See it at a screen size',
+      'Settings > Text Size',
+      'Stays when resting',
     ]) expect(text).not.toContain(gone);
   });
 

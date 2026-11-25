@@ -70,12 +70,12 @@ export function TodayPartsPanel({ widgets, onChange, bare = false }: {
             <li key={p.i} className="flex min-h-[56px] items-center gap-4 rounded-xl px-3 hover:bg-muted/50" data-part={p.i}>
               <span className="flex-1 text-body">{PART_NAMES[p.i] ?? p.i}</span>
               <label className="flex items-center gap-2 text-caption text-muted-foreground">
-                Stays when resting
+                Stays when idle
                 <Switch
                   checked={shownWhenIdle(p)}
                   disabled={!shown}
                   onCheckedChange={(v) => update(p.i, { showWhenIdle: v })}
-                  aria-label={`${PART_NAMES[p.i]} stays when resting`}
+                  aria-label={`${PART_NAMES[p.i]} stays when idle`}
                   data-part-idle={p.i}
                 />
               </label>

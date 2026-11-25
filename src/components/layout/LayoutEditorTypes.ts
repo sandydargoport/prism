@@ -33,9 +33,12 @@ export interface LayoutEditorProps {
   idleLayoutDirty?: boolean;
   /** The screen's idle looks or night rule changed: Screen's dot (#1349). */
   screenDayDirty?: boolean;
-  /** The screen shape picked on Look differs from the saved one (#1341). */
+  /** The text size picked on Look differs from the saved one (#1350): Look's dot. */
   lookDirty?: boolean;
-  /** Make the default was pressed: Done makes it so (#1341). */
+  /** The dashboard's text size as being edited, a percentage (#1350); Done saves it. */
+  fontScale?: number;
+  onFontScaleChange?: (scale: number) => void;
+  /** Show on new and unnamed screens was pressed in the header menu: Done makes it so (#1341). */
   defaultPending?: boolean;
   onMakeDefault?: () => void;
   /** Saves this dashboard without leaving the editor page, for Save and switch (#1341). */
@@ -73,13 +76,8 @@ export interface LayoutEditorProps {
   deviceNamed?: boolean;
   /** The device in use was named here: open its screen's editor. */
   onDeviceNamed?: (displayId: string) => void;
+  /** The screen shape the templates are offered for. */
   screenGuideOrientation?: 'landscape' | 'portrait';
-  onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
-  gridScrollY?: number;
-  gridVisibleRows?: number;
-  gridScrollX?: number;
-  gridVisibleCols?: number;
-  scrollToGridRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
   // Multi-dashboard props
   allDashboards?: DashboardInfo[];
   currentDashboardId?: string;

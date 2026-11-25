@@ -6,7 +6,7 @@ import { expect, type FrameLocator, type Page } from '@playwright/test';
  * the page beside it. A device nobody named opens /edit/<dashboard>, a named
  * screen its own /screens/<id>. One panel is always open; none closes.
  */
-export type Panel = 'screen' | 'dashboard' | 'widgets' | 'look' | 'more';
+export type Panel = 'screen' | 'widgets' | 'look';
 
 /**
  * Waits for Edit to land on the canvas: the address, the dashboard in the
@@ -35,6 +35,12 @@ export async function editOnCanvas(page: Page, slug: string | null, widget?: str
 export async function openPanel(page: Page, id: Panel): Promise<void> {
   await page.locator(`[data-editor-open="${id}"]`).click();
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
+}
+
+/** Opens the header's menu of the dashboard's jobs (#1350) and picks one, by its words. */
+export async function dashboardJob(page: Page, label: string): Promise<void> {
+  await page.locator('[data-dashboard-jobs]').click();
+  await page.locator('[data-dashboard-menu]').getByRole('menuitem', { name: label, exact: true }).click();
 }
 
 /** One of the canvas's toggles (#1348), above it on the editor page: In use | Idle, Day | Night. */

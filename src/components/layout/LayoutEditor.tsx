@@ -4,16 +4,18 @@ import * as React from 'react';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { editsIdleLayout } from '@/components/dashboard/useDashboardLayout';
+import { editLink, editsIdleLayout } from '@/components/dashboard/useDashboardLayout';
 import { LayoutEditorShareDialog } from './LayoutEditorShareDialog';
 import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
 import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardManager';
 import { RenameDashboardDialog } from './LayoutEditorRenameDashboard';
 import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
-import { EditorBar, type EditorSheet } from './EditorBar';
-import { forgetKeptPanel, panelKeptFor } from './canvasPanel';
-import { DashboardSheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
-import { openOtherScreen, ScreenSheet } from './ScreenSheet';
+import { EditorBar, editorTabs, type EditorSheet } from './EditorBar';
+import { forgetKeptPanel, keepPanelFor, panelKeptFor } from './canvasPanel';
+import { dashboardScope, isBuiltIn, LookSheet, WidgetsSheet } from './EditorSheets';
+import { ScreenSheet } from './ScreenSheet';
+import { EditorHeader, openOtherScreen, useScreens, type DashboardJob } from './EditorHeader';
+import type { DashboardInfo } from './LayoutEditorTypes';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
@@ -63,6 +65,8 @@ export function LayoutEditor({
   idleLayoutDirty = idleDirty,
   screenDayDirty = false,
   lookDirty = false,
+  fontScale = 100,
+  onFontScaleChange,
   defaultPending = false,
   onMakeDefault,
   onSaveDashboard,
@@ -85,12 +89,6 @@ export function LayoutEditor({
   deviceNamed = false,
   onDeviceNamed,
   screenGuideOrientation = 'landscape',
-  onScreenGuideOrientationChange,
-  gridScrollY = 0,
-  gridVisibleRows = 48,
-  gridScrollX = 0,
-  gridVisibleCols = 48,
-  scrollToGridRef,
   allDashboards = [],
   currentDashboardId,
   onSwitchDashboard,
@@ -108,18 +106,24 @@ export function LayoutEditor({
 }: LayoutEditorProps) {
   const { confirm: confirmDelete, dialogProps: confirmDialogProps } = useConfirmDialog();
   const { measureMode, measureHideNav, toggleMeasureMode, toggleMeasureNav } = useMeasureMode();
+  // The editor's tabs (#1350): with no screen, no Screen tab, so nothing can
+  // write to the editing device's own settings. A device nobody named still
+  // has one: its idle rows are its own until it is named.
+  const hasScreen = !!screenId || !deviceNamed;
+  const tabs = editorTabs(hasScreen);
 
   // The open panel (#1151), beside the canvas (#1265); one is always open, as
-  // there is room and nothing is covered. A dashboard picked on Dashboard
-  // opens on Dashboard still.
-  const [sheet, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
+  // there is room and nothing is covered. Another dashboard picked in the
+  // header opens on the same tab.
+  const [sheetState, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
+  const sheet: EditorSheet = tabs.includes(sheetState) ? sheetState : 'widgets';
   useEffect(() => { forgetKeptPanel(); }, []);
   // Another dashboard shown as it is saved (#1294) is only for Screen: any
   // other panel edits this one.
   const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
     if (next !== 'screen') onPreviewDashboardChange?.(null);
-  }, [onPreviewDashboardChange]);
+  }, [onPreviewDashboardChange, setSheetState]);
   // A widget selected on the canvas brings Widgets forward, where its own
   // settings are (#1323). Only a new selection does: another panel opened
   // while it stays selected stays open.
@@ -143,10 +147,15 @@ export function LayoutEditor({
   const { ask: askSwitch, promptProps } = useSwitchPrompt();
   const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
-  // There is a screensaver layout to copy to or from only when something
+  // There is a photo frame arrangement to copy onto only when something
   // other than the dashboard itself shows behind it.
   const hasIdleLayout = !!idleBackground && editsIdleLayout(idleBackground);
-  const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
+  const [, setFocusedWidget] = useState<string | null>(null);
+  // The named screens, for the header's drop-down and the Screen tab's name.
+  const [screens, setScreens] = useScreens();
+  const screenName = screenId ? screens?.find((s) => s.id === screenId)?.name ?? null : null;
+  const current = allDashboards.find((d) => d.id === currentDashboardId);
+  const scope = dashboardScope(layoutName ?? current?.name);
 
   const currentWidgets = useMemo(
     () => editingScreensaver ? (screensaverWidgets || []) : widgets,
@@ -194,26 +203,20 @@ export function LayoutEditor({
     confirmDelete,
   });
 
-  // Copy this layout over the other one and switch to it, so the result is
-  // in front of the user to Save or Cancel like any other edit.
-  const handleCopyToOther = async () => {
-    const copy = copyLayoutToOther(
-      editingScreensaver ? (screensaverWidgets ?? []) : widgets,
-      editingScreensaver ? 'dashboard' : 'screensaver',
-    );
-    const target = editingScreensaver ? 'dashboard' : 'idle screen';
+  // While arranging the photo frame: the dashboard's widgets put on it
+  // (#1350, once More > Use while resting), in front of the user to keep with
+  // Done or drop with Cancel like any other edit.
+  const handleCopyFromDashboard = async () => {
+    const copy = copyLayoutToOther(widgets, 'screensaver');
     const leftOut = copy.leftOut.length
-      ? ` Left out, because the screensaver cannot show them: ${copy.leftOut.join(', ')}.`
+      ? ` Left out, because the photo frame cannot show them: ${copy.leftOut.join(', ')}.`
       : '';
     const ok = await confirmDelete(
-      `Copy to ${target}?`,
-      `This replaces the ${target}'s layout with these ${copy.widgets.length} widgets.${leftOut} You will see the result next; Save keeps it and Cancel puts the old one back.`,
+      'Copy from the dashboard?',
+      `This replaces the photo frame's arrangement with the dashboard's ${copy.widgets.length} widgets.${leftOut} Done keeps it and Cancel puts the old one back.`,
       { confirmLabel: 'Copy', variant: 'default' },
     );
-    if (!ok) return;
-    if (editingScreensaver) onWidgetsChange(copy.widgets);
-    else onSelectScreensaverTemplate?.(copy.widgets);
-    onEditTabChange?.(editingScreensaver ? 'dashboard' : 'idle');
+    if (ok) onSelectScreensaverTemplate?.(copy.widgets);
   };
 
   if (measureMode) {
@@ -243,6 +246,47 @@ export function LayoutEditor({
     return true;
   };
 
+  // Editing, in the header: another dashboard on the canvas, on the same tab.
+  const pickDashboard = async (d: DashboardInfo) => {
+    if (d.id === currentDashboardId) return;
+    if (!(await beforeDashboardSwitch())) return;
+    keepPanelFor(d.id, sheet);
+    if (d.slug) onSwitchDashboard?.(d.slug);
+    else if (d.isDefault) window.location.assign(editLink('/'));
+  };
+
+  // The header menu (#1350): the dashboard's own jobs, which were the
+  // Dashboard and More tabs. New, Delete, Import and the like are their own
+  // actions, as before; Rename saves at once.
+  const grid = !builtIn || editingScreensaver;
+  const hasToday = allDashboards.some(isBuiltIn);
+  const reset = builtIn && !editingScreensaver ? onResetBuiltIn : editingScreensaver ? onScreensaverReset : onReset;
+  const jobs: DashboardJob[] = [
+    { id: 'new', label: 'New dashboard', onSelect: () => state.setShowCreateDialog(true) },
+    ...(!hasToday && onCreateDashboard ? [{ id: 'add-glance', label: 'Add Glance', onSelect: () => onCreateDashboard('Glance', 'today') }] : []),
+    { id: 'copy', label: 'Make a copy', onSelect: () => state.setShowSaveAsDialog(true) },
+    ...(!builtIn ? [{ id: 'rename', label: 'Rename', onSelect: () => state.handleRenameOpen() }] : []),
+    { id: 'export', label: 'Export', onSelect: state.handleExport },
+    ...(grid ? [
+      { id: 'import', label: 'Import', onSelect: () => state.setShowImportDialog(true) },
+      { id: 'share', label: 'Share to the gallery', onSelect: () => state.setShowShareDialog(true) },
+    ] : []),
+    ...(onMakeDefault ? [{
+      id: 'default',
+      // Held until Done (#1341); Settings > Screens is to hold it (#1351).
+      label: current?.isDefault ? 'Shown on new and unnamed screens' : defaultPending ? 'Shown on new and unnamed screens after Done' : 'Show on new and unnamed screens',
+      disabled: !!current?.isDefault || defaultPending,
+      onSelect: () => onMakeDefault(),
+    }] : []),
+    ...(reset ? [{ id: 'reset', label: 'Reset', onSelect: () => reset() }] : []),
+    {
+      id: 'delete', label: 'Delete', destructive: true,
+      disabled: builtIn || allDashboards.length <= 1,
+      title: builtIn ? 'Glance is built in and cannot be deleted' : allDashboards.length <= 1 ? 'The only dashboard cannot be deleted' : undefined,
+      onSelect: () => state.handleDelete(),
+    },
+  ];
+
   // A dialog opens over the screen, so the sheet closes first: left open, it
   // would sit over the dialog's buttons.
   const sheetContent = (() => {
@@ -271,47 +315,13 @@ export function LayoutEditor({
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
             onNewDashboard={onNewDashboard}
-            onRenamed={(name) => remoteEditHost()?.onRenamed?.(name)}
-            onPickScreen={(id) => {
-              // Changes not yet saved with Done are asked about first (#1341).
-              void openOtherScreen(id, {
-                unsaved: anyChanged,
-                ask: () => askSwitch('The changes made here are not saved yet.'),
-                // Done, which then opens the other screen's editor.
-                save: async (href) => {
-                  if (saveBlocked) {
-                    setSheet('screen');
-                    toast({ title: saveBlocked, variant: 'destructive' });
-                    return;
-                  }
-                  if (host) host.next = href;
-                  await state.handleSave();
-                },
-              });
-            }}
-          />
-        );
-      case 'dashboard':
-        return (
-          <DashboardSheet
-            allDashboards={allDashboards}
-            currentDashboardId={currentDashboardId}
-            shownHereId={screenId && screenPlan ? screenPlan.dashboardId ?? allDashboards.find((d) => d.isDefault)?.id ?? null : null}
-            onSwitchDashboard={onSwitchDashboard}
-            onAddToday={onCreateDashboard ? () => onCreateDashboard('Glance', 'today') : undefined}
-            onCreateOpen={() => state.setShowCreateDialog(true)}
-            onRenameOpen={() => state.handleRenameOpen()}
-            onSaveAsOpen={() => state.setShowSaveAsDialog(true)}
-            defaultPending={defaultPending}
-            beforeSwitch={beforeDashboardSwitch}
-            onSetDefault={() => onMakeDefault?.()}
-            onDelete={() => state.handleDelete()}
-            onResetBuiltIn={onResetBuiltIn}
+            screenName={screenName}
           />
         );
       case 'widgets':
         return (
           <WidgetsSheet
+            scope={scope}
             builtIn={builtIn}
             editingScreensaver={editingScreensaver}
             orientation={screenGuideOrientation}
@@ -325,41 +335,19 @@ export function LayoutEditor({
             onSelectedWidgetChange={onSelectedWidgetChange}
             hideEmptyByDefault={hideEmptyByDefault}
             idleToggles={idleToggles}
+            onCopyFromDashboard={hasIdleLayout && !builtIn && onSelectScreensaverTemplate ? () => { void handleCopyFromDashboard(); } : undefined}
+            onBackToDashboard={onEditTabChange ? () => onEditTabChange('dashboard') : undefined}
           />
         );
       case 'look':
         return (
           <LookSheet
-            orientation={screenGuideOrientation}
-            onOrientationChange={onScreenGuideOrientationChange}
-            onMeasure={() => toggleMeasureMode()}
-          />
-        );
-      case 'more':
-        return (
-          <MoreSheet
-            builtIn={builtIn}
-            editingScreensaver={editingScreensaver}
-            hasIdleLayout={hasIdleLayout}
-            idleTab={editTab === 'idle'}
-            exportFeedback={state.exportFeedback}
-            onExport={state.handleExport}
-            onImportOpen={() => state.setShowImportDialog(true)}
-            onShareOpen={() => state.setShowShareDialog(true)}
-            onReset={() => (editingScreensaver ? onScreensaverReset?.() : onReset())}
-            onCopyToOther={() => { void handleCopyToOther(); }}
-            preview={(
-              <LayoutEditorPreviewPanel
-                visibleWidgets={visibleWidgets}
-                focusedWidget={focusedWidget ?? undefined}
-                gridScrollY={gridScrollY}
-                gridVisibleRows={gridVisibleRows}
-                gridScrollX={gridScrollX}
-                gridVisibleCols={gridVisibleCols}
-                scrollToGridRef={scrollToGridRef}
-                validation={state.validation}
-              />
-            )}
+            scope={scope}
+            builtIn={builtIn && !editingScreensaver}
+            fontScale={fontScale}
+            onFontScaleChange={onFontScaleChange}
+            widgets={currentWidgets}
+            onWidgetsChange={editingScreensaver && onSelectScreensaverPreset ? onSelectScreensaverPreset : onWidgetsChange}
           />
         );
       default:
@@ -369,11 +357,43 @@ export function LayoutEditor({
 
   return onEditorPage(
     <>
+      <EditorHeader
+        screenId={screenId}
+        deviceNamed={deviceNamed}
+        screens={screens}
+        onScreensChange={setScreens}
+        onRenamed={(name) => remoteEditHost()?.onRenamed?.(name)}
+        onPickScreen={(id) => {
+          // Changes not yet saved with Done are asked about first (#1341).
+          void openOtherScreen(id, {
+            unsaved: anyChanged,
+            ask: () => askSwitch('The changes made here are not saved yet.'),
+            // Done, which then opens the other screen's editor.
+            save: async (href) => {
+              if (saveBlocked) {
+                setSheet(hasScreen ? 'screen' : 'widgets');
+                toast({ title: saveBlocked, variant: 'destructive' });
+                return;
+              }
+              if (host) host.next = href;
+              await state.handleSave();
+            },
+          });
+        }}
+        dashboards={allDashboards}
+        currentDashboardId={currentDashboardId}
+        onPickDashboard={(d) => { void pickDashboard(d); }}
+        jobs={jobs}
+        menuNote={builtIn ? 'Glance is built in. You can change what it shows and reset it, but not delete it. Make a copy to arrange one of your own.' : undefined}
+      />
+
       <EditorBar
         open={sheet}
         onOpenChange={setSheet}
+        tabs={tabs}
         sheet={sheetContent}
-        dirty={{ screen: screenDirty, dashboard: defaultPending, widgets: dashboardDirty || idleLayoutDirty, look: lookDirty }}
+        dirty={{ screen: screenDirty, widgets: dashboardDirty || idleLayoutDirty, look: lookDirty }}
+        unsaved={anyChanged || screenDirty}
         doneLabel={state.saveFeedback || 'Done'}
         doneBlocked={saveBlocked}
         onDone={state.handleSave}

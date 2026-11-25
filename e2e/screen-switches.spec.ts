@@ -140,22 +140,23 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     try {
       let page = laptop.page;
       let sheet = page.locator('[data-editor-sheet="screen"]');
-      // The tab says which screen it is (#1326).
-      await expect(sheet.getByLabel('Screen', { exact: true })).toHaveValue(screen.id);
+      // The header says which screen it is (#1326, #1350).
+      const header = page.locator('[data-editor-header]');
+      await expect(header.getByLabel('Screen', { exact: true })).toHaveValue(screen.id);
       await sheet.locator('[data-normally-row] [data-row-edit]').click();
       await expect(sheet.getByLabel('Normally', { exact: true })).toHaveValue(kitchen.id);
-      // The pencil renames it in place: Esc keeps the name, Enter saves at
+      // The pencil, in the header, renames it in place: Esc keeps the name, Enter saves at
       // once, and the heading and the drop-down follow.
-      await sheet.getByRole('button', { name: `Rename Hall ${tag}` }).click();
-      await expect(sheet.getByLabel('Name of this screen')).toBeFocused();
-      await sheet.getByLabel('Name of this screen').fill('Nope');
-      await sheet.getByLabel('Name of this screen').press('Escape');
-      await expect(sheet.getByLabel('Name of this screen')).toHaveCount(0);
-      await sheet.getByRole('button', { name: `Rename Hall ${tag}` }).click();
-      await sheet.getByLabel('Name of this screen').fill(`Front hall ${tag}`);
-      await sheet.getByLabel('Name of this screen').press('Enter');
+      await header.getByRole('button', { name: `Rename Hall ${tag}` }).click();
+      await expect(header.getByLabel('Name of this screen')).toBeFocused();
+      await header.getByLabel('Name of this screen').fill('Nope');
+      await header.getByLabel('Name of this screen').press('Escape');
+      await expect(header.getByLabel('Name of this screen')).toHaveCount(0);
+      await header.getByRole('button', { name: `Rename Hall ${tag}` }).click();
+      await header.getByLabel('Name of this screen').fill(`Front hall ${tag}`);
+      await header.getByLabel('Name of this screen').press('Enter');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Editing Front hall ${tag}`);
-      await expect(sheet.getByLabel('Screen', { exact: true }).locator(`option[value="${screen.id}"]`)).toHaveText(`Front hall ${tag}`);
+      await expect(header.getByLabel('Screen', { exact: true }).locator(`option[value="${screen.id}"]`)).toHaveText(`Front hall ${tag} screen`);
       await expect.poll(async () => (await stored()).name).toBe(`Front hall ${tag}`);
       await expect(sheet.locator('[data-timeline-bar]')).toHaveCount(0);
 
@@ -187,9 +188,8 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       const days = times.getByRole('group', { name: 'Switch days' });
       await days.getByRole('button', { name: 'Saturday' }).click();
       await days.getByRole('button', { name: 'Sunday' }).click();
-      // The Dashboard panel marks the one shown here.
-      await page.locator('[data-editor-open="dashboard"]').click();
-      await expect(page.locator(`[data-dashboard-row="${kitchen.id}"] [data-shown-here]`)).toHaveText('Shown here');
+      // Normally says the one shown here; Editing, in the header, is only what the canvas has open (#1350).
+      await expect(sheet.locator('[data-normally-row] [data-row-summary]')).toHaveText(`Kitchen ${tag}`);
       await page.locator('[data-editor-done]').click();
       await expect.poll(async () => (await stored()).switches, { timeout: 30_000 }).toEqual([
         { when: 'bus', dashboardId: school.id, before: 10 },
