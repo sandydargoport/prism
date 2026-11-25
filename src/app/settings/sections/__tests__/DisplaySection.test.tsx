@@ -11,6 +11,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+let mockWallpaperOn = false;
 const swatch = { background: '0 0% 100%', card: '0 0% 100%', primary: '0 0% 0%', accent: '0 0% 50%', destructive: '0 80% 50%' };
 
 jest.mock('@/components/providers', () => ({
@@ -29,7 +30,7 @@ jest.mock('@/components/settings/ThemeShareDialog', () => ({ ThemeShareDialog: (
 jest.mock('@/components/settings/CommunityThemeGallery', () => ({ CommunityThemeGallery: () => null }));
 jest.mock('@/components/settings/ThemeImportButton', () => ({ ThemeImportButton: () => null }));
 jest.mock('@/components/layout/WallpaperBackground', () => ({
-  useWallpaperSettings: () => ({ enabled: false, setEnabled: jest.fn(), interval: 15, setInterval: jest.fn() }),
+  useWallpaperSettings: () => ({ enabled: mockWallpaperOn, setEnabled: jest.fn(), interval: 15, setInterval: jest.fn() }),
   useAutoOrientationSetting: () => ({ enabled: false, setEnabled: jest.fn() }),
 }));
 jest.mock('@/lib/hooks/useAwayModeTimeout', () => ({ useAwayModeTimeout: () => ({ timeout: 0, setTimeout: jest.fn(), ready: true, error: null }) }));
@@ -51,6 +52,22 @@ describe('Appearance: where one screen\'s settings are', () => {
     expect(note.textContent).toContain('in that screen\'s editor: choose More > Edit layout on the screen');
     expect(note.textContent).not.toMatch(/bottom of the screen|editing bar/);
     expect(note.querySelector('a')!.getAttribute('href')).toBe('/settings?section=displays');
+  });
+});
+
+// #1351: captions and On this day are in Settings > Photos, not behind the wallpaper switch.
+describe('Appearance: photo captions', () => {
+  afterEach(() => { mockWallpaperOn = false; });
+
+  it('are not in the wallpaper card, with the wallpaper on or off', async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ settings: {} }) })) as unknown as typeof fetch;
+    mockWallpaperOn = true;
+    render(<DisplaySection />);
+    await act(async () => {});
+    expect(screen.getByText('Rotate every')).toBeTruthy();
+    expect(screen.queryByText('Show when photos were taken')).toBeNull();
+    expect(screen.queryByText('Show where photos were taken')).toBeNull();
+    expect(screen.queryByText('On this day')).toBeNull();
   });
 });
 

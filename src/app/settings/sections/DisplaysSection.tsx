@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistance } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -10,19 +10,34 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { useLayouts } from '@/lib/hooks/useLayouts';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
-import { screenSummary } from '@/lib/displays/screenSummary';
+import { screenRowSentence } from '@/lib/displays/screenRowSentence';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { screenEditLink } from '@/lib/displays/editPlace';
-import { switchInWords, type ScreenSwitch } from '@/lib/screenSwitches';
+import type { ScreenSwitch } from '@/lib/screenSwitches';
+import type { IdleSource } from '@/lib/idleBackground';
+import {
+  DEFAULT_SCREEN_DAY,
+  HOUSEHOLD_DAY_SETTING,
+  NIGHT_LEVELS,
+  parseHouseholdDay,
+  type NightLevel,
+  type ScreenDay,
+} from '@/lib/screenDay';
+import { useBusRoutes } from '@/components/layout/sheetRows';
 
 /**
- * Settings > Screens (#690, #1153, #1267): the list of screens, each with
- * whether it is on, the dashboard it shows (#1282) and Edit, which opens its
- * editor: on the screen itself, or from any other device over a live picture
- * of it. Everything about a screen is set in its editor, naming the device in
- * use included (Screen, #1326); here a screen is only renamed or removed.
+ * Settings > Screens (#690, #1153, #1267, #1351): the list of screens, each
+ * with whether it is on, its sentence (the one its editor's Screen tab shows,
+ * from the same function) and Edit, which opens its editor: on the screen
+ * itself, or from any other device over a live picture of it. Everything
+ * about a screen is set in its editor, naming the device in use included
+ * (Screen, #1326); here a screen is only renamed or removed.
+ *
+ * Below the list, the household's row: the dashboard new and unnamed screens
+ * show, and their idle and night look (`screenStartingDay`, #1345). Settings
+ * save at once, as everywhere in Settings; only the editor waits for Done.
  */
 
 type DisplayEntry = {
@@ -34,10 +49,21 @@ type DisplayEntry = {
   dashboardId: string | null;
   switches: ScreenSwitch[];
   settings: ScreenSettings;
+  /** Its reported width, null before it reports one. */
+  width?: number | null;
   editing?: boolean;
 };
 
 const NAME_MAX = 60;
+
+/** The idle looks, in the words the editor's When idle uses. */
+const LOOKS: { value: IdleSource; label: string }[] = [
+  { value: 'dashboard', label: 'The dashboard, quieter' },
+  { value: 'photos', label: 'A photo frame' },
+  { value: 'sky', label: 'The night sky' },
+];
+const SAME = 'same';
+const SELECT = 'min-h-9 rounded-md border border-input bg-background px-2 py-1.5 text-sm';
 
 function statusText(d: DisplayEntry, now: number): string {
   if (d.online) return 'Online';
@@ -58,7 +84,9 @@ export function DisplaysSection() {
   // "Last seen 3 hours ago" is measured from when the list was fetched.
   const [fetchedAt, setFetchedAt] = useState(0);
 
-  const { layouts } = useLayouts();
+  const { layouts, refresh: refreshLayouts } = useLayouts();
+  // The household's starting day: what a screen with no day of its own goes by.
+  const [household, setHousehold] = useState<ScreenDay | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
   const { timeFormat } = useTimeFormat();
@@ -79,8 +107,14 @@ export function DisplaysSection() {
       setLoaded(true);
     }
   }, []);
+  const loadHousehold = useCallback(async () => {
+    const res = await fetch('/api/settings').catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    setHousehold(parseHouseholdDay(data?.settings?.[HOUSEHOLD_DAY_SETTING]));
+  }, []);
 
   useFetchOnMount(load);
+  useFetchOnMount(loadHousehold);
 
   const run = async (action: () => Promise<Response>) => {
     setBusy(true);
@@ -93,6 +127,9 @@ export function DisplaysSection() {
       }
       await load();
       return true;
+    } catch {
+      setError('That did not work. Try again.');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -102,19 +139,30 @@ export function DisplaysSection() {
   const editHref = (d: DisplayEntry): string => screenEditLink(d.id);
 
   const defaultId = layouts.find((l) => l.isDefault)?.id ?? '';
-  const nameOf = (id: string | null) => layouts.find((l) => l.id === (id ?? defaultId))?.name ?? 'the default';
-  /** What a screen shows and when it switches, for its line: "Kitchen, School run at bus time". */
-  const shows = (d: DisplayEntry): string => [
-    `Shows ${nameOf(d.dashboardId)}`,
-    ...(d.switches ?? []).map((s) => switchInWords(s, nameOf(s.dashboardId), (t) => formatTimeOfDay(t, timeFormat))),
-  ].join(', ');
+  // Bus routes say which days bus time is; read only when a screen has a bus switch.
+  const routes = useBusRoutes(displays.some((d) => (d.switches ?? []).some((sw) => sw.when === 'bus')));
+  const clock = useCallback((t: string) => formatTimeOfDay(t, timeFormat), [timeFormat]);
+  const dashboards = useMemo(() => layouts.map((l) => ({ id: l.id, name: l.name, isDefault: l.isDefault })), [layouts]);
+  /** A screen's sentence, as its editor's Screen tab says it. */
+  const sentence = (d: DisplayEntry): string => screenRowSentence(d, {
+    dashboards, household: household ?? DEFAULT_SCREEN_DAY, routes, clock,
+  });
 
-  /** A screen shows another dashboard, from its row (#1282). */
-  const chooseDashboard = (d: DisplayEntry, dashboardId: string) => run(() => fetch(`/api/displays/${d.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dashboardId }),
-  }));
+  /** New and unnamed screens show another dashboard, at once. */
+  const chooseDefault = async (id: string) => {
+    if (await run(() => fetch(`/api/layouts/${id}/default`, { method: 'POST' }))) await refreshLayouts();
+  };
+  /** Their idle and night look, at once; put back when it did not save. */
+  const changeHousehold = async (next: ScreenDay) => {
+    const before = household;
+    setHousehold(next);
+    const ok = await run(() => fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: HOUSEHOLD_DAY_SETTING, value: next }),
+    }));
+    if (!ok) setHousehold(before);
+  };
 
   const rename = async (id: string) => {
     const ok = await run(() => fetch(`/api/displays/${id}`, {
@@ -138,9 +186,9 @@ export function DisplaysSection() {
       <div>
         <h2 className="text-2xl font-bold">Screens</h2>
         <p className="text-muted-foreground">
-          Every named screen in the house, whether it is on, and the dashboard it shows. Edit
-          opens a screen&apos;s editor over a live picture of it. A device nobody named shows
-          the default dashboard; to name one, open the editor on it and go to Screen.
+          Every named screen in the house, whether it is on, and what it does through the day.
+          Edit opens a screen&apos;s editor over a live picture of it. To name a device, open
+          the editor on it and go to Screen.
         </p>
         {loaded && !current && (
           <p className="mt-2 text-sm text-muted-foreground" data-unnamed-here>
@@ -164,9 +212,9 @@ export function DisplaysSection() {
         <CardHeader>
           <CardTitle>All screens</CardTitle>
           <CardDescription>
-            A screen shows as online while it is switched on. Each shows a dashboard, and can
-            switch to another at bus time or at set times. Edit changes them and everything else
-            about the screen; a screen that is on shows the change in a few seconds.
+            A screen shows as online while it is switched on. Each row says what the screen
+            shows, when it switches, and how it idles by day and at night. Edit changes them and
+            everything else about the screen; a screen that is on shows the change in a few seconds.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -208,22 +256,10 @@ export function DisplaysSection() {
                         {statusText(d, fetchedAt)}
                         {d.editing && ' · being edited'}
                       </div>
-                      <div className="text-sm text-muted-foreground" data-screen-summary>
-                        {screenSummary(d.settings ?? {}, shows(d))}.
-                      </div>
+                      {household && layouts.length > 0 && (
+                        <p className="m-0 mt-1 text-sm" data-screen-sentence>{sentence(d)}</p>
+                      )}
                     </div>
-                    {layouts.length > 0 && (
-                      <select
-                        aria-label={`Dashboard for ${d.name}`}
-                        className="min-h-9 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                        value={d.dashboardId && layouts.some((l) => l.id === d.dashboardId) ? d.dashboardId : defaultId}
-                        disabled={busy}
-                        onChange={(e) => void chooseDashboard(d, e.target.value)}
-                        data-screen-dashboard
-                      >
-                        {layouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                      </select>
-                    )}
                     <Button size="sm" asChild data-screen-edit>
                       <Link href={editHref(d)}>Edit</Link>
                     </Button>
@@ -245,6 +281,93 @@ export function DisplaysSection() {
           </ul>
         </CardContent>
       </Card>
+
+      <NewScreensCard
+        dashboards={dashboards}
+        defaultId={defaultId}
+        day={household}
+        busy={busy}
+        onDashboard={(id) => void chooseDefault(id)}
+        onDay={(next) => void changeHousehold(next)}
+        clock={clock}
+      />
     </div>
+  );
+}
+
+/**
+ * New and unnamed screens (#1351): the dashboard a device nobody named shows,
+ * and the idle and night look it goes by. A screen named later copies the
+ * look once and then keeps its own, so a change here changes no named screen.
+ */
+function NewScreensCard({ dashboards, defaultId, day, busy, onDashboard, onDay, clock }: {
+  dashboards: Array<{ id: string; name: string }>;
+  defaultId: string;
+  /** Null until read. */
+  day: ScreenDay | null;
+  busy: boolean;
+  onDashboard: (id: string) => void;
+  onDay: (day: ScreenDay) => void;
+  clock: (hhmm: string) => string;
+}) {
+  const nightRange = day?.switch.by === 'clock' ? `${clock(day.switch.from)} to ${clock(day.switch.to)}` : 'dusk to dawn';
+  return (
+    <Card data-new-screens>
+      <CardHeader>
+        <CardTitle>New and unnamed screens</CardTitle>
+        <CardDescription>
+          What a device nobody named shows, and how it idles. A screen named later starts with
+          this idle and night look, then keeps its own.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 items-center gap-x-3 gap-y-2 text-sm sm:grid-cols-[minmax(0,15rem)_minmax(0,16rem)]">
+          <label htmlFor="new-screens-dashboard" className="font-medium">New and unnamed screens show</label>
+          <select
+            id="new-screens-dashboard"
+            className={SELECT}
+            value={defaultId}
+            disabled={busy || dashboards.length === 0}
+            onChange={(e) => onDashboard(e.target.value)}
+            data-new-screens-dashboard
+          >
+            {!defaultId && <option value="">None yet</option>}
+            {dashboards.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+          {day && (
+            <>
+              <label htmlFor="new-screens-day" className="font-medium">Idle, by day</label>
+              <select id="new-screens-day" className={SELECT} value={day.day} disabled={busy} data-new-screens-idle="day"
+                onChange={(e) => {
+                  const look = e.target.value as IdleSource;
+                  // At night the same as by day follows it, as in the editor.
+                  onDay(day.night === day.day ? { ...day, day: look, night: look } : { ...day, day: look });
+                }}>
+                {LOOKS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <label htmlFor="new-screens-night" className="font-medium">At night ({nightRange})</label>
+              <select id="new-screens-night" className={SELECT} value={day.night === day.day ? SAME : day.night} disabled={busy} data-new-screens-idle="night"
+                onChange={(e) => onDay({ ...day, night: e.target.value === SAME ? day.day : e.target.value as IdleSource })}>
+                <option value={SAME}>Same as by day</option>
+                {[...LOOKS, { value: 'off' as const, label: 'Screen off' }].filter((o) => o.value !== day.day)
+                  .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {day.night !== 'off' && (
+                <>
+                  <label htmlFor="new-screens-darker" className="font-medium">Darker at night</label>
+                  <select id="new-screens-darker" className={SELECT} value={day.nightLevel} disabled={busy} data-new-screens-idle="darker"
+                    onChange={(e) => onDay({ ...day, nightLevel: Number(e.target.value) as NightLevel })}>
+                    {NIGHT_LEVELS.map((l) => <option key={l} value={l}>{l === 0 ? 'Not darker' : `${l}%`}</option>)}
+                  </select>
+                </>
+              )}
+            </>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          A named screen sets its own in its editor: Screen &gt; Shows &gt; Normally, and Screen &gt; When idle.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

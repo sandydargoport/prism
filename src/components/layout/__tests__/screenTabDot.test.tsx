@@ -96,16 +96,6 @@ describe('every tab shows its own dot (#1341)', () => {
     expect(dotted()).toEqual([]);
   });
 
-  it('none for Show on new and unnamed screens, which is in the header menu: Unsaved changes says it beside Done (#1350)', async () => {
-    pending = { keys: [], plan: false };
-    const { rerender } = render(<LayoutEditor {...props} />);
-    await act(async () => {});
-    expect(document.querySelector('[data-editor-unsaved]')).toBeNull();
-    rerender(<LayoutEditor {...props} defaultPending />);
-    expect(dotted()).toEqual([]);
-    expect(document.querySelector('[data-editor-unsaved]')!.textContent).toBe('Unsaved changes');
-  });
-
   it('Look, for the text size: the screen\'s options are on Screen (#1349, #1350)', async () => {
     const { rerender } = render(<LayoutEditor {...props} lookDirty />);
     await act(async () => {});
@@ -278,12 +268,13 @@ describe('the editor shell (#1350)', () => {
     expect(onSwitchDashboard).toHaveBeenCalledWith('bus-board');
   });
 
-  it('the header menu holds the dashboard\'s jobs, in order', async () => {
-    render(<LayoutEditor {...onScreen} onMakeDefault={() => {}} />);
+  it('the header menu holds the dashboard\'s jobs, in order; which one new and unnamed screens show is in Settings > Screens (#1351)', async () => {
+    render(<LayoutEditor {...onScreen} />);
     await act(async () => {});
     expect(menu().map((m) => m.textContent)).toEqual([
-      'New dashboard', 'Make a copy', 'Rename', 'Export', 'Import', 'Share to the gallery', 'Shown on new and unnamed screens', 'Reset', 'Delete',
+      'New dashboard', 'Make a copy', 'Rename', 'Export', 'Import', 'Share to the gallery', 'Reset', 'Delete',
     ]);
+    expect(screen.queryByText(/new and unnamed screens/i)).toBeNull();
   });
 
   it('on Glance: no Rename, Import or Share; Delete is off and says why; Reset puts Glance back', async () => {
@@ -300,15 +291,9 @@ describe('the editor shell (#1350)', () => {
     expect(onResetBuiltIn).toHaveBeenCalledTimes(1);
   });
 
-  it('a menu job does its own job and closes the menu: Show on new screens waits for Done, Rename opens its dialog', async () => {
-    const onMakeDefault = jest.fn();
-    render(<LayoutEditor {...onScreen} allDashboards={[{ ...MAIN, isDefault: false }, { ...BUS, isDefault: true }]} onMakeDefault={onMakeDefault} />);
+  it('a menu job does its own job and closes the menu: Rename opens its dialog', async () => {
+    render(<LayoutEditor {...onScreen} allDashboards={[{ ...MAIN, isDefault: false }, { ...BUS, isDefault: true }]} />);
     await act(async () => {});
-    (global.fetch as jest.Mock).mockClear();
-    fireEvent.click(menu().find((m) => m.textContent === 'Show on new and unnamed screens')!);
-    expect(onMakeDefault).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('menu')).toBeNull();
-    expect(global.fetch).not.toHaveBeenCalled();
     fireEvent.click(menu().find((m) => m.textContent === 'Rename')!);
     expect(screen.getByDisplayValue('Main')).toBeTruthy();
   });
@@ -370,7 +355,7 @@ describe('the editor shell (#1350)', () => {
   });
 
   it('what the old tabs held is gone: Screen shape, See it at a screen size, Overview, Use while resting', async () => {
-    render(<LayoutEditor {...onScreen} idleBackground={{ source: 'photos' }} onMakeDefault={() => {}} />);
+    render(<LayoutEditor {...onScreen} idleBackground={{ source: 'photos' }} />);
     await act(async () => {});
     for (const tab of ['screen', 'widgets', 'look']) {
       await open(tab);

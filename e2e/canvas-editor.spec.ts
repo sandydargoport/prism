@@ -367,9 +367,9 @@ test.describe('canvas editor (#1265)', () => {
       await expect(menu).toBeVisible();
       // Add Glance is there only on an install with no Glance yet.
       const jobs = (await menu.getByRole('menuitem').allTextContents()).filter((t) => t !== 'Add Glance');
-      expect(jobs.map((t) => t.replace(/^Shown? on new and unnamed screens.*$/, 'Show on new and unnamed screens'))).toEqual([
-        'New dashboard', 'Make a copy', 'Rename', 'Export', 'Import', 'Share to the gallery',
-        'Show on new and unnamed screens', 'Reset', 'Delete',
+      // Which one new and unnamed screens show is in Settings > Screens (#1351).
+      expect(jobs).toEqual([
+        'New dashboard', 'Make a copy', 'Rename', 'Export', 'Import', 'Share to the gallery', 'Reset', 'Delete',
       ]);
       const m = await rect(page, '[data-dashboard-menu]');
       expect(m.right).toBeLessThanOrEqual(1440);

@@ -246,10 +246,11 @@ function ScreensHelp() {
       <P>A screen is a device with a name, such as Kitchen. Each screen shows one dashboard, can switch to another for a while, and keeps its own settings. Everything about a screen is set in its editor.</P>
 
       <H2>Naming a screen</H2>
-      <P>On the device itself, open More &gt; Edit layout &gt; Screen &gt; Shows and choose <strong>Edit</strong> on <strong>Normally</strong>, or <strong>Add a time</strong>: each asks for a name first. If it had a name before (after a browser reset, say), pick it under <strong>Or it is</strong> to take back its name and settings. A device nobody named shows the default dashboard.</P>
+      <P>On the device itself, open More &gt; Edit layout &gt; Screen &gt; Shows and choose <strong>Edit</strong> on <strong>Normally</strong>, or <strong>Add a time</strong>: each asks for a name first. If it had a name before (after a browser reset, say), pick it under <strong>Or it is</strong> to take back its name and settings. A device nobody named shows the dashboard set in Settings &gt; Screens &gt; <strong>New and unnamed screens show</strong>.</P>
 
       <H2>Settings &gt; Screens</H2>
-      <P>Lists every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> and <strong>Remove</strong> are here. <strong>Edit</strong> opens that screen&apos;s editor, from the screen or from a phone, with a live picture of the screen. <strong>Done</strong> sends the changes, and a screen that is on shows them in a few seconds.</P>
+      <P>Lists every named screen, whether it is online, and its sentence: the same one its Screen tab starts with, such as &quot;Hallway shows Main. Idle for 2 minutes, it becomes a photo frame. At night the photo frame is 50% darker.&quot; <strong>Rename</strong> and <strong>Remove</strong> are here. <strong>Edit</strong> opens that screen&apos;s editor, from the screen or from a phone, with a live picture of the screen. <strong>Done</strong> sends the changes, and a screen that is on shows them in a few seconds.</P>
+      <P>Below the list, Settings &gt; Screens &gt; <strong>New and unnamed screens show</strong> picks the dashboard a device nobody named shows, with its idle look by day, at night, and how much darker at night. A screen named later starts with that idle and night look, then keeps its own. These save at once, like the rest of Settings.</P>
 
       <H2>Screen</H2>
       <P>More &gt; Edit layout &gt; Screen, the first tab, is the screen&apos;s whole day. At the top, one sentence says what it does, for example &quot;Hallway shows Main. On school days it shows Bus board around bus time and stays awake for it. Idle for 2 minutes, it becomes a photo frame. At night the photo frame is 50% darker.&quot; It changes as you change the rows below, before you press Done.</P>
@@ -328,7 +329,7 @@ function DashboardHelp() {
 
       <H2>Opening the Editor</H2>
       <P>Open More &gt; Edit layout (parents only). The editor shows the dashboard on a canvas, with a header above it and a panel beside it.</P>
-      <P>The header says which screen you are editing and, after <strong>Editing</strong>, which dashboard the canvas has open, for example &quot;Hallway screen · Editing Main dashboard&quot;. Pick another screen to edit it, or the pencil beside its name to rename it (that saves at once). Pick another dashboard under Editing to open it on the canvas; that never changes what the screen shows, which is Screen &gt; Shows &gt; Normally. The <strong>...</strong> menu holds the dashboard&apos;s jobs: <strong>New dashboard</strong>, <strong>Make a copy</strong>, <strong>Rename</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong>, <strong>Show on new and unnamed screens</strong>, <strong>Reset</strong> and <strong>Delete</strong>.</P>
+      <P>The header says which screen you are editing and, after <strong>Editing</strong>, which dashboard the canvas has open, for example &quot;Hallway screen · Editing Main dashboard&quot;. Pick another screen to edit it, or the pencil beside its name to rename it (that saves at once). Pick another dashboard under Editing to open it on the canvas; that never changes what the screen shows, which is Screen &gt; Shows &gt; Normally. The <strong>...</strong> menu holds the dashboard&apos;s jobs: <strong>New dashboard</strong>, <strong>Make a copy</strong>, <strong>Rename</strong>, <strong>Export</strong>, <strong>Import</strong>, <strong>Share to the gallery</strong>, <strong>Reset</strong> and <strong>Delete</strong>.</P>
       <P>The panel has three tabs, each opening with a line that says whose settings it holds:</P>
       <Ul>
         <Li><strong>Screen</strong> (&quot;Hallway · This screen&quot;): the screen&apos;s whole day: what it shows when, how it idles by day and at night, light or dark, and its own settings (see the Screens help section). Editing a dashboard with no screen, from a laptop say, there is no Screen tab</Li>
@@ -374,10 +375,10 @@ function DashboardHelp() {
       <H2>Multiple Dashboards</H2>
       <P>Create separate dashboards for different rooms or screens. <strong>Editing</strong>, in the editor&apos;s header, lists them all; pick one to edit it, or the header menu &gt; <strong>New dashboard</strong> to create one.</P>
       <Ul>
-        <Li>The dashboard new and unnamed screens show lives at <strong>/</strong>: pick it with the header menu &gt; <strong>Show on new and unnamed screens</strong>, then <strong>Done</strong></Li>
+        <Li>The dashboard new and unnamed screens show lives at <strong>/</strong>: pick it in Settings &gt; Screens &gt; <strong>New and unnamed screens show</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
         <Li>Each has its own widget layout, photo frame arrangement and text size</Li>
-        <Li>Each named screen picks the dashboard it shows (Screen &gt; Shows &gt; Normally, or Settings &gt; Screens)</Li>
+        <Li>Each named screen picks the dashboard it shows in its editor: Screen &gt; Shows &gt; Normally</Li>
       </Ul>
     </>
   );
@@ -644,7 +645,7 @@ function PhotosHelp() {
         <Li><strong>Below-HD indicator</strong>: A resolution dot flags low-resolution photos so you can filter them out of wallpapers</Li>
       </Ul>
       <P>Manage sources and set a static wallpaper or screensaver in Settings &gt; Photos.</P>
-      <P>In Settings &gt; Appearance, the <strong>Background Wallpaper</strong> card has <strong>Show when photos were taken</strong> (a short line in a free corner), <strong>Show where photos were taken</strong>, and <strong>On this day</strong>, which shows photos from earlier years on this date more often.</P>
+      <P>Settings &gt; Photos &gt; Captions and On this day has <strong>Show when photos were taken</strong> (a short line in a free corner), <strong>Show where photos were taken</strong>, and <strong>On this day</strong>, which shows photos from earlier years on this date more often. They apply on every screen, behind the dashboard and in the photo frame.</P>
     </>
   );
 }
@@ -748,7 +749,7 @@ function SettingsHelp() {
       </Ul>
       <P>A screen&apos;s own settings, like how long it waits before going idle, its orientation, performance and on-screen keyboard, are in its editor: More &gt; Edit layout on the screen, or More &gt; Edit a screen from a phone.</P>
       <H3>Screens</H3>
-      <P>Every named screen, whether it is online, and the dashboard it shows. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor with a live picture of it; from a phone, More &gt; Edit a screen gets there too. To name a device, open the editor on it and go to Screen. A named screen keeps its settings with its name, so a reset browser can take them back. A browser nobody named works as before.</P>
+      <P>Every named screen, whether it is online, and its sentence: what it shows, its times, and how it idles by day and at night. <strong>Rename</strong> or <strong>Remove</strong> a screen here. <strong>Edit</strong> opens any screen&apos;s editor with a live picture of it; from a phone, More &gt; Edit a screen gets there too. To name a device, open the editor on it and go to Screen. A named screen keeps its settings with its name, so a reset browser can take them back. <strong>New and unnamed screens show</strong>, below the list, sets the dashboard a device nobody named shows and its idle and night look.</P>
       <H3>This Screen</H3>
       <P>More &gt; Edit layout &gt; Screen &gt; <strong>Advanced</strong> holds the screen&apos;s own settings:</P>
       <Ul>
@@ -760,7 +761,7 @@ function SettingsHelp() {
         <Li><strong>Notices</strong>: small cards at the side of the screen when something is close</Li>
       </Ul>
       <H3>Photos</H3>
-      <P>Add photo sources (OneDrive, Immich), pick sync folders, and set a static wallpaper or screensaver photo.</P>
+      <P>Add photo sources (OneDrive, Immich), pick sync folders, set a static wallpaper or screensaver photo, and turn on photo captions and <strong>On this day</strong> (Captions and On this day).</P>
       <H3>Bus Tracking</H3>
       <P>Connect Gmail and discover bus routes for the Bus Tracker widget, and set each route&apos;s <strong>Minutes to walk to the stop</strong> (see the Bus Tracking help section).</P>
       <H3>Input</H3>

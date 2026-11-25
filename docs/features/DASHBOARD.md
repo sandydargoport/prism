@@ -22,7 +22,7 @@ The header:
 
 - The screen's drop-down lists every named screen, set to this one. Picking another opens that screen's editor, asking first when changes are not saved. The pencil beside it renames the screen in place: Enter or leaving the field saves it at once, as *Settings > Screens* renames one; Esc keeps the old name. Editing a dashboard with no screen, it says **No screen**, and on a device with no name, **Not named yet**.
 - **Editing** lists every dashboard, Glance first. Picking another opens it on the canvas, on the same tab. It never changes what the screen shows, which is **Screen > Shows > Normally**.
-- The **...** menu: **New dashboard**, **Make a copy**, **Rename**, **Export**, **Import**, **Share to the gallery**, **Show on new and unnamed screens**, **Reset** and **Delete** (see [Multiple dashboards](#multiple-dashboards)). On Glance it has no Rename, Import or Share, and Delete is off.
+- The **...** menu: **New dashboard**, **Make a copy**, **Rename**, **Export**, **Import**, **Share to the gallery**, **Reset** and **Delete** (see [Multiple dashboards](#multiple-dashboards)). On Glance it has no Rename, Import or Share, and Delete is off.
 
 Each tab opens with a line that says whose settings it holds: "Hallway · This screen" on **Screen**, "Main · Every screen that shows it" on **Widgets** and **Look**. A section ends with at most one fold, named **Advanced**. What each tab holds:
 
@@ -40,7 +40,7 @@ Each tab opens with a line that says whose settings it holds: "Hallway · This s
 
 Over the canvas, the toggles **In use | Idle** and **Day | Night** pick which of the screen's four states it draws, each as the screen draws it, and the line under the canvas names it: "Main, idle, at night: a photo frame, 50% darker. 1280 x 800." (see [Idle, away and sitter screens](DISPLAY-MODES.md)).
 
-Everything in the editor waits for **Done**, including **Show on new and unnamed screens**, the text size and the screen's own settings, on a device with no name too. A dot on a tab means that tab has changes you haven't saved, and **Unsaved changes** beside **Done** says so for the whole editor. **Done** saves everything and **Cancel** puts it all back. The header menu's jobs that make, copy, delete or import a dashboard are their own actions, as before, and a rename saves at once.
+Everything in the editor waits for **Done**, including the text size and the screen's own settings, on a device with no name too. A dot on a tab means that tab has changes you haven't saved, and **Unsaved changes** beside **Done** says so for the whole editor. **Done** saves everything and **Cancel** puts it all back. The header menu's jobs that make, copy, delete or import a dashboard are their own actions, as before, and a rename saves at once.
 
 Opening another dashboard from **Editing**, or another screen from the screen's drop-down, with changes not saved asks first: **Save and switch** saves them and opens it, **Discard** opens it without them, and **Stay** keeps you where you are.
 
@@ -116,8 +116,8 @@ You can make a separate dashboard for each room or screen. **Editing**, in the e
 
 - **New dashboard** asks for a name and what to start from: the Default Template, a copy of the current dashboard, or blank.
 - **Make a copy** saves the dashboard you are editing as a new one, or over another one.
-- **Rename** (saved at once), **Show on new and unnamed screens** and **Delete** act on the dashboard you are editing.
-- The dashboard new and unnamed screens show lives at **`/`**. **Show on new and unnamed screens** makes it so when you press **Done**.
+- **Rename** (saved at once) and **Delete** act on the dashboard you are editing.
+- The dashboard new and unnamed screens show lives at **`/`**. Pick it in *Settings > Screens > New and unnamed screens show*; it saves at once.
 - Named dashboards get URLs like **`/d/kitchen`** or **`/d/living-room`**.
 - Each dashboard has its own widget layout, photo frame arrangement and text size.
 - Bookmark a dashboard URL on a device that only shows that dashboard, so it opens straight to it.
@@ -135,7 +135,7 @@ A named screen shows one dashboard, and can switch to another for a while. Both 
 
 **+ Add a time** and, if bus tracking is set up (at least one route in *Settings > Bus*), **+ Add bus time** add one; a bus row made before keeps its row either way; a screen can have up to 12. Higher rows win where times overlap, and the arrow on an opened row moves it up. A row that a higher one covers says so, for example "Covered by Bus time (Bus board) above, so it never shows." A row's dashboard list ends with **New dashboard...**, which makes a new dashboard there and then and switches the row to it. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. **Editing**, in the header, only changes which dashboard the canvas has open, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
 
-A device nobody named shows the default dashboard and never switches. To give it times, name it: open the editor on it, then **Screen** > **Normally** > **Edit** or **+ Add a time**, which ask for a name first.
+A device nobody named shows the dashboard set in *Settings > Screens > New and unnamed screens show* and never switches. To give it times, name it: open the editor on it, then **Screen** > **Normally** > **Edit** or **+ Add a time**, which ask for a name first.
 
 Make a dashboard to switch to with **Make a copy** in the header menu and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until it next goes idle, or until a switch starts or ends, and then shows its own again. This works with no switches too. The screen never goes idle while its editor is open, on the screen or from a phone, so nothing dims or covers the editor. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 

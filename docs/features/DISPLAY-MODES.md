@@ -68,7 +68,7 @@ At night the idle screen gets darker: a black layer eases in over a few seconds 
 
 #### New and unnamed screens
 
-The household keeps a starting day: what a screen shows idle by day and at night, when night is, and how much darker. A device with no name idles by it until something is changed in its own editor. When a device is named, the screen keeps the day the device had, once, and holds its own from then on. On a new install the starting day is the dashboard, quieter, by day and at night, from dusk to dawn, 50% darker at night. On an upgrade it is what the default dashboard showed idle, not darker, and each named screen keeps how it idled on its normal dashboard and how dark it went.
+The household keeps a starting day: what a screen shows idle by day and at night, when night is, and how much darker. Set the looks and how much darker in *Settings > Screens > New and unnamed screens show*, beside the dashboard those screens show; they save at once. A device with no name idles by it until something is changed in its own editor. When a device is named, the screen keeps the day the device had, once, and holds its own from then on. On a new install the starting day is the dashboard, quieter, by day and at night, from dusk to dawn, 50% darker at night. On an upgrade it is what the default dashboard showed idle, not darker, and each named screen keeps how it idled on its normal dashboard and how dark it went.
 
 A web page can't change the panel's own brightness or turn it off. On an OLED panel the black layer really does dim it. On an LCD the backlight stays on, though less light reaches the room. A screen that should go fully dark at night still needs the computer's own display sleep.
 

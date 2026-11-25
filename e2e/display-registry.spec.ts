@@ -222,11 +222,11 @@ test.describe('Editing a screen from a phone', () => {
       await wall.waitForTimeout(3_000);
       await wall.waitForLoadState('load');
 
-      // The row: what it shows and how it rests, and one Edit.
+      // The row: its sentence, and one Edit; no dashboard picker of its own (#1351).
       await phone.reload();
       const row = phone.getByTestId('display-row').filter({ hasText: DEN });
-      await expect(row.locator('[data-screen-summary]')).toContainText(`Shows Den board ${tag}, rests after 2 min`);
-      await expect(row.getByLabel(`Dashboard for ${DEN}`)).toHaveValue(board.id);
+      await expect(row.locator('[data-screen-sentence]')).toContainText(`${DEN} shows Den board ${tag}. Idle for 2 minutes,`);
+      await expect(row.locator('select')).toHaveCount(0);
       await expect(row.getByRole('button', { name: 'Settings' })).toHaveCount(0);
       await row.getByRole('link', { name: 'Edit' }).click();
       await expect(phone).toHaveURL(/\/screens\//, { timeout: 60_000 });
@@ -266,6 +266,9 @@ test.describe('Editing a screen from a phone', () => {
       expect(await readStorage(phone, 'prism-screensaver-timeout')).toBeNull();
       await phone.locator('[data-remote-edit-root] [data-editor-done]').click();
       await expect(phone.locator('[data-screen-saved]')).toContainText(`Saved. ${DEN} shows the change in a few seconds.`, { timeout: 30_000 });
+      // Its row says the new Idle after.
+      await expect(phone.getByTestId('display-row').filter({ hasText: DEN }).locator('[data-screen-sentence]'))
+        .toContainText(`${DEN} shows Den board ${tag}. Idle for 1 hour,`);
 
       // The wall has it within a few seconds, and the note is gone.
       await expect.poll(() => readStorage(wall, 'prism-screensaver-timeout'), { timeout: 30_000 }).toBe('3600');
@@ -594,6 +597,51 @@ test.describe('Settings width', () => {
     } finally {
       if (id) await context.request.delete(`/api/displays/${id}`).catch(() => {});
       await context.close();
+    }
+  });
+});
+
+test.describe('New and unnamed screens show (#1351)', () => {
+  test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+  test.setTimeout(120_000);
+  const PIN = process.env.E2E_PIN || '1234';
+
+  test('in Settings > Screens, the dashboard and the idle and night look save at once, and the editor menu no longer has it', async ({ page }) => {
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+    const tag = Date.now().toString(36);
+    const spare = await (await page.request.post('/api/layouts', { data: { name: `Spare ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }] } })).json();
+    const defaultId = async (): Promise<string | undefined> =>
+      ((await (await page.request.get('/api/layouts')).json()).layouts as Array<{ id: string; isDefault: boolean }>).find((l) => l.isDefault)?.id;
+    const startingDay = async () => (await (await page.request.get('/api/settings')).json()).settings.screenStartingDay;
+    const before = { id: await defaultId(), day: await startingDay() };
+    try {
+      await page.goto('/settings?section=displays');
+      const card = page.locator('[data-new-screens]');
+      const show = card.getByLabel('New and unnamed screens show');
+      await expect(show).toHaveValue(before.id!, { timeout: 60_000 });
+
+      // The dashboard: saved at once, as the household's default.
+      await show.selectOption({ label: `Spare ${tag}` });
+      await expect.poll(defaultId).toBe(spare.id);
+
+      // The idle and night look: saved at once to the household's starting day.
+      await card.getByLabel('Idle, by day').selectOption({ label: 'The night sky' });
+      await expect.poll(async () => (await startingDay()).day).toBe('sky');
+      expect((await startingDay()).night).toBe('sky');
+      await card.getByLabel(/^At night/).selectOption({ label: 'Screen off' });
+      await expect.poll(async () => (await startingDay()).night).toBe('off');
+      await expect(card.getByLabel('Darker at night')).toHaveCount(0);
+
+      // Read back after a reload.
+      await page.reload();
+      await expect(page.locator('[data-new-screens]').getByLabel('New and unnamed screens show')).toHaveValue(spare.id, { timeout: 60_000 });
+      await expect(page.locator('[data-new-screens]').getByLabel('Idle, by day')).toHaveValue('sky');
+      await expect(page.locator('[data-new-screens]').getByLabel(/^At night/)).toHaveValue('off');
+    } finally {
+      if (before.id) await page.request.post(`/api/layouts/${before.id}/default`);
+      if (before.day) await page.request.patch('/api/settings', { data: { key: 'screenStartingDay', value: before.day } });
+      await page.request.delete(`/api/layouts/${spare.id}`);
     }
   });
 });

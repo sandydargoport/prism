@@ -81,7 +81,9 @@ describe('Help after the new look (#1308)', () => {
       // The editor's shell (#1350): the header, its menu, and Look.
       'Hallway screen · Editing Main dashboard',
       'the header menu > Export',
-      'the header menu > Show on new and unnamed screens',
+      // Settings > Screens holds new and unnamed screens, and Photos the captions (#1351).
+      'Settings > Screens > New and unnamed screens show',
+      'Settings > Photos > Captions and On this day',
       'More > Edit layout > Look > Text size',
       'More > Edit layout > Look > All widgets',
       'Stays when idle',
@@ -137,6 +139,10 @@ describe('Help after the new look (#1308)', () => {
       'See it at a screen size',
       'Settings > Text Size',
       'Stays when resting',
+      // Settings > Screens holds it now, and a row has no dashboard picker (#1351).
+      'Show on new and unnamed screens',
+      'Settings > Appearance, the Background Wallpaper card has',
+      'and the dashboard it shows',
     ]) expect(text).not.toContain(gone);
   });
 

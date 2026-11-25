@@ -152,14 +152,14 @@ The zoom is off when the device asks for reduced motion, below the **Full** perf
 
 The wallpaper and the screensaver can say when the photo on screen was taken, in a bottom corner: "March", "March last year", "March 2019" or "On this day, 2021". The line moves clear of anything small already in that corner, and hides when neither bottom corner has room. It doesn't show on a phone.
 
-Two switches set it, in the **Background Wallpaper** card under *Settings > Appearance > Background and away*:
+Two switches set it, under *Settings > Photos > Captions and On this day*. They apply on every screen, whether the photos are behind the dashboard or in the photo frame:
 
 - **Show when photos were taken**: on by default.
 - **Show where photos were taken**: off by default. Turned on, the line also names the town, for photos that have a location. To find it, Prism sends the photo's rough location (rounded to about a kilometre) to OpenStreetMap, once per photo.
 
 ### On this day
 
-**On this day**, in the same card (off by default), mixes photos taken on today's date in earlier years into the rotation, every other turn. It goes by each screen's own date.
+**On this day**, in the same place (off by default), mixes photos taken on today's date in earlier years into the rotation, every other turn. It goes by each screen's own date.
 
 ### Travel Map photo linking
 
