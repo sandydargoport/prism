@@ -79,7 +79,7 @@ export function ScreensaverSettingsPanel({
 
       <div className="w-[min(30rem,92vw)] max-h-full overflow-y-auto rounded-2xl border border-white/15 bg-neutral-900/95 p-5 text-white shadow-2xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium">Screensaver</h2>
+            <h2 className="text-lg font-medium">Photo frame</h2>
             <button
               onClick={onClose}
               aria-label="Close"
@@ -221,7 +221,7 @@ export function ScreensaverSettingsPanel({
               />
             </label>
             <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <span className="text-sm text-white/70">Settings shortcut in the screensaver&apos;s corner</span>
+              <span className="text-sm text-white/70">Settings shortcut in the photo frame&apos;s corner</span>
               <input
                 type="checkbox"
                 checked={shortcut}
@@ -233,7 +233,7 @@ export function ScreensaverSettingsPanel({
             <div className="h-px bg-white/10 my-1" />
 
             <label className="flex items-center justify-between gap-3">
-              <span className="text-sm text-white/70">Start after</span>
+              <span className="text-sm text-white/70">Idle after</span>
               <select
                 value={ssTimeout}
                 onChange={(e) => setSsTimeout(Number(e.target.value))}
@@ -269,7 +269,7 @@ export function ScreensaverSettingsPanel({
           </div>
 
           <p className="mt-4 text-xs text-white/40">
-            Everything here applies to this display only.
+            Everything here applies to this screen only.
           </p>
       </div>
     </div>,
@@ -295,7 +295,7 @@ export function ScreensaverQuickSettings() {
     <div data-screensaver-keep className="absolute inset-0 z-10 pointer-events-none">
       <button
         onClick={() => setOpen(true)}
-        aria-label="Screensaver settings"
+        aria-label="Photo frame settings"
         style={{ transitionDuration: '2000ms' }}
         className="pointer-events-auto absolute left-5 top-5 h-12 w-12 rounded-full
                    bg-black/35 border border-white/20

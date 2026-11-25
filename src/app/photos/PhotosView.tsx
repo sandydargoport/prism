@@ -30,7 +30,7 @@ const ORIENTATION_OPTIONS = [
 const USAGE_OPTIONS = [
   { value: 'wallpaper', label: 'Wallpaper' },
   { value: 'gallery', label: 'Gallery' },
-  { value: 'screensaver', label: 'Screensaver' },
+  { value: 'screensaver', label: 'Photo frame' },
 ];
 
 export function PhotosView() {

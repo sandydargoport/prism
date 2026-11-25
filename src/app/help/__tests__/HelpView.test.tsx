@@ -47,6 +47,9 @@ describe('Help after the new look (#1308)', () => {
     expect(names.slice(at + 1, at + 4)).toEqual(['Glance', 'Getting Around', 'Screens']);
     // The scroll spec reaches for the last topic.
     expect(names.at(-1)).toBe('Troubleshooting');
+    // Idle has its own topic, under its own name (#1352).
+    expect(names).toContain('Idle and night');
+    expect(names).not.toContain('Screensaver');
   });
 
   it("What's new links to the full changelog in a new tab", () => {
@@ -93,6 +96,13 @@ describe('Help after the new look (#1308)', () => {
       'More > This phone > Cards',
       'More > This phone > Reorder',
       'More > Screens > Away mode',
+      // One model (#1352): the screen owns time, the dashboard owns content.
+      'The screen owns time and the dashboard owns content',
+      'In use',
+      'More > This screen > Idle now',
+      'More > Edit layout > Screen > When idle > Advanced',
+      'Settings > Photos > Pinned Photos',
+      'Settings > Bus Tracking',
     ]) expect(text).toContain(direction);
     for (const gone of [
       'Nothing was removed',
@@ -143,6 +153,13 @@ describe('Help after the new look (#1308)', () => {
       'Show on new and unnamed screens',
       'Settings > Appearance, the Background Wallpaper card has',
       'and the dashboard it shows',
+      // One model (#1352): no screensaver, no resting, no old places.
+      'Screensaver',
+      'screensaver',
+      'resting',
+      'never rests',
+      '(Settings > Bus)',
+      'chosen for each dashboard',
     ]) expect(text).not.toContain(gone);
   });
 

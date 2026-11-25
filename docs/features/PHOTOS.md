@@ -1,10 +1,10 @@
 # Photos
 
-Show your photos on the wall when nobody is using it. Upload them, or sync a OneDrive folder.
+Show your photos on the wall while it is idle. Upload them, or sync a OneDrive folder.
 
 ![Photo gallery](../demos/photos.png){ .hero-image }
 
-The same photos fill the gallery, the idle screen, the wallpaper and the photo strip on the travel map. With OneDrive you pick the folders, so you never sync the whole drive.
+The same photos fill the gallery, the photo frame, the wallpaper behind the dashboard and the photo strip on the travel map. With OneDrive you pick the folders, so you never sync the whole drive.
 
 ## Set it up
 
@@ -69,7 +69,7 @@ Each photo carries usage tags that decide where it can appear. There are no free
 
 - **Wallpaper**: can be shown as the dashboard background.
 - **Gallery**: shown in the main Photos grid.
-- **Screensaver**: included in the screensaver rotation.
+- **Photo frame**: included in the photo frame's rotation, when a screen is idle.
 
 A photo can have any mix of these, or none. The usage tags also work as gallery filters (see [Filtering](#filtering)), and there is a **Favorites** filter for photos marked as favorites.
 
@@ -77,12 +77,12 @@ A photo can have any mix of these, or none. The usage tags also work as gallery 
 
 Pinning replaces the slideshow with one fixed photo. You set pins on the Pinned Photos card in *Settings > Photos*; the lightbox has no pin option.
 
-- **Pinned wallpaper**: the dashboard shows this one photo behind the widgets and stops cycling.
-- **Pinned screensaver**: the same for the screensaver.
+- **Dashboard Wallpaper**: the dashboard shows this one photo behind the widgets and stops cycling.
+- **Photo frame**: the same for the photo frame.
 
 Use it when you want one particular family portrait behind the dashboard all the time.
 
-A pin belongs to one device. Prism stores it in that browser's local storage, so each display can pin its own wallpaper and screensaver, or none. You can pin a wallpaper and still let the screensaver cycle through the rest.
+A pin belongs to one screen. Prism stores it in that browser's local storage, so each screen can pin its own wallpaper and photo frame photo, or none. You can pin a wallpaper and still let the photo frame cycle through the rest.
 
 To change or clear a pin, go back to the same Pinned Photos card in *Settings > Photos*.
 
@@ -94,14 +94,14 @@ The Photos page is a grid split into pages, and thumbnails load as you scroll. C
 
 - the full-resolution photo
 - arrow keys (or swipe on a phone) for next and previous
-- the **Tag for:** toggles, to add or remove the photo from Wallpaper, Gallery and Screensaver (see [Usage tags](#usage-tags))
+- the **Tag for:** toggles, to add or remove the photo from Wallpaper, Gallery and Photo frame (see [Usage tags](#usage-tags))
 - **Delete**, which removes the photo from Prism
 - a resolution dot, with the photo's dimensions and orientation.
 
 #### Filtering
 
 - **Orientation**: show only landscape, portrait or square photos.
-- **Usage**: show photos tagged for Wallpaper, Gallery or Screensaver.
+- **Usage**: show photos tagged for Wallpaper, Gallery or Photo frame.
 - **Favorites**: show only photos marked as favorites.
 - **Below HD**: show only photos smaller than 1920×1080, to find the low-resolution shots that will look poor full screen.
 
@@ -110,7 +110,7 @@ The Photos page is a grid split into pages, and thumbnails load as you scroll. C
 On a computer, tap **Select** to pick several photos at once. The button is hidden on phones.
 
 - Tap photos to select them, or use **Select all** to select every photo that matches the filter, including those on other pages.
-- **Show in:** adds or removes the Wallpaper, Gallery and Screensaver tags on all the selected photos in one go.
+- **Show in:** adds or removes the Wallpaper, Gallery and Photo frame tags on all the selected photos in one go.
 - **Remove from Prism**: deletes the selected photos from Prism. The source files, OneDrive included, are left alone. A photo you remove from a synced source stays removed and isn't downloaded again on the next sync.
 
 #### Resolution indicator
@@ -128,21 +128,21 @@ Use it with the **Below HD** filter to find photos too small for a full-screen w
 The slideshow runs in three places:
 
 - the **Photo widget** on the dashboard
-- the **Screensaver** when it is on
+- the **photo frame**, when a screen is idle
 - the photo display in **Away mode**.
 
 Each of these has its own settings:
 
 - **Rotation interval**: how often the photo changes. The default differs from place to place.
 - **Source filter**: which photo sources to use.
-- **Usage filter**: use only photos tagged for that place (Wallpaper, Gallery or Screensaver).
+- **Usage filter**: use only photos tagged for that place (Wallpaper, Gallery or Photo frame).
 - **Orientation filter**: for example only landscape, which suits a full-screen display, or only portrait.
 
 The browser fetches photos ahead of time and rotates them itself, so a new photo doesn't need a trip to the server.
 
 ### Crossfade and the Ken Burns zoom
 
-The wallpaper and the screensaver share one way of showing photos. The next photo is loaded and decoded first, then fades in over the current one for 2.2 seconds, so the picture never dips to black. While a photo is on screen it zooms slowly in or out (the Ken Burns effect), the next one the other way, anchored on its subject. Each photo is also cropped so its subject sits where no widget or Glance text covers it.
+The wallpaper and the photo frame share one way of showing photos. The next photo is loaded and decoded first, then fades in over the current one for 2.2 seconds, so the picture never dips to black. While a photo is on screen it zooms slowly in or out (the Ken Burns effect), the next one the other way, anchored on its subject. Each photo is also cropped so its subject sits where no widget or Glance text covers it.
 
 Prism finds each photo's subject on the wall itself, a few photos every few minutes, and no photo leaves your install to do it.
 
@@ -150,7 +150,7 @@ The zoom is off when the device asks for reduced motion, below the **Full** perf
 
 ### When and where a photo was taken
 
-The wallpaper and the screensaver can say when the photo on screen was taken, in a bottom corner: "March", "March last year", "March 2019" or "On this day, 2021". The line moves clear of anything small already in that corner, and hides when neither bottom corner has room. It doesn't show on a phone.
+The wallpaper and the photo frame can say when the photo on screen was taken, in a bottom corner: "March", "March last year", "March 2019" or "On this day, 2021". The line moves clear of anything small already in that corner, and hides when neither bottom corner has room. It doesn't show on a phone.
 
 Two switches set it, under *Settings > Photos > Captions and On this day*. They apply on every screen, whether the photos are behind the dashboard or in the photo frame:
 
@@ -171,7 +171,7 @@ The [Travel Map guide](TRAVEL.md#gps-photo-linking) covers setup and how to chan
 
 #### Kitchen dashboard family slideshow
 
-Sync a "Best of 2025" folder from OneDrive and set the screensaver to cycle through it every 30 seconds. The kitchen display then shows your favorites all day.
+Sync a "Best of 2025" folder from OneDrive, set the Kitchen screen to idle as **A photo frame**, and set **Change photo every** to 30 seconds (More > Edit layout > Screen > When idle > Advanced). The Kitchen screen then shows your favorites whenever nobody is using it.
 
 #### Travel scrapbook
 
@@ -183,7 +183,7 @@ Upload a family portrait from Photos > Add. On the Pinned Photos card in *Settin
 
 #### Babysitter mode background
 
-Babysitter mode uses the screensaver photos by default, which means the ones tagged **Screensaver**. Choose that set with care (using the **Tag for:** row in each photo's lightbox) to keep the babysitter view family-friendly.
+Babysitter mode uses the photo frame's photos by default, which means the ones tagged **Photo frame**. Choose that set with care (using the **Tag for:** row in each photo's lightbox) to keep the babysitter view family-friendly.
 
 ## Details
 
@@ -210,7 +210,7 @@ This saves processing and bandwidth on a Raspberry Pi or an older tablet.
 
 Prism downloads each synced OneDrive photo once and keeps it locally, in a `photos-cache` Docker volume. Expect around 1 GB, though the size depends on your library.
 
-**Immich** photos aren't copied as the iPhone originals. The lightbox, screensaver and wallpaper ask Immich for its web-safe `fullsize` (or `preview`) JPEG or WebP, so Firefox and other browsers that can't decode HEIC still show the picture. Prism ignores HEIC files cached by an older version.
+**Immich** photos aren't copied as the iPhone originals. The lightbox, the photo frame and the wallpaper ask Immich for its web-safe `fullsize` (or `preview`) JPEG or WebP, so Firefox and other browsers that can't decode HEIC still show the picture. Prism ignores HEIC files cached by an older version.
 
 If you delete the volume, the next sync downloads everything again. The database rows stay (they hold the file path), so tags, GPS data and pins are kept.
 
@@ -232,7 +232,7 @@ If you delete the volume, the next sync downloads everything again. The database
 
 #### Slideshow shows a thumbnail-quality image, not full
 
-The screensaver uses the smaller cached copy on purpose, to keep it fast. Open the lightbox to see full resolution.
+The photo frame uses the smaller cached copy on purpose, to keep it fast. Open the lightbox to see full resolution.
 
 #### Wallpaper photo loads slowly
 

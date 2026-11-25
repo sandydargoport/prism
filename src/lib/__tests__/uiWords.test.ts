@@ -1,26 +1,28 @@
-import {
-  compare, countHits, findRetired, markdownSegments, readBaseline, report, scan, tsxSegments,
-} from '../../../scripts/ui-words/check';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { findRetired, markdownSegments, report, scan, tsxSegments } from '../../../scripts/ui-words/check';
 
 /**
- * Retired UI words (#1337): the check finds a retired word in UI text and
- * fails, passes text without one, and the repo's count matches the committed
- * baseline (scripts/ui-words-baseline.json). This test is how CI runs it.
+ * Retired UI words (#1337), zero tolerance (#1352): the check finds a retired
+ * word in UI text, passes text without one, finds none in the repo, and one
+ * planted retired word anywhere it reads fails it. There is no baseline.
+ * This test is how CI runs it.
  */
 const words = (file: string, source: string) =>
   findRetired(file, file.endsWith('.md') ? markdownSegments(source) : tsxSegments(source)).map((h) => h.word);
 
 describe('retired UI words', () => {
-  it('fails on a retired word in new UI text', () => {
+  it('fails on a retired word in new UI text, and says what to write instead', () => {
     const hits = findRetired('src/New.tsx', tsxSegments('export const A = () => <label>Rest after</label>;'));
-    const changes = compare({}, countHits(hits));
-    expect(changes.increases).toEqual([{ file: 'src/New.tsx', word: 'Rest after', baseline: 0, now: 1 }]);
-    expect(report(changes, hits)).toContain('src/New.tsx:1: Rest after');
+    expect(hits.map((h) => h.word)).toEqual(['Rest after']);
+    expect(report(hits)).toContain('src/New.tsx:1: "Rest after" (use: "Idle after 2 min"');
   });
 
   it('passes UI text with no retired word', () => {
     const hits = findRetired('src/New.tsx', tsxSegments('export const A = () => <label>Idle after 2 min</label>;'));
-    expect(compare({}, countHits(hits))).toEqual({ increases: [], decreases: [] });
+    expect(hits).toEqual([]);
+    expect(report(hits)).toBe('');
   });
 
   it('reads labels in string literals and attributes a user sees', () => {
@@ -52,9 +54,40 @@ describe('retired UI words', () => {
     expect(words('a.md', 'Set `prism-screensaver-on`, see [Layouts](DASHBOARD.md#screensaver-layout).\n```\nRest after\n```')).toEqual([]);
   });
 
-  it('matches the baseline: lower it when you remove a word, never raise it', () => {
-    const hits = scan();
-    const changes = compare(readBaseline(), countHits(hits));
-    expect(report(changes, hits)).toBe('');
+  it('finds no retired word in the repo', () => {
+    expect(report(scan())).toBe('');
+  });
+
+  describe('zero tolerance: one planted retired word fails it', () => {
+    let root: string;
+    const write = (file: string, text: string) => {
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      fs.writeFileSync(path.join(root, file), text);
+    };
+    beforeEach(() => {
+      // A clean copy of the places the check reads.
+      root = fs.mkdtempSync(path.join(os.tmpdir(), 'ui-words-'));
+      write('src/app/Page.tsx', 'export const P = () => <p>Idle after 2 min</p>;');
+      write('src/i18n/messages/en.json', '{\n  "idle": "Idle after"\n}\n');
+      write('docs/HELP.md', 'Open More > Edit layout > Screen > When idle.\n');
+      write('docs/features/DISPLAY-MODES.md', 'A photo frame, the night sky.\n');
+    });
+    afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    it('passes the clean copy', () => {
+      expect(scan(root)).toEqual([]);
+    });
+
+    it.each([
+      ['src/app/Page.tsx', 'export const P = () => <p>Screensaver</p>;', 'screensaver'],
+      ['src/i18n/messages/en.json', '{\n  "idle": "Resting"\n}\n', 'Resting'],
+      ['docs/HELP.md', 'Open More > Edit layout > Through the day.\n', 'Through the day'],
+      ['docs/features/DISPLAY-MODES.md', 'Pick the **Base dashboard**.\n', 'Base dashboard'],
+    ])('a retired word in %s fails it', (file, text, word) => {
+      write(file, text);
+      const hits = scan(root);
+      expect(hits.map((h) => [h.file, h.word])).toEqual([[file, word]]);
+      expect(report(hits)).toMatch(/^1 retired UI word/);
+    });
   });
 });

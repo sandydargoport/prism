@@ -53,7 +53,7 @@ Glance draws the front page as one scene over the photo, without a grid of cards
 - The coming days as short sentences at the bottom left ("Tomorrow  Soccer at 10."), two things a day.
 - Quiet lines at the bottom right: how many chores are left today, with a ring in each person's colour that ticks a chore off; the shopping list's count, with a plus to add an item; and, when a birthday is two to seven days away, an offer to add a task to mail a card (**Add it** or **Not now**). A line with nothing to say drops out.
 
-In portrait the clock and weather sit on top, the day across the upper middle, the coming days below it and the quiet lines at the foot. Tap an event's words to open it; a tap anywhere else only wakes the screen. By default, while the screen rests, the sentences and quiet lines fade and **Next**, the clock and the weather stay. During the dashboard's night the ink turns warm and the photo is veiled.
+In portrait the clock and weather sit on top, the day across the upper middle, the coming days below it and the quiet lines at the foot. Tap an event's words to open it; a tap anywhere else only wakes the screen. By default, while the screen is idle, the sentences and quiet lines fade and **Next**, the clock and the weather stay. During the screen's night the ink turns warm and the photo is veiled.
 
 Glance is edited in the same editor and stays the live scene while you edit, so each change shows at once. It places each part itself, so its **Widgets** panel has no grid. For each part (**Clock and date**, **Weather**, **The day and the coming days**, **Birthday nudge**, **Chores left** and **Shopping list**) it has **Show** and **Stays when idle**. For the whole scene:
 
@@ -65,7 +65,7 @@ Under **Editing** Glance comes first. The header menu's **Reset** puts its parts
 
 ### Built-in templates
 
-In the **Widgets** panel, **Start from a template** loads a ready-made arrangement for you to rearrange. It asks first, since it replaces every widget on the dashboard, with its place, fill, outline and text. There are six templates, each in a landscape and a portrait version, and the panel lists the ones for the current screen shape. The screensaver has its own set (see below).
+In the **Widgets** panel, **Start from a template** loads a ready-made arrangement for you to rearrange. It asks first, since it replaces every widget on the dashboard, with its place, fill, outline and text. There are six templates, each in a landscape and a portrait version, and the panel lists the ones for the current screen shape. The photo frame has its own set (see [Photo frame arrangement](#photo-frame-arrangement)).
 
 Every template follows the same plan. One widget is the hero of the board, usually the calendar; on photo boards the wallpaper itself is the hero. The other widgets are sized to their natural shape and grouped into two or three balanced zones, instead of an even grid of four.
 
@@ -92,7 +92,7 @@ In the **Widgets** panel, **Browse the community gallery** shows dashboard layou
 - **Apply layout**: puts that design on your dashboard, after asking, since it replaces every widget and its fill, outline and text.
 - **Clear filters**: appears when a search or orientation filter finds nothing.
 
-While you arrange the screensaver, the gallery shows screensaver layouts instead.
+While you arrange the photo frame, the gallery shows photo frame layouts instead.
 
 #### Sharing your layout with the community
 
@@ -133,7 +133,7 @@ A named screen shows one dashboard, and can switch to another for a while. Both 
 - **Set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
 - **Stays awake**, on each row: while the switch is on, the screen does not go idle, and if it was idle when the switch starts, it wakes on the switch's dashboard as if someone had touched it. It is on for bus time and off for set times to begin with; turn it either way on the row. A row with it on ends its line with "stays awake". When the switch ends, the screen goes idle after the usual time with nobody touching it. Waking this way is not opening a dashboard by hand, so the screen goes on following its switches.
 
-**+ Add a time** and, if bus tracking is set up (at least one route in *Settings > Bus*), **+ Add bus time** add one; a bus row made before keeps its row either way; a screen can have up to 12. Higher rows win where times overlap, and the arrow on an opened row moves it up. A row that a higher one covers says so, for example "Covered by Bus time (Bus board) above, so it never shows." A row's dashboard list ends with **New dashboard...**, which makes a new dashboard there and then and switches the row to it. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. **Editing**, in the header, only changes which dashboard the canvas has open, so editing another one never changes what the screen shows. *Settings > Screens* also picks a screen's dashboard from its row.
+**+ Add a time** and, if bus tracking is set up (at least one route in *Settings > Bus Tracking*), **+ Add bus time** add one; a bus row made before keeps its row either way; a screen can have up to 12. Higher rows win where times overlap, and the arrow on an opened row moves it up. A row that a higher one covers says so, for example "Covered by Bus time (Bus board) above, so it never shows." A row's dashboard list ends with **New dashboard...**, which makes a new dashboard there and then and switches the row to it. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. **Editing**, in the header, only changes which dashboard the canvas has open, so editing another one never changes what the screen shows.
 
 A device nobody named shows the dashboard set in *Settings > Screens > New and unnamed screens show* and never switches. To give it times, name it: open the editor on it, then **Screen** > **Normally** > **Edit** or **+ Add a time**, which ask for a name first.
 
@@ -147,17 +147,17 @@ A named screen can show small notice cards down the top right of its dashboard. 
 - **Event**: a timed event starts within the set minutes. The card goes when the event starts. All-day events never show.
 - **Message**: someone posted a family message within the set minutes.
 
-The newest card is on top, and up to four show at once. Prism checks for new messages every half minute and for events every minute. Tap the **×** on a card to dismiss it. The dashboard underneath stays where it is, and the cards cover it until they go. Cards only appear on dashboards. They also show over the screensaver, where they turn dark, keep updating and dim along with it.
+The newest card is on top, and up to four show at once. Prism checks for new messages every half minute and for events every minute. Tap the **×** on a card to dismiss it. The dashboard underneath stays where it is, and the cards cover it until they go. Cards only appear on dashboards. They also show while the screen is idle, where they turn dark, keep updating and go darker at night with the screen.
 
 #### Saving
 
-- **Done** saves the dashboard you are editing, with its screensaver layout.
+- **Done** saves the dashboard you are editing, with its photo frame arrangement, and the screen's own settings.
 - **Make a copy** in the header menu saves it as a new dashboard.
-- The header menu's **Reset** puts the default arrangement in place of yours: the **Default** layout on a dashboard, or the default screensaver while you arrange the screensaver. Nothing is saved until **Done**, and **Cancel** brings yours back.
+- The header menu's **Reset** puts the default arrangement in place of yours: the **Default** layout on a dashboard, or the default photo frame arrangement while you arrange the photo frame. Nothing is saved until **Done**, and **Cancel** brings yours back.
 
 ### Text size
 
-**More > Edit layout > Look > Text size** sets how large everything reads on the dashboard, in 13 steps from 75% to 150%, on every screen that shows it. It scales the whole board at once, separately from each widget's own **Size**, and does not change other pages. The canvas shows the new size at once, and **Done** saves it. It used to be in *Settings*.
+**More > Edit layout > Look > Text size** sets how large everything reads on the dashboard, in 13 steps from 75% to 150%, on every screen that shows it. It scales the whole board at once, separately from each widget's own **Size**, and does not change other pages. The canvas shows the new size at once, and **Done** saves it.
 
 ## Use it
 
@@ -199,7 +199,7 @@ Pick a widget on the screen or in the list in the **Widgets** panel (**More > Ed
 
 Press **Ctrl+Shift+M** to hide the editor's controls for a moment and see the board as it will really look. Click **Exit Preview** to go back. **Show Nav** and **Hide Nav** let you check it with and without the dock, which helps when tuning a layout for a wall display.
 
-Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigation**, in the editor's **Screen** panel under **Advanced**. On, the dock tucks behind a small **Menu** tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.
+Each screen chooses how its dock behaves on a dashboard with **Auto-hide navigation**, in More > Edit layout > Screen > Advanced. On, the dock tucks behind a small **Menu** tab on the bottom edge and comes back with a tap. Off, it stays on screen and the dashboard ends above it.
 
 ### Photo frame arrangement
 
@@ -207,7 +207,7 @@ Each dashboard has its own photo frame arrangement, used when photos or the nigh
 
 The screen goes idle after the time set as **Idle after** in the same place: 30 sec, 1 min, 2 min, 10 min, 1 hour or **Never**, 2 min by default. The photo frame templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
 
-See [Idle, away and sitter screens](DISPLAY-MODES.md) for more on the screensaver and Away mode.
+See [Idle, away and sitter screens](DISPLAY-MODES.md) for more on idle, night and Away mode.
 
 ## Details
 
@@ -215,7 +215,7 @@ See [Idle, away and sitter screens](DISPLAY-MODES.md) for more on the screensave
 
 #### Edit layout is missing from More
 
-Only parents can edit layouts. While a child is signed in, **More** has no **Edit layout**: sign out, or sign in as a parent. A phone's **More** never has it; edit the screen from *Settings > Screens* instead.
+Only parents can edit layouts. While a child is signed in, **More** has no **Edit layout**: sign out, or sign in as a parent. On a phone, **More > Edit a screen** opens a screen's editor instead.
 
 #### My layout doesn't fill the screen / leaves a gap
 

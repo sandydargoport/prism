@@ -68,7 +68,7 @@ export function useLayoutEditorState({
     type: 'prism-layout',
     version: EXPORT_VERSION,
     mode: mode as 'dashboard' | 'screensaver',
-    name: layoutName || (editingScreensaver ? 'Screensaver' : 'Dashboard'),
+    name: layoutName || (editingScreensaver ? 'Photo frame' : 'Dashboard'),
     description: '', author: '', tags: [], screenSizes: [], orientation: 'landscape',
     widgets: currentWidgets.filter(w => w.visible !== false).map((widget): ExportWidget => {
       const reg = WIDGET_REGISTRY[widget.i];

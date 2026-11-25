@@ -229,7 +229,7 @@ export function DashboardHeader({
 
 /**
  * This screen's jobs: Edit layout, Reload, the performance badge, Babysitter
- * and Away modes, and the screensaver. The top bar draws them as icons with
+ * and Away modes, and Idle now. The top bar draws them as icons with
  * their names as tooltips; the dock's More panel draws every one of them with
  * its name, the same way (#922, #1006).
  */
@@ -268,12 +268,12 @@ export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }
           onMouseDown={(e) => { e.stopPropagation(); }}
           onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
           className={job}
-          aria-label="Start screensaver"
-          title={labelled ? undefined : 'Screensaver'}
+          aria-label="Go idle now"
+          title={labelled ? undefined : 'Idle now'}
           data-screen-job="screensaver"
         >
           <ScreensaverIcon />
-          {labelled && <span>Screensaver</span>}
+          {labelled && <span>Idle now</span>}
         </button>
       )}
     </>

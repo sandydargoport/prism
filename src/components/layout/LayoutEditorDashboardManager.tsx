@@ -116,7 +116,7 @@ export function SaveAsDialog({
       <ConfirmDialog
         open={!!confirmTarget}
         title={`Overwrite "${confirmTarget?.name ?? ''}"?`}
-        description={`This will replace the saved widgets and screensaver for "${confirmTarget?.name ?? ''}" with the current edit session. The dashboard's name, slug, and default flag are preserved.`}
+        description={`This replaces the widgets and the photo frame arrangement of "${confirmTarget?.name ?? ''}" with the ones you are editing. Its name and address stay, and so does whether new and unnamed screens show it.`}
         confirmLabel="Overwrite"
         variant="destructive"
         onConfirm={handleConfirmOverwrite}

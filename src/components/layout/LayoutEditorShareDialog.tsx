@@ -75,7 +75,7 @@ export function LayoutEditorShareDialog({
     type: 'prism-layout',
     version: 2,
     mode,
-    name: layoutName || (mode === 'screensaver' ? 'Screensaver' : 'Dashboard'),
+    name: layoutName || (mode === 'screensaver' ? 'Photo frame' : 'Dashboard'),
     description: '',
     author: '',
     tags: [],

@@ -43,7 +43,7 @@ function useSections(isMobile: boolean): HelpSection[] {
       { id: 'bus', title: 'Bus Tracking', content: <BusHelp /> },
       { id: 'away-mode', title: 'Away Mode', desktopOnly: true, content: <AwayModeHelp /> },
       { id: 'babysitter', title: 'Babysitter Mode', desktopOnly: true, content: <BabysitterHelp /> },
-      { id: 'screensaver', title: 'Screensaver', desktopOnly: true, content: <ScreensaverHelp /> },
+      { id: 'idle', title: 'Idle and night', desktopOnly: true, content: <IdleHelp /> },
       { id: 'input', title: 'Keyboard, Voice & Scanning', content: <InputHelp /> },
       { id: 'settings', title: 'Settings', content: <SettingsHelp /> },
       { id: 'integrations', title: 'Integrations', content: <IntegrationsHelp /> },
@@ -224,7 +224,7 @@ function GettingAroundHelp() {
     <>
       <P>The bar along the bottom of the screen holds your main pages. <strong>Home</strong> is the dashboard.</P>
       <Ul>
-        <Li><strong>More</strong>, on the bar, opens everything else in three groups: <strong>This screen</strong> (Edit layout, Reload, Away mode, Babysitter mode and Screensaver), <strong>Pages</strong> (the pages not on the bar), and <strong>Prism</strong> (Settings, Help, and Sign in). On a phone the groups are <strong>Pages</strong>, <strong>This phone</strong> (Cards, Reorder and Reload), <strong>Screens</strong> (Edit a screen, Away mode and Babysitter mode) and <strong>Prism</strong></Li>
+        <Li><strong>More</strong>, on the bar, opens everything else in three groups: <strong>This screen</strong> (Edit layout, Reload, Away mode, Babysitter mode and Idle now), <strong>Pages</strong> (the pages not on the bar), and <strong>Prism</strong> (Settings, Help, and Sign in). On a phone the groups are <strong>Pages</strong>, <strong>This phone</strong> (Cards, Reorder and Reload), <strong>Screens</strong> (Edit a screen, Away mode and Babysitter mode) and <strong>Prism</strong></Li>
         <Li><strong>Sign in</strong> is also at the end of the bar. Once someone is signed in, it shows their name; tap it to sign out</Li>
         <Li><strong>Choose the bar&apos;s pages</strong> in Settings &gt; Features: tick <strong>On the dock</strong> for up to five pages beside Home. The rest are in More</Li>
       </Ul>
@@ -243,7 +243,8 @@ const PRECEDENCE = 'Someone using the screen sees the dashboard for that time. I
 function ScreensHelp() {
   return (
     <>
-      <P>A screen is a device with a name, such as Kitchen. Each screen shows one dashboard, can switch to another for a while, and keeps its own settings. Everything about a screen is set in its editor.</P>
+      <P>A screen is a device with a name, such as Kitchen. A dashboard is a page of widgets, such as Main. The screen owns time and the dashboard owns content: the screen decides which dashboard it shows when, how it idles by day and at night, how much darker it goes at night, light or dark, and whether photos sit behind the dashboard. The dashboard holds its widgets, their arrangement, its text size and its photo frame arrangement, and has no sense of time.</P>
+      <P>A screen is always in one of three states: <strong>In use</strong> while someone is using it, <strong>Idle</strong> once nobody has touched it for a while, and idle at <strong>Night</strong>. Two screens can show the same dashboard and each idles in its own way. Everything about a screen is set in its editor.</P>
 
       <H2>Naming a screen</H2>
       <P>On the device itself, open More &gt; Edit layout &gt; Screen &gt; Shows and choose <strong>Edit</strong> on <strong>Normally</strong>, or <strong>Add a time</strong>: each asks for a name first. If it had a name before (after a browser reset, say), pick it under <strong>Or it is</strong> to take back its name and settings. A device nobody named shows the dashboard set in Settings &gt; Screens &gt; <strong>New and unnamed screens show</strong>.</P>
@@ -261,7 +262,7 @@ function ScreensHelp() {
       <Ul>
         <Li><strong>Normally</strong>: the dashboard it shows outside its times. <strong>Same as new screens</strong> follows whatever Settings &gt; Screens sets for new and unnamed screens</Li>
         <Li><strong>Add a time</strong>: shows another dashboard from one time to another, on the days you pick</Li>
-        <Li><strong>Add bus time</strong>, if bus tracking is set up (Settings &gt; Bus): shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. Its row lists the routes and their days; with several routes, pick the ones it follows</Li>
+        <Li><strong>Add bus time</strong>, if bus tracking is set up (Settings &gt; Bus Tracking): shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. Its row lists the routes and their days; with several routes, pick the ones it follows</Li>
         <Li>A row&apos;s dashboard list ends with <strong>New dashboard...</strong>, which makes one there and then</Li>
         <Li><strong>Stays awake</strong>, on each time&apos;s row: while it is on, the screen does not go idle, and one that starts while the screen is idle wakes it on that dashboard. On for bus time and off for set times to begin with</Li>
         <Li>Higher rows win where times overlap. The arrow moves a row up. A row that a higher one covers says so</Li>
@@ -290,6 +291,37 @@ function ScreensHelp() {
       </Ul>
       <P>These belong to the screen, and so do its seasonal theme, its pinned photos and which time zone it shows, set on the screen in Settings. Two screens can show the same dashboard, and each keeps its own times.</P>
       <P>On a device nobody named, the idle rows work as they do on a screen and apply to that device. <strong>Normally</strong> and <strong>Add a time</strong> ask for a name first. Editing a dashboard with no screen, the tab says so and lists the screens.</P>
+      <H2>Light or dark, and the palette</H2>
+      <P>
+        <strong>Settings &gt; Appearance &gt; Palette</strong> changes the colours. The
+        palette applies to every screen in the house. Light or dark is set for each
+        screen, since that depends on the room it is in: in its editor, More &gt; Edit
+        layout &gt; Screen &gt; <strong>Light or dark</strong>, or on the screen in
+        Settings &gt; Appearance. A named screen is Light or Dark, never following a
+        system setting, so a laptop editing it draws it as the screen does. A browser
+        that is not named can also follow its system.
+      </P>
+      <P>
+        Settings &gt; Appearance &gt; <strong>New screens start as</strong> (Light or Dark)
+        is what a screen named with no choice of its own starts as, and what a browser
+        nobody named uses. Screens already named keep theirs.
+      </P>
+      <P>
+        If a palette ever makes Prism hard to read, add <code>?theme=default</code> to the
+        address to reset it. That works on a screen with no keyboard.
+      </P>
+      <H2>Signing out when nobody is there</H2>
+      <P>
+        <strong>Sign out after</strong>, in More &gt; Edit layout &gt; Screen &gt; Advanced,
+        controls how long the screen can sit untouched before it stops being signed in as
+        whoever last used it. Thirty minutes by default; you can change it or turn it off.
+      </P>
+      <P>
+        Nothing disappears when it happens. The calendar, tasks and messages stay on
+        screen for anyone to read. What comes back is the PIN prompt on anything that
+        changes something, so a task added on the screen is added by whoever is
+        actually standing there.
+      </P>
     </>
   );
 }
@@ -638,13 +670,13 @@ function PhotosHelp() {
       <P>Photo gallery with local uploads plus OneDrive and Immich sync.</P>
       <Ul>
         <Li><strong>Gallery</strong>: Browse all photos with lightbox view; filter to <strong>Favorites</strong></Li>
-        <Li><strong>Slideshow</strong>: Auto-rotating display for the resting screen and away mode. Each photo fades into the next with a slow Ken Burns zoom</Li>
+        <Li><strong>Slideshow</strong>: the photos behind the dashboard, in the photo frame and in Away mode. Each photo fades into the next with a slow Ken Burns zoom</Li>
         <Li><strong>Sources</strong>: Local uploads, OneDrive, or Immich. Synced sources refresh automatically about every 30 minutes</Li>
-        <Li><strong>Tag for:</strong> In the lightbox, toggle where each photo may appear: <strong>Wallpaper</strong>, <strong>Gallery</strong>, and/or <strong>Screensaver</strong></Li>
+        <Li><strong>Tag for:</strong> In the lightbox, toggle where each photo may appear: <strong>Wallpaper</strong>, <strong>Gallery</strong> and <strong>Photo frame</strong></Li>
         <Li><strong>Bulk select</strong> (desktop): Select many photos to show in / remove from Prism at once</Li>
         <Li><strong>Below-HD indicator</strong>: A resolution dot flags low-resolution photos so you can filter them out of wallpapers</Li>
       </Ul>
-      <P>Manage sources and set a static wallpaper or screensaver in Settings &gt; Photos.</P>
+      <P>Manage sources in Settings &gt; Photos. Settings &gt; Photos &gt; <strong>Pinned Photos</strong> shows one photo in place of the slideshow, behind the dashboard (<strong>Dashboard Wallpaper</strong>) or in the photo frame (<strong>Photo frame</strong>), on the screen where you pin it.</P>
       <P>Settings &gt; Photos &gt; Captions and On this day has <strong>Show when photos were taken</strong> (a short line in a free corner), <strong>Show where photos were taken</strong>, and <strong>On this day</strong>, which shows photos from earlier years on this date more often. They apply on every screen, behind the dashboard and in the photo frame.</P>
     </>
   );
@@ -677,50 +709,19 @@ function BabysitterHelp() {
   );
 }
 
-function ScreensaverHelp() {
+function IdleHelp() {
   return (
     <>
-      <P>When nobody touches a screen for a while, it goes idle. What it shows idle and at night is the screen&apos;s own, whichever dashboard is up, set in More &gt; Edit layout &gt; Screen &gt; When idle.</P>
+      <P>When nobody touches a screen for a while, it goes idle. What it shows idle and at night is the screen&apos;s own, whichever dashboard is up, set in More &gt; Edit layout &gt; Screen &gt; When idle. More &gt; This screen &gt; <strong>Idle now</strong> makes it go idle at once. A touch, a key or the mouse brings it back to in use, with no PIN.</P>
       <Ul>
         <Li><strong>Idle after</strong>: how long the screen waits: 30 sec, 1 min, 2 min (the default), 10 min, 1 hour, or Never</Li>
         <Li><strong>By day</strong>: The dashboard, quieter, A photo frame, or <strong>The night sky</strong> (the stars, Milky Way and moon as they are outside now, naming one constellation at a time)</Li>
-        <Li><strong>At night</strong>: Same as by day, one of the others or Screen off, and <strong>Darker</strong> by 25%, 50% or 75%. Night runs from dusk to dawn or at set times, under Advanced</Li>
-        <Li><strong>Motion and photo rotation</strong>: When idle &gt; Advanced has the transition effect and how often the photo changes</Li>
-        <Li><strong>Arranging it</strong>: When idle &gt; <strong>Arrange the photo frame</strong>, or <strong>Idle</strong> over the editor&apos;s canvas (and <strong>Night</strong> for the night), then Widgets. The arrangement is saved with the dashboard, so a change made on another device reaches the screen within a minute, without a reload</Li>
+        <Li><strong>At night</strong>: Same as by day, one of the others or Screen off, and <strong>Darker</strong> by 25%, 50% or 75%. Night runs from dusk to dawn or at set times, chosen in More &gt; Edit layout &gt; Screen &gt; When idle &gt; Advanced</Li>
+        <Li><strong>Motion and photo rotation</strong>: More &gt; Edit layout &gt; Screen &gt; When idle &gt; Advanced has the transition effect and how often the photo changes</Li>
+        <Li><strong>Arranging the photo frame</strong>: More &gt; Edit layout &gt; Screen &gt; When idle &gt; <strong>Arrange the photo frame</strong>, or <strong>Idle</strong> over the editor&apos;s canvas (and <strong>Night</strong> for the night), then Widgets. The arrangement is saved with the dashboard, so a change made on another device reaches the screen within a minute, without a reload</Li>
         <Li><strong>Aurora</strong>: Settings &gt; Appearance &gt; <strong>Night sky</strong> can say when aurora may be visible, on every screen</Li>
       </Ul>
-      <P>A phone never rests. An app installed on a wall screen (added to its home screen) goes idle only once it has a name: More &gt; Edit layout &gt; Screen &gt; Shows &gt; <strong>Normally</strong> &gt; <strong>Edit</strong> asks for one.</P>
-      <H2>Palettes</H2>
-      <P>
-        <strong>Settings &gt; Appearance &gt; Palette</strong> changes the colours. The
-        palette applies to every screen in the house. Light or dark is set for each
-        screen, since that depends on the room it is in: in its editor, More &gt; Edit
-        layout &gt; Screen &gt; <strong>Light or dark</strong>, or on the screen in
-        Settings &gt; Appearance. A named screen is Light or Dark, never following a
-        system setting, so a laptop editing it draws it as the screen does. A browser
-        that is not named can also follow its system.
-      </P>
-      <P>
-        Settings &gt; Appearance &gt; <strong>New screens start as</strong> (Light or Dark)
-        is what a screen named with no choice of its own starts as, and what a browser
-        nobody named uses. Screens already named keep theirs.
-      </P>
-      <P>
-        If a palette ever makes Prism hard to read, add <code>?theme=default</code> to the
-        address to reset it. That works on a display with no keyboard.
-      </P>
-      <H2>Signing out when nobody is there</H2>
-      <P>
-        <strong>Sign out after</strong>, in More &gt; Edit layout &gt; Screen &gt; Advanced,
-        controls how long the display can sit untouched before it stops being signed in as
-        whoever last used it. Thirty minutes by default; you can change it or turn it off.
-      </P>
-      <P>
-        Nothing disappears when it happens. The calendar, tasks and messages stay on
-        screen for anyone to read. What comes back is the PIN prompt on anything that
-        changes something, so a task added on the display is added by whoever is
-        actually standing there.
-      </P>
+      <P>A phone never idles. An app installed on a wall screen (added to its home screen) goes idle only once it has a name: More &gt; Edit layout &gt; Screen &gt; Shows &gt; <strong>Normally</strong> &gt; <strong>Edit</strong> asks for one.</P>
     </>
   );
 }
@@ -761,7 +762,7 @@ function SettingsHelp() {
         <Li><strong>Notices</strong>: small cards at the side of the screen when something is close</Li>
       </Ul>
       <H3>Photos</H3>
-      <P>Add photo sources (OneDrive, Immich), pick sync folders, set a static wallpaper or screensaver photo, and turn on photo captions and <strong>On this day</strong> (Captions and On this day).</P>
+      <P>Add photo sources (OneDrive, Immich), pick sync folders, pin one photo behind the dashboard or in the photo frame (Pinned Photos), and turn on photo captions and <strong>On this day</strong> (Captions and On this day).</P>
       <H3>Bus Tracking</H3>
       <P>Connect Gmail and discover bus routes for the Bus Tracker widget, and set each route&apos;s <strong>Minutes to walk to the stop</strong> (see the Bus Tracking help section).</P>
       <H3>Input</H3>

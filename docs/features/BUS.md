@@ -135,9 +135,9 @@ The BusTracker widget shows a row for each route. Each row has:
 
 With six or more checkpoints, the dots wrap onto two rows that read in order, left to right on the top row and then left to right on the bottom row, joined by a U-turn on the right. This keeps the widget from getting too wide.
 
-#### On the screensaver
+#### On the photo frame
 
-You can also put the Bus Tracker widget on the screensaver canvas (it's hidden there by default). It shows the same full train-map widget, with no cut-down version. It helps when a child checks the wall display on the way out of the door.
+You can also put the Bus Tracker widget on a dashboard's photo frame arrangement (More > Edit layout > Screen > When idle > **Arrange the photo frame**; it's hidden there by default). It shows the same full train-map widget, with no cut-down version. It helps when a child checks the wall screen on the way out of the door.
 
 ### When to leave
 

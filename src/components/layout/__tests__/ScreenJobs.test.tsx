@@ -26,6 +26,6 @@ describe('ScreenJobs (#1006)', () => {
 
   it('labelled, every job shows its name', () => {
     render(<ScreenJobs labelled onEditClick={() => {}} onScreensaverClick={() => {}} />);
-    for (const name of ['Edit layout', 'Reload', 'Babysitter', 'Away', 'Screensaver']) expect(screen.getByText(name)).toBeTruthy();
+    for (const name of ['Edit layout', 'Reload', 'Babysitter', 'Away', 'Idle now']) expect(screen.getByText(name)).toBeTruthy();
   });
 });
