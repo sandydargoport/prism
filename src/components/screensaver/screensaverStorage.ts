@@ -19,7 +19,12 @@ export const DEFAULT_SCREENSAVER_LAYOUT: WidgetConfig[] = [
   { i: 'nowNext', x: 0, y: 0, w: 24, h: 6, visible: false },
 ];
 
-export function loadScreensaverLayout(): WidgetConfig[] {
+/**
+ * The arrangement this browser kept before dashboards had their own, merged
+ * onto the default as v1.30.1 drew it. Read only by the carry-over below;
+ * the running photo frame reads the dashboard's (#1346).
+ */
+function loadScreensaverLayout(): WidgetConfig[] {
   if (typeof window === 'undefined') return DEFAULT_SCREENSAVER_LAYOUT;
   try {
     const stored = localStorage.getItem(SCREENSAVER_LAYOUT_KEY);
@@ -39,19 +44,14 @@ export function loadScreensaverLayout(): WidgetConfig[] {
 }
 
 /**
- * The screensaver a dashboard shows: its own when it has saved one, else the
- * default. The one exception is the upgrade from a single screensaver kept in
- * this browser to one per dashboard: while no dashboard has saved one yet, the
- * stored one carries over, so the upgrade does not lose it. Without that check
- * a dashboard with none would inherit whatever the last dashboard left here.
+ * The photo frame arrangement a dashboard has: its own when it has saved one,
+ * else the default. Never the copy a browser kept: that is only carried over,
+ * once, by the upgrade from v1.30.1 (see legacyScreensaver).
  */
 export function screensaverForDashboard(
   active: { screensaverWidgets?: WidgetConfig[] | null },
-  all: { screensaverWidgets?: WidgetConfig[] | null }[],
 ): WidgetConfig[] {
-  if (active.screensaverWidgets) return active.screensaverWidgets;
-  const upgrading = !all.some((l) => l.screensaverWidgets);
-  return upgrading ? loadScreensaverLayout() : DEFAULT_SCREENSAVER_LAYOUT;
+  return active.screensaverWidgets ?? DEFAULT_SCREENSAVER_LAYOUT;
 }
 
 /**
@@ -89,10 +89,6 @@ export function owesLegacyScreensaver(
   legacy: WidgetConfig[] | null,
 ): legacy is WidgetConfig[] {
   return !!legacy && !active.screensaverWidgets && restsOverScreensaver;
-}
-
-export function saveScreensaverLayout(layout: WidgetConfig[]) {
-  localStorage.setItem(SCREENSAVER_LAYOUT_KEY, JSON.stringify(layout));
 }
 
 export function getScreensaverPresets(): Array<{ name: string; widgets: WidgetConfig[] }> {

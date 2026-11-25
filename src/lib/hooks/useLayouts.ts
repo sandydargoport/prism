@@ -120,7 +120,9 @@ export function useLayouts(): UseLayoutsResult {
         }
         return { ...l, widgets };
       });
-      setLayouts(normalized);
+      // Fetched again unchanged (the dashboard refreshes them, #1346), the
+      // same list is kept, so nothing that shows them redraws for nothing.
+      setLayouts((prev) => (JSON.stringify(prev) === JSON.stringify(normalized) ? prev : normalized));
     } catch (err) {
       console.error('Error fetching layouts:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch layouts');
