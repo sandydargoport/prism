@@ -36,7 +36,7 @@ export function groupForCalmList(items: ShoppingItem[], order: string[]) {
   return { groups: cats.map((c) => ({ category: c, items: byCat.get(c)! })), inCart: items.filter((i) => i.checked) };
 }
 
-export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit, onAdd, onFile, label, color }: {
+export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit, onAdd, onFile, label, color, showChecked = true }: {
   items: ShoppingItem[];
   /** This list's categories, in order. */
   order: string[];
@@ -52,6 +52,8 @@ export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit
   label: (category: string) => string;
   /** The category's colour; shown muted beside its heading. */
   color: (category: string) => string;
+  /** The page's Show / Hide Checked Items: hidden, the checked-off section is left out. */
+  showChecked?: boolean;
 }) {
   const [draft, setDraft] = useState('');
   // The item just added, waiting for its category; null shows the add field.
@@ -175,7 +177,7 @@ export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit
         </section>
       ))}
 
-      {inCart.length > 0 && (
+      {showChecked && inCart.length > 0 && (
         <section className="flex flex-col" data-shopping-cart>
           <button
             type="button"

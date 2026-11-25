@@ -350,6 +350,7 @@ export function ShoppingView() {
                 // A new list starts fresh: a question left open belongs to the list it was asked on.
                 key={activeList.id}
                 items={activeList.items as ShoppingItem[]}
+                showChecked={showChecked}
                 order={effectiveCategoryOrder}
                 allCategories={categoryOrder}
                 onToggle={(id) => toggleItem(id)}
