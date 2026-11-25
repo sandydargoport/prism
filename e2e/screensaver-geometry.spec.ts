@@ -403,37 +403,6 @@ test.describe('screensaver night sky', () => {
     expect(gutter, 'no scrollbar drawn on the resting screen').toBe('none');
   });
 
-  // Widgets on the photo frame drop their backings to sit on the photo; the
-  // calendar's name chips keep their colours, so each calendar reads as its own.
-  test('the calendar name chips keep their colours on the photo frame', async ({ page }) => {
-    await page.route('**/api/calendar-groups', (route) => route.fulfill({ json: { groups: [
-      { id: 'g-robin', name: 'Robin', color: '#e11d48', type: 'user' },
-      { id: 'g-family', name: 'Family', color: '#2563eb', type: 'family' },
-    ] } }));
-    await page.clock.setFixedTime(new Date(NOON));
-    await weatherAt(page, { lat: 45, lon: -100 });
-    await screenIdles(page, BACKGROUNDS.photos);
-    await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
-      ? route.fulfill({ json: { layouts: [{
-        ...idleLayout(BACKGROUNDS.photos),
-        screensaverWidgets: [{ i: 'calendar', x: 0, y: 0, w: 24, h: 24, visible: true, backgroundColor: 'glass' }],
-      }] } })
-      : route.fallback());
-    await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
-    await page.goto('/');
-    await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
-    await waitForQuiet(page);
-    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
-
-    const chip = page.locator('[data-screensaver] [data-calendar-chip="g-robin"]');
-    await expect(chip).toBeVisible({ timeout: 15000 });
-    // On a cleared cell, where every other backing is gone.
-    expect(await chip.evaluate((el) => el.closest('.widget-cell')?.classList.contains('idle-clear')), 'the calendar sits on the photo').toBe(true);
-    expect(await chip.evaluate((el) => getComputedStyle(el).backgroundColor), 'Robin keeps red').toBe('rgb(225, 29, 72)');
-    const family = page.locator('[data-screensaver] [data-calendar-chip="g-family"]');
-    expect(await family.evaluate((el) => getComputedStyle(el).backgroundColor), 'Family keeps blue').toBe('rgb(37, 99, 235)');
-  });
-
   test('Night sky fills the screen instead of the photos', async ({ page }) => {
     await openScreensaver(page, 'sky', NIGHT);
     const s = await sky(page);
@@ -773,6 +742,34 @@ test.describe('calm mode idle screen', () => {
       return { alpha, blur: cs.backdropFilter, shadow: cs.textShadow };
     });
   }
+
+  // Glass widgets on the idle screen drop their backings to sit on the photo;
+  // the calendar's name chips keep their colours, so each calendar reads as its own.
+  test('the calendar name chips keep their colours when the screen idles', async ({ page }) => {
+    await page.route('**/api/calendar-groups', (route) => route.fulfill({ json: { groups: [
+      { id: 'g-robin', name: 'Robin', color: '#e11d48', type: 'user' },
+      { id: 'g-family', name: 'Family', color: '#2563eb', type: 'family' },
+    ] } }));
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const created = await page.request.post('/api/layouts', {
+      data: { name: `Chips e2e ${Date.now()}`, widgets: [{ i: 'calendar', x: 0, y: 0, w: 24, h: 24, backgroundColor: 'glass', showWhenIdle: true }] },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
+    try {
+      await page.goto(`/d/${layout.slug}`);
+      const chip = page.locator('[data-calendar-chip="g-robin"]');
+      await expect(chip).toBeVisible({ timeout: 60000 });
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await expect.poll(() => chip.evaluate((el) => el.closest('.widget-cell')?.classList.contains('idle-clear')), { message: 'the calendar goes clear on the idle screen' }).toBe(true);
+      expect(await chip.evaluate((el) => getComputedStyle(el).backgroundColor), 'Robin keeps red').toBe('rgb(225, 29, 72)');
+      const family = page.locator('[data-calendar-chip="g-family"]');
+      expect(await family.evaluate((el) => getComputedStyle(el).backgroundColor), 'Family keeps blue').toBe('rgb(37, 99, 235)');
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
 
   test('going idle fades the unticked widgets in place, and waking brings them back', async ({ page }) => {
     const login = await page.request.post('/api/auth/login', {
