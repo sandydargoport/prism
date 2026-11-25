@@ -437,7 +437,7 @@ function CalendarHelp({ isMobile }: { isMobile: boolean }) {
       <P>Every family member automatically gets their own personal calendar, plus a shared <strong>Family</strong> calendar, so you can add and assign events right away without connecting anything. Connected accounts (below) simply layer on top.</P>
 
       <H2>Setting Up Connected Calendars</H2>
-      <P>Connect Google, Microsoft, or Apple/CalDAV calendars in <strong>Settings &gt; Integrations</strong> (Google Calendar via OAuth; Apple iCloud via the CalDAV card). Once connected, open the Calendar page and choose <strong>Manage calendars</strong> in its <strong>View</strong> menu (on a phone, use <strong>Manage calendars</strong> on the Google or iCloud card in Settings &gt; Integrations). There you can:</P>
+      <P>Connect Google, Microsoft, or Apple/CalDAV calendars in <strong>Settings &gt; Integrations</strong> (Google Calendar via OAuth; Apple iCloud via the CalDAV card). Once connected, open the Calendar page and choose <strong>Manage calendars</strong> in its <strong>View</strong> menu (on a phone, it is in the header menu: Calendar &gt; header menu &gt; <strong>Manage calendars</strong>). There you can:</P>
       <Ul>
         <Li><strong>Enable/disable</strong> individual calendars from showing on the dashboard</Li>
         <Li><strong>Assign to a family member</strong>: each calendar is linked to a person or marked as &quot;Family&quot; (shared)</Li>

@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Fixed
+- **Manage calendars can be opened on a phone from the Calendar page.** A phone has no View menu, so Manage calendars is in the header menu there. The wall and desktop keep it in the View menu. ([#1314](https://github.com/sandydargoport/prism/issues/1314))
+
 ## [1.31.0] – 2026-11-25
 
 Ships 24 database migrations, applied automatically on start.
