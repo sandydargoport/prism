@@ -90,14 +90,33 @@ async function editAsScreen(page: Page, dashboardId: string): Promise<{ frame: F
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
-// These tests seed a screensaver arrangement in the browser. A browser that
-// has not run since v1.30.1 would carry it onto the dashboard it shows
-// (#1154), which would then stay on the shared seeded dashboard for every
-// later test. Each browser here has already run, except in the upgrade test.
+// A browser that has not run since v1.30.1 carries the arrangement it kept
+// onto the dashboard it shows (#1154), which would then stay on the shared
+// seeded dashboard for every later test. Each browser here has already run,
+// except in the upgrade test.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('prism-screensaver-carried', '1'));
 });
 const PIN = process.env.E2E_PIN || '1234';
+
+/**
+ * Every dashboard comes with this photo frame arrangement, as the server
+ * would send it once saved there: the photo frame reads it from the
+ * dashboard, never from the browser (#1346). Only the reads are answered so,
+ * so nothing is saved onto the shared seeded dashboard. Calling it again
+ * replaces the arrangement.
+ */
+const LAYOUTS_URL = /\/api\/layouts(\?.*)?$/;
+async function arrangedAs(page: Page, widgets: unknown[]) {
+  await page.unroute(LAYOUTS_URL);
+  await page.route(LAYOUTS_URL, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const response = await route.fetch();
+    const body = await response.json() as { layouts?: Record<string, unknown>[] };
+    body.layouts = (body.layouts ?? []).map((l) => ({ ...l, screensaverWidgets: widgets }));
+    return route.fulfill({ response, json: body });
+  });
+}
 
 /**
  * This browser's screen idles so (#1345): its day is a screen setting, not
@@ -157,15 +176,14 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
     data: { userId: getSeededParentId(), pin: PIN },
   });
   expect(login.ok(), 'precondition: login must succeed before measuring').toBe(true);
-  await page.addInitScript(({ layout, outlines }) => {
-    // Once per test: the editor writes this key itself after load.
+  await arrangedAs(page, LAYOUT);
+  await page.addInitScript(({ outlines }) => {
     if (sessionStorage.getItem('ss-geometry-seeded')) return;
-    localStorage.setItem('prism-screensaver-layout', JSON.stringify(layout));
     // Drift is on by default and would move the live widgets off their places.
     localStorage.setItem('prism-screensaver-drift', 'off');
     if (outlines) localStorage.setItem('prism-screensaver-outlines', outlines);
     sessionStorage.setItem('ss-geometry-seeded', '1');
-  }, { layout: LAYOUT, outlines });
+  }, { outlines });
   await page.goto('/');
   const frame = await openEditor(page, 'clock');
   // The canvas is the screen: its size and shape for this orientation, the
@@ -1259,12 +1277,12 @@ test.describe('screensaver widget outlines', () => {
       localStorage.setItem('prism-screensaver-motion', 'off');
       localStorage.setItem('prism-screensaver-motion-v2', '1');
       localStorage.setItem('prism-screensaver-drift', 'off');
-      localStorage.setItem('prism-screensaver-layout', JSON.stringify([
-        { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true, outlineColor: 'transparent' },
-        { i: 'weather', x: 20, y: 2, w: 16, h: 10, visible: true },
-        { i: 'messages', x: 2, y: 14, w: 16, h: 10, visible: false },
-      ]));
     });
+    await arrangedAs(page, [
+      { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true, outlineColor: 'transparent' },
+      { i: 'weather', x: 20, y: 2, w: 16, h: 10, visible: true },
+      { i: 'messages', x: 2, y: 14, w: 16, h: 10, visible: false },
+    ]);
     await page.goto('/');
     await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
@@ -1293,16 +1311,16 @@ test.describe('screensaver widget outlines', () => {
     // Messages is made empty by answering its fetch with nothing.
     await page.route('**/api/messages?*', (route) => route.fulfill({ json: { messages: [] } }));
     const open = async (messages: Record<string, unknown>) => {
-      await page.addInitScript((m) => {
+      await page.addInitScript(() => {
         localStorage.setItem('prism-screensaver-motion', 'off');
         localStorage.setItem('prism-screensaver-motion-v2', '1');
         localStorage.setItem('prism-screensaver-drift', 'off');
-        localStorage.setItem('prism-screensaver-layout', JSON.stringify([
-          { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true },
-          { i: 'messages', x: 20, y: 2, w: 16, h: 10, visible: true, ...m },
-          { i: 'weather', x: 2, y: 14, w: 16, h: 10, visible: false },
-        ]));
-      }, messages);
+      });
+      await arrangedAs(page, [
+        { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true },
+        { i: 'messages', x: 20, y: 2, w: 16, h: 10, visible: true, ...messages },
+        { i: 'weather', x: 2, y: 14, w: 16, h: 10, visible: false },
+      ]);
       await page.goto('/');
       await waitForQuiet(page);
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
