@@ -25,6 +25,7 @@ import { useReturnSlug } from '@/lib/hooks/useReturnSlug';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { ScreenJobs } from './DashboardGrid';
+import { UserAvatar } from '@/components/ui/avatar';
 import { AwayModeToggle } from '@/components/away-mode';
 import { BabysitterModeToggle } from '@/components/babysitter-mode';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
@@ -63,7 +64,7 @@ const GROUP_PANEL: Record<(typeof GROUPS_NARROW | typeof GROUPS_WALL)[number], s
 export interface DockProps {
   /** 'wall': hidden at rest behind a Menu word; 'page': always on screen. */
   mode: 'wall' | 'page';
-  user?: { id: string; name: string; color?: string } | null;
+  user?: { id: string; name: string; avatarUrl?: string | null; color?: string } | null;
   onLogin?: () => void;
   onLogout?: () => void;
   /**
@@ -73,6 +74,17 @@ export interface DockProps {
   screenJobs?: React.ReactNode;
   /** A phone on a dashboard of cards: This phone has Cards and Reorder (#1354). */
   cardTools?: boolean;
+}
+
+function DockAuthIcon({ user }: { user: DockProps['user'] }) {
+  if (!user) return <LogIn className="h-5 w-5" />;
+  if (!user.avatarUrl) return <LogOut className="h-5 w-5" />;
+
+  return (
+    <span aria-hidden="true">
+      <UserAvatar name={user.name} imageUrl={user.avatarUrl} color={user.color} size="sm" />
+    </span>
+  );
 }
 
 /** Where Edit layout goes from a page: this screen's dashboard, with the editor open (#1257). */
@@ -341,9 +353,10 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
           type="button"
           onClick={user ? onLogout : onLogin}
           className="flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 text-caption font-medium text-white/85 hover:bg-white/10"
+          aria-label={user ? `Sign out ${user.name}` : t('nav.signIn', { defaultValue: 'Sign in' })}
           data-dock-sign
         >
-          {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+          <DockAuthIcon user={user} />
           <span className="max-w-[6rem] truncate">{user ? user.name : t('nav.signIn', { defaultValue: 'Sign in' })}</span>
         </button>}
       </nav>
@@ -426,7 +439,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs, cardTools = fa
                         aria-label={user ? `Sign out ${user.name}` : undefined}
                         data-dock-sign
                       >
-                        {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+                        <DockAuthIcon user={user} />
                         <span className="max-w-[6rem] truncate">{user ? user.name : t('nav.signIn', { defaultValue: 'Sign in' })}</span>
                       </button>
                     </>
