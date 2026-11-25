@@ -416,7 +416,7 @@ test.describe('screensaver night sky', () => {
     await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
       ? route.fulfill({ json: { layouts: [{
         ...idleLayout(BACKGROUNDS.photos),
-        screensaverWidgets: [{ i: 'calendar', x: 0, y: 0, w: 24, h: 24, visible: true }],
+        screensaverWidgets: [{ i: 'calendar', x: 0, y: 0, w: 24, h: 24, visible: true, backgroundColor: 'glass' }],
       }] } })
       : route.fallback());
     await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
@@ -425,11 +425,12 @@ test.describe('screensaver night sky', () => {
     await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
 
-    // On a cleared cell, where every other backing is gone.
-    const chip = page.locator('[data-screensaver] .widget-cell.idle-clear [data-calendar-chip="g-robin"]');
+    const chip = page.locator('[data-screensaver] [data-calendar-chip="g-robin"]');
     await expect(chip).toBeVisible({ timeout: 15000 });
+    // On a cleared cell, where every other backing is gone.
+    expect(await chip.evaluate((el) => el.closest('.widget-cell')?.classList.contains('idle-clear')), 'the calendar sits on the photo').toBe(true);
     expect(await chip.evaluate((el) => getComputedStyle(el).backgroundColor), 'Robin keeps red').toBe('rgb(225, 29, 72)');
-    const family = page.locator('[data-screensaver] .widget-cell.idle-clear [data-calendar-chip="g-family"]');
+    const family = page.locator('[data-screensaver] [data-calendar-chip="g-family"]');
     expect(await family.evaluate((el) => getComputedStyle(el).backgroundColor), 'Family keeps blue').toBe('rgb(37, 99, 235)');
   });
 
