@@ -255,6 +255,7 @@ function ScreensHelp() {
         <Li><strong>Base dashboard</strong>: the dashboard this screen shows, except while a switch is on</Li>
         <Li><strong>Switches</strong> &gt; <strong>Switch at bus time</strong>, if bus tracking is set up (Settings &gt; Bus): shows another dashboard around a bus route&apos;s time, from some minutes before to some minutes after. With several routes, pick the ones it follows</Li>
         <Li><strong>Switches</strong> &gt; <strong>Switch at set times</strong>: shows another dashboard from one time to another, on the days you pick. If two switches overlap, the higher one wins</Li>
+        <Li><strong>Stays awake</strong>, on each switch&apos;s row: while that switch is on, the screen does not go idle, and one that starts while the screen is idle wakes it on the switch&apos;s dashboard. On for bus time and off for set times to begin with</Li>
         <Li><strong>When nobody is using it</strong>: <strong>Rest after</strong>, how long nobody touches the screen before it rests, and <strong>How dark</strong>, how far it dims at night</Li>
         <Li><strong>Light and photos</strong>: <strong>Light or dark</strong>, <strong>Photos behind the dashboard</strong> (Shown or Hidden) and <strong>New photo every</strong></Li>
       </Ul>

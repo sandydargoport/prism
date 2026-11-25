@@ -59,7 +59,7 @@ Editor directions start at the editor of a screen, for example Editor > Screen >
 | Name | `displays.name` | unchanged | Editor > Screen > This screen (saves on Done) |
 | Normally (what it shows) | `displays.dashboard_id`, null for the household's dashboard | unchanged | Editor > Screen > Shows > Normally |
 | Switches (set times, bus time) | `displays.switches` | unchanged | Editor > Screen > Shows |
-| Stays awake, per switch | none | Planned: a field on each entry of `displays.switches` (#1347) | Editor > Screen > Shows, in the switch's row |
+| Stays awake, per switch | `staysAwake` on each entry of `displays.switches`; absent is on for bus time, off for set times | unchanged | Editor > Screen > Shows, in the switch's row |
 | Idle after | screen key `prism-screensaver-timeout` | unchanged | Editor > Screen > When idle |
 | Idle look by day | `layouts.idle_background` of the dashboard that is up | screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > By day |
 | Idle look at night | `layouts.idle_background` of the dashboard that is up | screen key `prism-screen-day` (#1345) | Editor > Screen > When idle > At night |

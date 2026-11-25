@@ -394,9 +394,27 @@ describe('a screen\'s dashboard and switches, on the Screen tab (#1282, #1326)',
   it('at bus time with no route set up, it says it never switches', async () => {
     server([]);
     await show({ plan: BUS_PLAN });
-    expect(summary(busRow())).toBe('No bus route set up yet · Bus');
+    expect(summary(busRow())).toBe('No bus route set up yet · Bus · stays awake');
     unfold(busRow());
     expect(document.querySelector('[data-bus-windows]')!.textContent).toMatch(/^No bus route is set up yet/);
+  });
+
+  it('Stays awake: on for bus time and off for set times, turned either way on the row, and said in its line (#1347)', async () => {
+    await show({ plan: { dashboardId: null, switches: [
+      { when: 'bus', dashboardId: BUS, routeIds: [AM_ROUTE] },
+      { when: 'times', days: [1, 2, 3, 4, 5], from: '01:45', to: '02:45', dashboardId: HOME },
+    ] } });
+    const awake = (row: Element) => within(row as HTMLElement).getByRole('switch', { name: 'Stays awake' });
+    unfold(rows()[0]!);
+    expect(awake(rows()[0]!).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(awake(rows()[0]!));
+    expect(kept()[0]).toEqual({ when: 'bus', dashboardId: BUS, routeIds: [AM_ROUTE], staysAwake: false });
+    expect(summary(rows()[0]!)).toBe('Morning 07:15–08:00 · Bus');
+    unfold(rows()[1]!);
+    expect(awake(rows()[1]!).getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(awake(rows()[1]!));
+    expect(kept()[1]).toMatchObject({ when: 'times', staysAwake: true });
+    expect(summary(rows()[1]!)).toBe('Mon–Fri 01:45–02:45 · Home · stays awake');
   });
 
   it('a set-times switch keeps at least one day', async () => {
@@ -441,7 +459,7 @@ describe('a screen\'s dashboard and switches, on the Screen tab (#1282, #1326)',
     ] } });
     expect(openRows()).toHaveLength(0);
     expect(document.querySelector('[data-switch-remove], [data-switch-up], [data-dashboard-open]')).toBeNull();
-    expect(rows().map(summary)).toEqual(['Morning 07:15–08:00 · Bus', 'Mon–Fri 01:45–02:45 · Home']);
+    expect(rows().map(summary)).toEqual(['Morning 07:15–08:00 · Bus · stays awake', 'Mon–Fri 01:45–02:45 · Home']);
     unfold(rows()[0]!);
     expect(openRows()).toEqual([rows()[0]]);
     unfold(rows()[1]!);

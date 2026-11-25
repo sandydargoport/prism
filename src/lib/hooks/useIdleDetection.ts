@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useIsPWA } from './useIsPWA';
+import { isStayingAwake, subscribeStayAwake } from './stayAwake';
 import { resolveAwayAutoAfter } from '@/lib/awayMode/autoAfter';
 import { isNamedScreen } from '@/lib/displays/namedScreen';
 
@@ -75,15 +76,22 @@ export function useIdleDetection(initialTimeout?: number) {
     return () => window.removeEventListener('prism:screensaver-timeout-change', handler as EventListener);
   }, []);
 
-  // Reset idle timer on user activity (restarts countdown)
-  const resetTimer = useCallback(() => {
+  // Start the countdown to idle again. Not while a switch keeps the screen
+  // awake (#1347): then nothing counts down until it ends.
+  const restartCountdown = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    // Update last activity for away mode tracking
-    updateLastActivity();
-    if (timeout > 0) {
+    timerRef.current = null;
+    if (timeout > 0 && !isStayingAwake()) {
       timerRef.current = setTimeout(() => setIsIdle(true), timeout * 1000);
     }
   }, [timeout]);
+
+  // Reset idle timer on user activity (restarts countdown)
+  const resetTimer = useCallback(() => {
+    // Update last activity for away mode tracking
+    updateLastActivity();
+    restartCountdown();
+  }, [restartCountdown]);
 
   // Dismiss idle state on deliberate interaction (click, keydown, touch)
   const dismissIdle = useCallback(() => {
@@ -170,6 +178,22 @@ export function useIdleDetection(initialTimeout?: number) {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [resetTimer, timeout, isPWA]);
+
+  // A switch that stays awake (#1347). When one starts, the screen wakes as
+  // a touch would, but it is not someone at the screen, so Away Mode's clock
+  // is left alone. While it is in force the screen does not go idle; when it
+  // ends, the usual countdown starts from then.
+  // The store tells only of a change.
+  useEffect(() => subscribeStayAwake(() => {
+    if (isStayingAwake()) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = null;
+      forcedRef.current = false;
+      setIsIdle(false);
+    } else if (!(isPWA && !isNamedScreen())) {
+      restartCountdown();
+    }
+  }), [isPWA, restartCountdown]);
 
   // Listen for custom screensaver activation event
   useEffect(() => {

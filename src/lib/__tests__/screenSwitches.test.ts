@@ -14,6 +14,7 @@ import {
   samePlan,
   screenDashboardAt,
   screenShows,
+  staysAwake,
   switchAt,
   switchesSchema,
   switchInWords,
@@ -211,6 +212,18 @@ describe('stored and sent', () => {
     expect(parseSwitches(Array.from({ length: 20 }, () => bus))).toHaveLength(MAX_SWITCHES);
   });
 
+  it('stays awake: on for bus time and off for set times unless the switch says, and only a yes or no is kept (#1347)', () => {
+    expect(staysAwake(bus)).toBe(true);
+    expect(staysAwake(morning)).toBe(false);
+    expect(staysAwake({ ...bus, staysAwake: false })).toBe(false);
+    expect(staysAwake({ ...morning, staysAwake: true })).toBe(true);
+    expect(parseSwitches([
+      { ...bus, staysAwake: false },
+      { ...morning, staysAwake: true },
+      { ...morning, staysAwake: 'yes' },
+    ])).toEqual([{ ...bus, staysAwake: false }, { ...morning, staysAwake: true }, morning]);
+  });
+
   it('a change is checked before it is kept', () => {
     expect(switchesSchema.safeParse([bus, morning]).success).toBe(true);
     expect(switchesSchema.safeParse([{ ...morning, from: '25:00' }]).success).toBe(false);
@@ -221,6 +234,9 @@ describe('stored and sent', () => {
     expect(switchesSchema.safeParse([{ ...bus, after: 2.5 }]).success).toBe(false);
     expect(switchesSchema.safeParse([{ ...bus, routeIds: ['morning'] }]).success).toBe(false);
     expect(switchesSchema.safeParse([{ ...bus, routeIds: [] }]).success).toBe(false);
+    // Stays awake (#1347): on or off, or left out.
+    expect(switchesSchema.safeParse([{ ...bus, staysAwake: false }, { ...morning, staysAwake: true }]).success).toBe(true);
+    expect(switchesSchema.safeParse([{ ...bus, staysAwake: 'on' }]).success).toBe(false);
     expect(switchesSchema.safeParse(Array.from({ length: MAX_SWITCHES + 1 }, () => bus)).success).toBe(false);
   });
 });
