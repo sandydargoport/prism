@@ -199,7 +199,7 @@ For photos that synced before you set up GPS linking, *Settings > Photos > Backf
 
 ### Performance level interaction
 
-At the **Minimal** performance level (set per screen in its editor under **More > Edit layout > Look > This screen > Performance**, or chosen by Auto):
+At the **Minimal** performance level (set per screen in its editor under **More > Edit layout > Screen > Advanced > Performance**, or chosen by Auto):
 
 - The Photo widget shows one fixed photo, the first one matching its filter, and stops cycling.
 - A pinned dashboard wallpaper still shows, since a fixed image costs nothing per frame.

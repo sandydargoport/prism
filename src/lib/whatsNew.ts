@@ -12,7 +12,7 @@ export const WHATS_NEW = {
   items: [
     "**Glance, a new front page layout.** The clock, the weather, what's next and the coming days, written as sentences over your photos. To use it: More > Edit layout > Dashboard > Glance > Make the default. Your own dashboards are unchanged.",
     '**Navigation is at the bottom of the screen.** Your main pages sit in a bar along the bottom. Its **More** button opens the other pages, Settings and Help.',
-    '**Each screen can switch dashboards on its own schedule**, at set times or when the bus is due: More > Edit layout > Screen > Switch at set times. Through the day, beside it, sets what the screen shows when nobody is using it and at night. From your phone: More > Settings > Screens > Edit.',
+    '**Each screen can switch dashboards on its own schedule**, at set times or when the bus is due: More > Edit layout > Screen > Shows > Add a time. The same tab sets what the screen shows when idle, by day and at night. From your phone: More > Settings > Screens > Edit.',
     '**Photos fade from one to the next with a slow Ken Burns zoom**, and can show when and where they were taken: More > Settings > Appearance.',
     '**Users can now set alphanumeric PINs** of letters and numbers: More > Settings > Family Members.',
     '**Chores for pets**, and **subtasks** from Google Tasks and steps from Microsoft To Do.',

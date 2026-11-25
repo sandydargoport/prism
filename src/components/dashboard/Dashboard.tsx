@@ -168,7 +168,7 @@ export function Dashboard({
   // day's slider stands in its switch (#1294). Only while editing.
   const [previewId, setPreviewId] = useState<string | null>(null);
   // Whether the device in use has a name; one that has none can be named in
-  // Through the day, and then opens its own screen's editor.
+  // the Screen tab, and then opens its own screen's editor.
   const [deviceNamed] = useState(() => !!loadBase()?.displayId);
   const activeLayoutId = layout.activeLayout?.id;
   const openNamedScreen = useCallback((displayId: string) => {
@@ -325,6 +325,19 @@ export function Dashboard({
       console.error('Failed to create dashboard:', err);
     }
   }, [layout.activeLayout, data.layouts, router]);
+
+  // A dashboard made from a switch's New dashboard... (#1349): blank, kept in
+  // the editor so the switch can show it.
+  const saveLayout = data.layouts.saveLayout;
+  const handleNewDashboard = useCallback(async (name: string): Promise<string | null> => {
+    try {
+      const made = await saveLayout({ name, widgets: [{ i: 'clock', x: 16, y: 16, w: 16, h: 16, visible: true }], isDefault: false });
+      return made?.id ?? null;
+    } catch (err) {
+      console.error('Failed to create dashboard:', err);
+      return null;
+    }
+  }, [saveLayout]);
 
   const handleRenameDashboard = useCallback(async (newName: string) => {
     if (!layout.activeLayout) return;
@@ -574,6 +587,8 @@ export function Dashboard({
               onEditTabChange={layout.setEditTab}
               dashboardDirty={layout.dashboardDirty}
               idleDirty={layout.idleDirty}
+              idleLayoutDirty={layout.idleLayoutDirty}
+              screenDayDirty={layout.screenDayDirty}
               lookDirty={layout.lookDirty}
               defaultPending={layout.defaultDirty}
               onMakeDefault={layout.makeDefault}
@@ -607,6 +622,7 @@ export function Dashboard({
               currentDashboardId={layout.activeLayout?.id}
               onSwitchDashboard={handleSwitchDashboard}
               onCreateDashboard={handleCreateDashboard}
+              onNewDashboard={handleNewDashboard}
               onRenameDashboard={handleRenameDashboard}
               onDeleteDashboard={handleDeleteDashboard}
               view={layout.activeLayout?.view}

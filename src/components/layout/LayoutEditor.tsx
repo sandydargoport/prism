@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useCallback, useRef, useEffect, useMemo, useReducer } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { editsIdleLayout } from '@/components/dashboard/useDashboardLayout';
@@ -12,7 +12,7 @@ import { RenameDashboardDialog } from './LayoutEditorRenameDashboard';
 import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
 import { EditorBar, type EditorSheet } from './EditorBar';
 import { forgetKeptPanel, panelKeptFor } from './canvasPanel';
-import { DashboardSheet, DaySheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
+import { DashboardSheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
 import { openOtherScreen, ScreenSheet } from './ScreenSheet';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
@@ -22,25 +22,18 @@ import { idleSaveProblem } from './IdleBackgroundBar';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
 import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
-import { SCREEN_SETTING_FIELDS } from '@/lib/displays/screenSettingFields';
-import { SCREEN_ATTENTION_KEY } from '@/lib/displays/screenAttention';
+import { MOBILE_BREAKPOINT } from '@/lib/hooks/useIsMobile';
 import { useStoredRevision } from '@/lib/hooks/useStoredValue';
 import { SwitchPrompt, useSwitchPrompt } from './SwitchPrompt';
 import { CanvasCaption, CanvasToggles } from './CanvasToggles';
 
-/** The screen settings each tab sets (#1341); the Screen tab has the rest. */
-const LOOK_KEYS = new Set<string>(SCREEN_SETTING_FIELDS.map((f) => f.key));
-const MORE_KEYS = new Set<string>([SCREEN_ATTENTION_KEY]);
-
 /**
- * Which tabs hold changes Done has not saved (#1341), from what the editor
- * page holds for the screen (or for this device, with no screen).
+ * Whether the Screen tab holds changes Done has not saved (#1341, #1349),
+ * from what the editor page holds for the screen (or for this device, with
+ * no screen): every one of the screen's settings is on the Screen tab now.
  */
-export function pendingTabs(pending: { keys: string[]; plan: boolean }): { screen: boolean; look: boolean; more: boolean } {
-  const look = pending.keys.some((k) => LOOK_KEYS.has(k));
-  const more = pending.keys.some((k) => MORE_KEYS.has(k));
-  const screen = pending.plan || pending.keys.some((k) => !LOOK_KEYS.has(k) && !MORE_KEYS.has(k));
-  return { screen, look, more };
+export function pendingTabs(pending: { keys: string[]; plan: boolean }): { screen: boolean } {
+  return { screen: pending.plan || pending.keys.length > 0 };
 }
 
 /**
@@ -67,6 +60,8 @@ export function LayoutEditor({
   onEditTabChange,
   dashboardDirty,
   idleDirty,
+  idleLayoutDirty = idleDirty,
+  screenDayDirty = false,
   lookDirty = false,
   defaultPending = false,
   onMakeDefault,
@@ -109,29 +104,21 @@ export function LayoutEditor({
   hideEmptyByDefault = false,
   idleToggles = false,
   canvasCaption,
+  onNewDashboard,
 }: LayoutEditorProps) {
   const { confirm: confirmDelete, dialogProps: confirmDialogProps } = useConfirmDialog();
   const { measureMode, measureHideNav, toggleMeasureMode, toggleMeasureNav } = useMeasureMode();
 
-  // A screen's own settings (rest after, how dark) show when the editor is
-  // for a screen: the one edited on the canvas, if any (#1281). A dashboard
-  // edited at a chosen size has none.
-  const [forScreen] = useState(() => remoteEditHost()?.displayId !== null);
   // The open panel (#1151), beside the canvas (#1265); one is always open, as
   // there is room and nothing is covered. A dashboard picked on Dashboard
   // opens on Dashboard still.
   const [sheet, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
   useEffect(() => { forgetKeptPanel(); }, []);
-  // The canvas's toggles (#1348) say which state it draws, whichever panel
-  // is open, so an idle layout can be arranged from Widgets. Another
-  // dashboard shown as it is saved (#1294) is only for the slider, and for
-  // Screen, where a switch's dot tapped on the slider opens (#1326): any
+  // Another dashboard shown as it is saved (#1294) is only for Screen: any
   // other panel edits this one.
-  const [openSwitch, setOpenSwitch] = useState<number | null>(null);
   const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
-    setOpenSwitch(null);
-    if (next !== 'day' && next !== 'screen') onPreviewDashboardChange?.(null);
+    if (next !== 'screen') onPreviewDashboardChange?.(null);
   }, [onPreviewDashboardChange]);
   // A widget selected on the canvas brings Widgets forward, where its own
   // settings are (#1323). Only a new selection does: another panel opened
@@ -142,22 +129,17 @@ export function LayoutEditor({
     shownSelection.current = selectedWidgetId;
   }, [selectedWidgetId, setSheet]);
   const backToThis = useCallback(() => onPreviewDashboardChange?.(null), [onPreviewDashboardChange]);
-  const openScreenAt = useCallback((index: number) => {
-    setSheet('screen');
-    setOpenSwitch(index);
-  }, [setSheet]);
-  // Every tab's dot (#1326, #1341): Screen's when the screen's dashboard,
-  // switches or own settings differ from when the editor page opened, Look's
-  // and More's for the settings they hold. A setting written anywhere redraws them.
-  const [, screenSettingChanged] = useReducer((n: number) => n + 1, 0);
+  // The Screen tab's dot (#1326, #1341, #1349): the screen's dashboard,
+  // switches, own settings or idle looks differ from when the editor page
+  // opened. A setting written anywhere redraws it.
   useStoredRevision();
   const host = remoteEditHost();
   const held = pendingTabs(host?.pending?.() ?? { keys: [], plan: !!host?.unsaved?.() });
-  const screenDirty = held.screen;
+  const screenDirty = held.screen || screenDayDirty;
   // What a switch to another dashboard would lose; the screen's own settings
   // stay held on the editor page through it.
   const dashboardChanged = !!dashboardDirty || !!idleDirty || lookDirty || defaultPending;
-  const anyChanged = dashboardChanged || held.screen || held.look || held.more;
+  const anyChanged = dashboardChanged || held.screen;
   const { ask: askSwitch, promptProps } = useSwitchPrompt();
   const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
@@ -179,15 +161,16 @@ export function LayoutEditor({
   const saveBlocked = idleBackground ? idleSaveProblem(idleBackground, idleCheck) : null;
   const guardedSave = useCallback(async (name?: string) => {
     if (saveBlocked) {
-      onEditTabChange?.('idle');
+      // Why is on the Screen tab, by the night rule.
+      setSheet('screen');
       toast({ title: saveBlocked, variant: 'destructive' });
       return;
     }
     await onSave(name);
-  }, [saveBlocked, onEditTabChange, onSave]);
+  }, [saveBlocked, setSheet, onSave]);
   const guardedSaveAs = (opts: { id: string } | { name: string }) => {
     if (saveBlocked) {
-      onEditTabChange?.('idle');
+      setSheet('screen');
       toast({ title: saveBlocked, variant: 'destructive' });
       return;
     }
@@ -251,7 +234,7 @@ export function LayoutEditor({
     if (choice === 'stay') return false;
     if (choice === 'save') {
       if (saveBlocked) {
-        onEditTabChange?.('idle');
+        setSheet('screen');
         toast({ title: saveBlocked, variant: 'destructive' });
         return false;
       }
@@ -268,17 +251,26 @@ export function LayoutEditor({
         return (
           <ScreenSheet
             idleBackground={idleBackground}
+            onIdleBackgroundChange={onIdleBackgroundChange}
+            idleCheck={idleCheck}
+            onShowIdle={(night) => { onPreviewDashboardChange?.(null); onEditTabChange?.('idle'); onIdleHalfChange?.(night ? 'night' : 'day'); }}
+            onArrangePhotoFrame={(night) => {
+              onPreviewDashboardChange?.(null);
+              onEditTabChange?.('idle');
+              onIdleHalfChange?.(night ? 'night' : 'day');
+              setSheet('widgets');
+            }}
+            // The frame is drawn at the screen's own size: under a wall's width it never idles.
+            canIdle={typeof window === 'undefined' || window.innerWidth >= MOBILE_BREAKPOINT}
             screenPlan={screenPlan}
             onScreenPlanChange={onScreenPlanChange}
             screenId={screenId}
             deviceNamed={deviceNamed}
             onDeviceNamed={onDeviceNamed}
-            forScreen={forScreen}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
-            openSwitch={openSwitch}
-            onSettingChange={screenSettingChanged}
+            onNewDashboard={onNewDashboard}
             onRenamed={(name) => remoteEditHost()?.onRenamed?.(name)}
             onPickScreen={(id) => {
               // Changes not yet saved with Done are asked about first (#1341).
@@ -288,7 +280,7 @@ export function LayoutEditor({
                 // Done, which then opens the other screen's editor.
                 save: async (href) => {
                   if (saveBlocked) {
-                    onEditTabChange?.('idle');
+                    setSheet('screen');
                     toast({ title: saveBlocked, variant: 'destructive' });
                     return;
                   }
@@ -333,26 +325,6 @@ export function LayoutEditor({
             onSelectedWidgetChange={onSelectedWidgetChange}
             hideEmptyByDefault={hideEmptyByDefault}
             idleToggles={idleToggles}
-          />
-        );
-      case 'day':
-        return (
-          <DaySheet
-            idleBackground={idleBackground}
-            onIdleBackgroundChange={onIdleBackgroundChange}
-            idleHalf={idleHalf}
-            onIdleHalfChange={onIdleHalfChange}
-            editTab={editTab}
-            onEditTabChange={onEditTabChange}
-            idleCheck={idleCheck}
-            screenPlan={screenPlan}
-            previewDashboardId={previewDashboardId}
-            onPreviewDashboardChange={onPreviewDashboardChange}
-            screenId={screenId}
-            allDashboards={allDashboards}
-            currentDashboardId={currentDashboardId}
-            onOpenLook={() => setSheet('look')}
-            onOpenSwitch={openScreenAt}
           />
         );
       case 'look':
@@ -401,7 +373,7 @@ export function LayoutEditor({
         open={sheet}
         onOpenChange={setSheet}
         sheet={sheetContent}
-        dirty={{ screen: screenDirty, dashboard: defaultPending, widgets: dashboardDirty, day: idleDirty, look: lookDirty || held.look, more: held.more }}
+        dirty={{ screen: screenDirty, dashboard: defaultPending, widgets: dashboardDirty || idleLayoutDirty, look: lookDirty }}
         doneLabel={state.saveFeedback || 'Done'}
         doneBlocked={saveBlocked}
         onDone={state.handleSave}

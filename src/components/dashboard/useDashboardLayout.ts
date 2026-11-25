@@ -244,11 +244,11 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
 
   // Which tabs hold changes not yet saved, for the dot on each.
   const dashboardDirty = isEditing && withoutIdleTicks(editingWidgets) !== withoutIdleTicks(preEditWidgets);
-  const idleDirty = isEditing && (
-    ssDirty
-    || !sameIdleBackground(editingBackground, savedBackground)
-    || idleTicks(editingWidgets) !== idleTicks(preEditWidgets)
-  );
+  // The photo frame's arrangement or which widgets stay (Widgets), and the
+  // screen's idle looks and night rule (Screen, #1349).
+  const idleLayoutDirty = isEditing && (ssDirty || idleTicks(editingWidgets) !== idleTicks(preEditWidgets));
+  const screenDayDirty = isEditing && !sameIdleBackground(editingBackground, savedBackground);
+  const idleDirty = idleLayoutDirty || screenDayDirty;
   // Look's dot: the screen shape changed. Dashboard's: Make the default pressed.
   const lookDirty = isEditing && editingOrientation !== savedOrientation;
   const defaultDirty = isEditing && defaultPending && !activeLayout?.isDefault;
@@ -397,7 +397,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     // the dashboard's own Stays / Fades.
     editingScreensaver: isEditing && editTab === 'idle' && !['dashboard', 'off'].includes(shownIdleSource(editingBackground, idleHalf)),
     editingBackground, setEditingBackground: setEditedBackground,
-    dashboardDirty, idleDirty, lookDirty, defaultDirty,
+    dashboardDirty, idleDirty, idleLayoutDirty, screenDayDirty, lookDirty, defaultDirty,
     editingOrientation, setEditingOrientation: setEditedOrientation,
     makeDefault,
     ssLayout,

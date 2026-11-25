@@ -166,7 +166,7 @@ export function tonight(now: Date, sw: IdleSwitch, lat: number, lon: number): Ni
 /**
  * Every night that touches the local day of `day`: the one from the evening
  * before, the one that starts that day, and one past midnight on a clock rule
- * that starts after it. What the Through the day line draws (#1170).
+ * that starts after it. What the Screen tab's strip draws (#1170, #1349).
  */
 export function nightsTouching(day: Date, sw: IdleSwitch, lat: number, lon: number): NightSpan[] {
   const from = new Date(day.getFullYear(), day.getMonth(), day.getDate());

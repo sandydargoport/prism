@@ -672,7 +672,7 @@ test.describe('the Today view', () => {
   });
 
   // #1152: Through the day shows the screen in each state at once.
-  test('Through the day: night on the day\'s line shows the night look on Today, and Back to in use brings the day back', async ({ page }) => {
+  test('idle at night shows the night look on Today, and in use by day brings the day back', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
     await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
@@ -696,12 +696,12 @@ test.describe('the Today view', () => {
       // Edit opens the canvas (#1283): Today in the frame, the panels beside it.
       const frame = await onCanvas(page);
       const shown = frame.locator('[data-today-scene]');
-      await page.locator('[data-editor-open="day"]').click();
-      const sheet = page.locator('[data-editor-sheet="day"]');
+      await page.locator('[data-editor-open="screen"]').click();
+      const sheet = page.locator('[data-editor-sheet="screen"]');
       await expect(sheet).toBeVisible();
 
-      // Night, from its dot on the day's line: warm ink and the veil, at once (#1233, #1294).
-      await sheet.locator('[data-waypoint="night-start"]').click();
+      // Idle at night, on the canvas's toggles: warm ink and the veil, at once (#1233, #1348).
+      await canvasShows(page, 'idle', 'night');
       await expect(shown).toHaveAttribute('data-today-night', 'true');
       await expect(frame.locator('[data-today-veil]')).toHaveCount(1);
       // The veil stands in for the day's shade (#1186).
@@ -717,7 +717,7 @@ test.describe('the Today view', () => {
       await canvasShows(page, 'idle');
 
       // Screen off: the preview goes black over the scene, and the panels stay.
-      await sheet.getByLabel('Night look').selectOption({ label: 'Screen off' });
+      await sheet.getByLabel('At night it shows').selectOption({ label: 'Screen off' });
       const off = frame.locator('[data-preview-night="off"]');
       await expect(off).toHaveCount(1);
       expect(await off.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');

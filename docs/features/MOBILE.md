@@ -111,13 +111,13 @@ The usual gestures:
 
 ### Screensaver + Away mode behavior on PWA
 
-A phone never shows the screensaver; it dims and locks itself. An installed PWA on a larger screen does not start the screensaver or Away mode by itself either, unless it is a screen named in its editor (More > Edit layout > Screen > **Name this device**). Without a name it skips both, for these reasons:
+A phone never shows the screensaver; it dims and locks itself. An installed PWA on a larger screen does not start the screensaver or Away mode by itself either, unless it is a screen named in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name). Without a name it skips both, for these reasons:
 
 - A phone has no idle time the way a kiosk does. It is either in your pocket or in your hand.
 - If Away mode turned on by itself on a phone, it would lock the family member out of their own device.
 - A photo slideshow on a phone screen only uses up the battery.
 
-A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (More > Edit layout > Screen > **Name this device**) and its screensaver and Away mode start on their timers as they do in a browser.
+A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name) and its screensaver and Away mode start on their timers as they do in a browser.
 
 ### Common workflows
 
@@ -127,7 +127,7 @@ Install Prism as a PWA on the phone. It opens on the dashboard: Glance's phone p
 
 #### Tablet permanently mounted in the kitchen
 
-Open it in full-screen Chrome or use kiosk mode, or install it as a PWA and name the screen (More > Edit layout > Screen > **Name this device**) so it rests and goes idle. On the dashboard the dock may wait behind the small **Menu** tab on the bottom edge; a tap brings it up. If photos come up for the wrong shape, set **Orientation** in More > Edit layout > Look, under **This screen**.
+Open it in full-screen Chrome or use kiosk mode, or install it as a PWA and name the screen (More > Edit layout > Screen > Shows > **Normally** > **Edit**, which asks for a name) so it rests and goes idle. On the dashboard the dock may wait behind the small **Menu** tab on the bottom edge; a tap brings it up. If photos come up for the wrong shape, set **Orientation** in More > Edit layout > Look, under **This screen**.
 
 #### Phone in shopping mode at the grocery store
 

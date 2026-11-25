@@ -1,15 +1,12 @@
 'use client';
 
 /**
- * The rows and controls the editor's Screen and Through the day sheets share
- * (#1281, #1294, #1326): a row's name in one column and its choices in the
- * next, so every row lines up, and rows that fold to one line.
+ * The controls the editor's Screen tab is made of (#1281, #1326, #1349): its
+ * chips and fields, each switch's colour, and the bus routes.
  */
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import { busWindowOf, daysShort, type BusWindow } from '@/lib/screenSwitches';
-import { Swatch } from './DaySlider';
 import { cn } from '@/lib/utils';
 
 const DAY_MINUTES = 24 * 60;
@@ -29,10 +26,6 @@ export const dayChip = (on: boolean) => cn(
   on ? 'border border-foreground bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
 );
 export const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
-/** The column of row names: wide enough for a fold's arrow and "At set times" at the desk's 14px. */
-const NAME_COLUMN = 'grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-body';
-/** Every row is a box of one inset, so the names of plain rows and folds line up. */
-const ROW_BOX = 'rounded-xl border px-3 pointer-fine:px-2';
 /** A small round button beside a row (move up, remove). */
 export const iconButton = 'flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 pointer-fine:h-8 pointer-fine:w-8';
 export const note = 'm-0 text-caption text-muted-foreground';
@@ -44,48 +37,36 @@ export const hhmm = (minute: number) => {
 };
 
 /**
- * A row: its name in a column of its own, so the choices of every row start at
- * one edge, and wrap within their own column, never under the name.
+ * Each switch's colour, by its place in the list, so its band on the strip
+ * matches the swatch on its row. They follow the theme: the first is the
+ * theme's own hue, and each next one turns the golden angle further round the
+ * wheel, so neighbours stay far apart. Saturation and lightness come from
+ * globals.css, deeper in light mode and lighter in dark, as a theme's primary
+ * can be near black or near white.
  */
-export function Row({ name, children, className, ...rest }: { name: string; children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn(NAME_COLUMN, ROW_BOX, 'border-transparent', className)} {...rest}>
-      {/* An arrow's width in front, as a fold's name has. */}
-      <span className="self-start pl-5 pt-2.5 font-medium pointer-fine:pt-2" data-row-name>{name}</span>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5" data-row-choices>{children}</div>
-    </div>
-  );
+const GOLDEN_ANGLE = 137.5;
+export const switchColor = (index: number) =>
+  `hsl(from hsl(var(--primary)) calc(h + ${(index * GOLDEN_ANGLE) % 360}) var(--day-switch-s, 65%) var(--day-switch-l, 50%))`;
+/** The same, fixed, for a browser that cannot work a colour out from another. */
+const FALLBACK = ['#3b82f6', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6', '#06b6d4'];
+
+/** A switch's colour as a background, with its fallback underneath. */
+export function paint(index: number): { className: string; style: React.CSSProperties; color: string } {
+  const color = switchColor(index);
+  // Inline beats the class, unless the browser drops it as a colour it cannot read.
+  return { className: 'bg-[var(--fallback)]', style: { ['--fallback' as string]: FALLBACK[index % FALLBACK.length]!, backgroundColor: color }, color };
 }
 
 /**
- * A row that folds to one line saying what it does, and opens on a tap to
- * the choices that make it.
+ * A row's swatch: a switch's colour, as its band on the strip is, or for
+ * Normally (-1) the strip's own ground, which is what shows outside every band.
  */
-export function Fold({ name, summary, colorIndex, open, onToggle, children, ...rest }: {
-  name: string;
-  summary: string;
-  /** Its colour on the day's line, as a dot in front of the summary: a switch's place, or -1 for night. */
-  colorIndex: number;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-} & React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn(ROW_BOX, 'border-border', open ? 'bg-muted/40' : 'bg-muted/20')} data-open={open} {...rest}>
-      <button type="button" aria-expanded={open} onClick={onToggle} title={open ? undefined : summary}
-        className={cn(NAME_COLUMN, 'min-h-[48px] w-full text-left pointer-fine:min-h-9')} data-fold-toggle>
-        <span className="flex items-center gap-1 font-medium" data-row-name>
-          <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')} aria-hidden />
-          {name}
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5">
-          <Swatch index={colorIndex} />
-          <span className="truncate text-muted-foreground" data-fold-summary>{summary}</span>
-        </span>
-      </button>
-      {open && <div className="flex flex-col gap-2 pb-3 pl-5 pointer-fine:gap-1.5 pointer-fine:pb-2" data-fold-body>{children}</div>}
-    </div>
-  );
+export function Swatch({ index, className, ...rest }: { index: number } & React.HTMLAttributes<HTMLSpanElement>) {
+  if (index < 0) {
+    return <span aria-hidden className={cn('inline-block h-3 w-3 shrink-0 rounded-[3px] border border-border bg-muted', className)} data-swatch="normally" {...rest} />;
+  }
+  const p = paint(index);
+  return <span aria-hidden className={cn('inline-block h-3 w-3 shrink-0 rounded-[3px]', p.className, className)} style={p.style} data-swatch={p.color} {...rest} />;
 }
 
 /** A bus route as a bus switch's row shows it. */
