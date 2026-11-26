@@ -16,20 +16,7 @@ const withPWA = require('next-pwa')({
   // kiosk that data outlived the session. Static assets are still handled by
   // next-pwa's precache; dynamic API data is intentionally never cached.
   runtimeCaching: [],
-  // Keep the colour-emoji font OUT of the precache manifest.
-  //
-  // next-pwa builds that manifest from everything in the build, which swept in
-  // all ten Noto Color Emoji chunks — ~3.8 MB downloaded on service-worker
-  // install, on every client, unconditionally. That silently undid the design
-  // in src/app/layout.tsx: the font is split by unicode-range precisely so a
-  // display fetches only the chunks for emoji it actually renders. The CSS did
-  // that correctly and the service worker then grabbed the lot anyway.
-  //
-  // Excluded here rather than removed: the emoji still resolve, they are just
-  // fetched on demand the way the stylesheet already intended. Scoped to the
-  // emoji font by name so ordinary text fonts keep their precache.
-  buildExcludes: [/noto-color-emoji.*\.woff2$/],
-  // Same reasoning for MapLibre's worker chunks (public/maplibre, written by
+  // MapLibre's worker chunks (public/maplibre, written by
   // scripts/copy-maplibre-worker.mjs). They are ~500 kB and are only ever
   // fetched by the travel globe; precaching them would download the pair onto
   // every display on service-worker install, including ones that never open
@@ -46,8 +33,8 @@ const withPWA = require('next-pwa')({
   //
   // A page renders a few dozen emoji, not 3846. They are <img> tags
   // (components/ui/Emoji.tsx) and the browser caches them normally on first
-  // use, which is the same on-demand behaviour the Noto font exclusion above
-  // restored. The trade is that emoji not yet seen will not render with no
+  // use, which is the same on-demand behaviour ordinary font assets already
+  // get. The trade is that emoji not yet seen will not render with no
   // network at all; the displays are always-on and wired, and 18MB on every
   // install is the worse end of that bargain.
   publicExcludes: ['!noprecache/**/*', '!maplibre/**/*', '!twemoji/**/*'],
