@@ -30,15 +30,6 @@ redistributing them, which includes anyone running or forking Prism.
 Self-hosted from your own instance. Prism never asks a third-party font host
 for it, so a display on a private network renders the same as one online.
 
-## Emoji font — Noto Color Emoji
-
-- Copyright 2021 Google Inc.
-- [SIL Open Font License 1.1](https://openfontlicense.org/)
-- Source: <https://github.com/fontsource/font-files>
-
-A fallback for clients with no emoji font of their own. Split by unicode-range
-so a display downloads only the ranges it actually draws.
-
 ## Star data: d3-celestial
 
 - Copyright © 2015, Olaf Frohn

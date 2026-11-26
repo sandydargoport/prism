@@ -82,6 +82,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
+  /* Use the operating system's emoji fonts. Do not bundle Noto Color Emoji as
+     a webfont: on Linux Chromium that face shadows the working local font but
+     paints its emoji glyphs blank. */
   --font-sans:
     var(--theme-font, var(--font-inter, Inter)), Inter Fallback, system-ui,
     -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial,
@@ -91,14 +94,16 @@
      numeral face of its own (--theme-font-numeral, set by applyTheme). */
   --font-numeral: var(--theme-font-numeral, var(--font-sans));
   /* The display face (#800): the clock, the temperature and page and sheet
-     titles. Literata, unless a theme names a numeral face of its own
-     (--theme-font-display, set by applyTheme). Everything else stays sans. */
+     titles. Keep emoji ahead of generic serif families so event titles drawn
+     in this role still fall back to the color emoji font. Literata, unless a
+     theme names a numeral face of its own (--theme-font-display, set by
+     applyTheme). Everything else stays sans. */
   --font-display:
-    var(--theme-font-display, var(--font-serif, Literata)), Georgia,
-    Times New Roman, serif;
+    var(--theme-font-display, var(--font-serif, Literata)), Apple Color Emoji,
+    Segoe UI Emoji, Noto Color Emoji, emoji, Georgia, Times New Roman, serif;
   --font-mono:
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
-    monospace;
+    Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, emoji, monospace;
 
   /* Type roles (docs/DESIGN.md, src/lib/design/tokens.ts). rem at
      the 20px wall root: caption 14, body 20, title 28, display 48, clock 100.

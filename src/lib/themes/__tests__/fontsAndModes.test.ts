@@ -97,9 +97,21 @@ describe('display face role', () => {
     expect(themeCss(theme({ font: 'sans', numeralFont: 'mono' }))).toContain('--theme-font-display:var(--font-mono-theme), var(--font-serif)');
   });
 
-  it('falls back to the serif face, never to the text face', () => {
+  it('keeps emoji fallback ahead of generic serif faces', () => {
     const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
-    expect(css).toMatch(/--font-display:\s*var\(--theme-font-display, var\(--font-serif, Literata\)\), Georgia,/);
+    expect(css).toMatch(
+      /--font-display:\s*var\(--theme-font-display, var\(--font-serif, Literata\)\), Apple Color Emoji,\s*Segoe UI Emoji, Noto Color Emoji, emoji, Georgia,/,
+    );
+  });
+});
+
+describe('emoji font delivery', () => {
+  it('uses platform emoji fonts instead of the broken bundled Noto webfont', () => {
+    const layout = readFileSync(join(__dirname, '../../../app/layout.tsx'), 'utf8');
+    const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
+
+    expect(layout).not.toContain('@fontsource/noto-color-emoji');
+    expect(css).toMatch(/Segoe UI Symbol,\s*Noto Color Emoji;/);
   });
 });
 

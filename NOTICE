@@ -42,18 +42,6 @@ from the application's own origin, so a running instance makes no request to a
 third-party font host. Inter carries no Reserved Font Name.
 
 --------------------------------------------------------------------------
-Noto Color Emoji  —  SIL Open Font License 1.1
---------------------------------------------------------------------------
-Package:   @fontsource/noto-color-emoji 5.2.12
-Source:    https://github.com/fontsource/font-files
-Licence:   third-party/noto-color-emoji/OFL.txt
-Copyright 2021 Google Inc. All Rights Reserved.
-
-Webfont fallback so emoji still render on a client with no colour emoji font of
-its own — typically a minimal kiosk build. Self-hosted, split by unicode-range
-so a display fetches only the ranges it draws.
-
---------------------------------------------------------------------------
 d3-celestial star data  -  BSD 3-Clause
 --------------------------------------------------------------------------
 Package:   d3-celestial 0.7.35 (data files only)
